@@ -15,10 +15,19 @@ function applyTheme(theme: Theme) {
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "dark";
-    return (localStorage.getItem("theme") as Theme) ?? "dark";
-  });
+  // Always start with "dark" to match server-rendered HTML (html className="dark")
+  const [theme, setThemeState] = useState<Theme>("dark");
+  const [mounted, setMounted] = useState(false);
+
+  // Read persisted theme after mount to avoid hydration mismatch
+  useEffect(() => {
+    const stored = localStorage.getItem("theme") as Theme | null;
+    if (stored) {
+      setThemeState(stored);
+      applyTheme(stored);
+    }
+    setMounted(true);
+  }, []);
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
@@ -27,8 +36,8 @@ export function useTheme() {
   }, []);
 
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    if (mounted) applyTheme(theme);
+  }, [theme, mounted]);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -41,5 +50,5 @@ export function useTheme() {
 
   const resolvedTheme = theme === "system" ? getSystemTheme() : theme;
 
-  return { theme, setTheme, resolvedTheme } as const;
+  return { theme, setTheme, resolvedTheme, mounted } as const;
 }

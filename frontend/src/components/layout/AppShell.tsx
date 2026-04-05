@@ -39,7 +39,7 @@ function NavItem({ href, icon, label, active }: NavItemProps) {
 
 function IconRail() {
   const pathname = usePathname();
-  const { resolvedTheme, setTheme, theme } = useTheme();
+  const { resolvedTheme, setTheme, theme, mounted } = useTheme();
 
   function cycleTheme() {
     const next = theme === "dark" ? "light" : theme === "light" ? "system" : "dark";
@@ -76,9 +76,9 @@ function IconRail() {
         <button
           onClick={cycleTheme}
           className="flex h-10 w-10 items-center justify-center rounded-lg text-sidebar-foreground hover:text-zinc-200 transition-colors duration-150"
-          title={`Theme: ${theme}`}
+          title={mounted ? `Theme: ${theme}` : "Theme: dark"}
         >
-          {resolvedTheme === "dark" ? <Moon size={20} /> : <Sun size={20} />}
+          {!mounted || resolvedTheme === "dark" ? <Moon size={20} /> : <Sun size={20} />}
         </button>
         <button
           className="flex h-10 w-10 items-center justify-center rounded-lg text-sidebar-foreground hover:text-zinc-200 transition-colors duration-150"
