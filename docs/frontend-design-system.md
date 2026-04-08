@@ -1,5 +1,9 @@
 # Frontend Design System
 
+> **Status:** Aktiv angewandt seit 2026-04-08 (siehe `docs/superpowers/plans/2026-04-08-frontend-design-system-migration.md`).
+> Tokens leben in `frontend/src/app/globals.css`, Font-Wiring in `frontend/src/app/layout.tsx`.
+> Nicht umgesetzt: IDE-Shell-Layout (inkompatibel mit Wizard-Flow), zusätzliche UI-Primitives (Dialog/Tabs/Select/Input/Sheet/Alert/ScrollArea/Separator) — bei Bedarf separate Pläne anlegen.
+
 Generische Design-Spezifikation zur Wiederverwendung in anderen Frontends.
 
 ---
