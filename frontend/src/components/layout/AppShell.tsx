@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderKanban, Plus, Settings, Sun, Moon, Sparkles } from "lucide-react";
+import { FolderKanban, Plus, Settings, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/lib/hooks/use-theme";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -39,12 +38,6 @@ function NavItem({ href, icon, label, active }: NavItemProps) {
 
 function IconRail() {
   const pathname = usePathname();
-  const { resolvedTheme, setTheme, theme, mounted } = useTheme();
-
-  function cycleTheme() {
-    const next = theme === "dark" ? "light" : theme === "light" ? "system" : "dark";
-    setTheme(next);
-  }
 
   return (
     <aside className="flex h-screen w-14 shrink-0 flex-col items-center bg-sidebar py-3 gap-1">
@@ -73,13 +66,6 @@ function IconRail() {
       </nav>
 
       <div className="flex flex-col items-center gap-1">
-        <button
-          onClick={cycleTheme}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-sidebar-foreground hover:text-zinc-200 transition-colors duration-150"
-          title={mounted ? `Theme: ${theme}` : "Theme: dark"}
-        >
-          {!mounted || resolvedTheme === "dark" ? <Moon size={20} /> : <Sun size={20} />}
-        </button>
         <button
           className="flex h-10 w-10 items-center justify-center rounded-lg text-sidebar-foreground hover:text-zinc-200 transition-colors duration-150"
           title="Settings"
