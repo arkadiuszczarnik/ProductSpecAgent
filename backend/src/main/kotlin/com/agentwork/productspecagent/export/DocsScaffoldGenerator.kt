@@ -29,7 +29,34 @@ data class FeatureContext(
     val dependencies: String,
     val stories: List<StoryContext>,
     val acceptanceCriteria: List<TaskContext>,
-    val tasks: List<TaskContext>
+    val tasks: List<TaskContext>,
+    /**
+     * Feature 22: Human-readable scope label for this feature — one of "Frontend",
+     * "Backend", "Frontend + Backend", "Core", or null if the wizard didn't produce a
+     * matching entry. Null suppresses the `**Scope:**` line in the feature template.
+     */
+    val scope: String? = null,
+    /**
+     * Feature 22: Key-value map carrying scope-specific content (e.g. `apiEndpoints`,
+     * `uiComponents`, `screens`, `dataModel`). Empty / missing entries suppress their
+     * corresponding section in the feature template.
+     */
+    val scopeFields: Map<String, String> = emptyMap(),
+    /**
+     * Feature 22: Explicit truthy flags per scope-field. Kept separately from
+     * [scopeFields] because Mustache.java's section evaluation of a Map entry whose
+     * value is an empty string still renders as truthy in some reflection paths; using
+     * a boolean removes the ambiguity.
+     */
+    val hasUiComponents: Boolean = false,
+    val hasScreens: Boolean = false,
+    val hasUserInteractions: Boolean = false,
+    val hasApiEndpoints: Boolean = false,
+    val hasDataModel: Boolean = false,
+    val hasSideEffects: Boolean = false,
+    val hasPublicApi: Boolean = false,
+    val hasTypesExposed: Boolean = false,
+    val hasExamples: Boolean = false,
 )
 
 data class StoryContext(val index: Int, val title: String, val description: String)

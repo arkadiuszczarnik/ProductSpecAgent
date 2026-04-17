@@ -112,4 +112,100 @@ class DocsScaffoldGeneratorTest {
         val design = result["docs/frontend/design.md"]!!
         assertContains(design, "React SPA with shadcn/ui components.")
     }
+
+    @Test
+    fun `feature markdown includes Scope line and only matching scope-specific sections`() {
+        val ctx = ScaffoldContext(
+            projectName = "Test",
+            features = listOf(
+                FeatureContext(
+                    number = 1, title = "Login", slug = "login", filename = "01-login.md",
+                    description = "Auth", estimate = "M", dependencies = "—",
+                    stories = emptyList(), acceptanceCriteria = emptyList(), tasks = emptyList(),
+                    scope = "Backend",
+                    scopeFields = mapOf("apiEndpoints" to "POST /auth/login"),
+                    hasApiEndpoints = true,
+                )
+            ),
+            decisions = emptyList(),
+            scopeContent = null, mvpContent = null,
+            techStack = "",
+            problemContent = null, targetAudienceContent = null,
+            architectureContent = null, backendContent = null, frontendContent = null,
+        )
+        val md = generator.generate(ctx)["docs/features/01-login.md"]
+        assertNotNull(md)
+        assertContains(md, "**Scope:** Backend")
+        assertContains(md, "## API-Endpunkte")
+        assertContains(md, "POST /auth/login")
+        // Frontend-specific sections must stay absent.
+        assertFalse(md.contains("## UI-Komponenten"))
+        assertFalse(md.contains("## Screens"))
+    }
+
+    @Test
+    fun `feature markdown omits Scope line and all scope sections when scope is null`() {
+        val ctx = ScaffoldContext(
+            projectName = "Test",
+            features = listOf(
+                FeatureContext(
+                    number = 1, title = "Legacy", slug = "legacy", filename = "01-legacy.md",
+                    description = "Legacy", estimate = "M", dependencies = "—",
+                    stories = emptyList(), acceptanceCriteria = emptyList(), tasks = emptyList(),
+                    scope = null,
+                    scopeFields = emptyMap(),
+                )
+            ),
+            decisions = emptyList(),
+            scopeContent = null, mvpContent = null,
+            techStack = "",
+            problemContent = null, targetAudienceContent = null,
+            architectureContent = null, backendContent = null, frontendContent = null,
+        )
+        val md = generator.generate(ctx)["docs/features/01-legacy.md"]
+        assertNotNull(md)
+        assertFalse(md.contains("**Scope:**"))
+        assertFalse(md.contains("## API-Endpunkte"))
+        assertFalse(md.contains("## UI-Komponenten"))
+    }
+
+    @Test
+    fun `feature markdown renders multiple scope-specific sections when flags are set`() {
+        val ctx = ScaffoldContext(
+            projectName = "Test",
+            features = listOf(
+                FeatureContext(
+                    number = 1, title = "Checkout", slug = "checkout", filename = "01-checkout.md",
+                    description = "End-to-end checkout", estimate = "L", dependencies = "—",
+                    stories = emptyList(), acceptanceCriteria = emptyList(), tasks = emptyList(),
+                    scope = "Frontend + Backend",
+                    scopeFields = mapOf(
+                        "uiComponents" to "CheckoutForm",
+                        "apiEndpoints" to "POST /checkout",
+                        "dataModel" to "Order { id, total }",
+                    ),
+                    hasUiComponents = true,
+                    hasApiEndpoints = true,
+                    hasDataModel = true,
+                )
+            ),
+            decisions = emptyList(),
+            scopeContent = null, mvpContent = null,
+            techStack = "",
+            problemContent = null, targetAudienceContent = null,
+            architectureContent = null, backendContent = null, frontendContent = null,
+        )
+        val md = generator.generate(ctx)["docs/features/01-checkout.md"]
+        assertNotNull(md)
+        assertContains(md, "**Scope:** Frontend + Backend")
+        assertContains(md, "## UI-Komponenten")
+        assertContains(md, "CheckoutForm")
+        assertContains(md, "## API-Endpunkte")
+        assertContains(md, "POST /checkout")
+        assertContains(md, "## Datenmodell")
+        assertContains(md, "Order { id, total }")
+        // Omitted sections stay out even when the keys aren't in the map.
+        assertFalse(md.contains("## Screens"))
+        assertFalse(md.contains("## Public API"))
+    }
 }
