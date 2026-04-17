@@ -4,11 +4,15 @@ import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.ClarificationService
 import com.agentwork.productspecagent.service.DecisionService
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.TaskService
 import com.agentwork.productspecagent.service.WizardService
 import com.agentwork.productspecagent.storage.ClarificationStorage
 import com.agentwork.productspecagent.storage.DecisionStorage
 import com.agentwork.productspecagent.storage.ProjectStorage
+import com.agentwork.productspecagent.storage.TaskStorage
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonPrimitive
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -28,6 +32,7 @@ class IdeaToSpecAgentTest {
     private lateinit var clarificationStorage: ClarificationStorage
     private lateinit var clarificationService: ClarificationService
     private lateinit var wizardService: WizardService
+    private lateinit var taskService: TaskService
 
     @BeforeEach
     fun setup() {
@@ -44,10 +49,15 @@ class IdeaToSpecAgentTest {
         clarificationStorage = ClarificationStorage(tempDir.toString())
         clarificationService = ClarificationService(clarificationStorage)
         wizardService = WizardService(storage)
+        val taskStorage = TaskStorage(tempDir.toString())
+        val fakePlanAgent = object : PlanGeneratorAgent(contextBuilder) {
+            override suspend fun runAgent(prompt: String): String = """{"epics":[]}"""
+        }
+        taskService = TaskService(taskStorage, fakePlanAgent)
     }
 
     private fun createTestAgent(agentResponse: String): IdeaToSpecAgent {
-        return object : IdeaToSpecAgent(contextBuilder, projectService, "You are IdeaToSpec.", decisionService, clarificationService, wizardService) {
+        return object : IdeaToSpecAgent(contextBuilder, projectService, "You are IdeaToSpec.", decisionService, clarificationService, wizardService, taskService) {
             override suspend fun runAgent(systemPrompt: String, userMessage: String): String {
                 return agentResponse
             }
@@ -56,7 +66,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat returns plain message when no STEP_COMPLETE marker`() = runBlocking {
-        val project = projectService.createProject("Test", "My idea")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent("What problem are you solving?")
 
         val response = agent.chat(project.project.id, "Hello")
@@ -68,7 +78,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat advances flow when STEP_COMPLETE marker present`() = runBlocking {
-        val project = projectService.createProject("Test", "My idea")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent(
             "Great idea!\n[STEP_COMPLETE]\n[STEP_SUMMARY]: The idea is about productivity tracking."
         )
@@ -95,7 +105,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat does not advance beyond FRONTEND step`() = runBlocking {
-        val project = projectService.createProject("Test", "Idea")
+        val project = projectService.createProject("Test")
         // Manually advance to FRONTEND step (the last step)
         val flowState = projectService.getFlowState(project.project.id)
         val allCompleted = flowState.steps.map { step ->
@@ -115,7 +125,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat strips markers from message`() = runBlocking {
-        val project = projectService.createProject("Test", "Idea")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent("Summary done.\n[STEP_COMPLETE]\n[STEP_SUMMARY]: The summary.")
 
         val response = agent.chat(project.project.id, "Summarize")
@@ -127,7 +137,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat creates decision when DECISION_NEEDED marker present`() = runBlocking {
-        val project = projectService.createProject("Test", "My idea")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent(
             "I think we need to decide on the scope.\n[DECISION_NEEDED]: Should feature X be in MVP?"
         )
@@ -145,7 +155,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat creates clarification when CLARIFICATION_NEEDED marker present`() = runBlocking {
-        val project = projectService.createProject("Test", "My idea")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent(
             "I noticed a gap.\n[CLARIFICATION_NEEDED]: How should offline users sync? | The spec mentions both online-first and offline support"
         )
@@ -157,5 +167,101 @@ class IdeaToSpecAgentTest {
         val clarifications = clarificationService.listClarifications(project.project.id)
         assertEquals(1, clarifications.size)
         assertEquals("How should offline users sync?", clarifications[0].question)
+    }
+
+    @Test
+    fun `FEATURES step passes graph block with resolved category to agent prompt`() = runBlocking<Unit> {
+        val project = projectService.createProject("Test")
+        val projectId = project.project.id
+
+        // Seed IDEA step category = "SaaS" in the persisted wizard state
+        wizardService.saveWizardData(
+            projectId,
+            WizardData(
+                projectId = projectId,
+                steps = mapOf(
+                    FlowStepType.IDEA.name to WizardStepData(
+                        fields = mapOf("category" to JsonPrimitive("SaaS")),
+                        completedAt = "2026-04-17T10:00:00Z"
+                    )
+                )
+            )
+        )
+
+        val capturedUserPrompts = mutableListOf<String>()
+        val agent = object : IdeaToSpecAgent(
+            contextBuilder, projectService, "You are IdeaToSpec.",
+            decisionService, clarificationService, wizardService, taskService
+        ) {
+            override suspend fun runAgent(systemPrompt: String, userMessage: String): String {
+                capturedUserPrompts.add(userMessage)
+                return "OK."
+            }
+        }
+
+        val fields = mapOf<String, Any>(
+            "features" to listOf(
+                mapOf(
+                    "id" to "f-1",
+                    "title" to "Login",
+                    "scopes" to listOf("BACKEND"),
+                    "scopeFields" to mapOf("apiEndpoints" to "POST /auth/login")
+                )
+            ),
+            "edges" to emptyList<Any>()
+        )
+        agent.processWizardStep(projectId, FlowStepType.FEATURES.name, fields)
+
+        assertThat(capturedUserPrompts).isNotEmpty
+        val lastPrompt = capturedUserPrompts.last()
+        assertThat(lastPrompt)
+            .contains("Features & Dependencies (Category: SaaS)")
+            .contains("[f-1] Login (Backend)")
+    }
+
+    @Test
+    fun `FEATURES step with an isolated node triggers clarification`() = runBlocking<Unit> {
+        val project = projectService.createProject("Test")
+        val projectId = project.project.id
+
+        // Seed IDEA step category = "SaaS" in the persisted wizard state
+        wizardService.saveWizardData(
+            projectId,
+            WizardData(
+                projectId = projectId,
+                steps = mapOf(
+                    FlowStepType.IDEA.name to WizardStepData(
+                        fields = mapOf("category" to JsonPrimitive("SaaS")),
+                        completedAt = "2026-04-17T10:00:00Z"
+                    )
+                )
+            )
+        )
+
+        val agent = object : IdeaToSpecAgent(
+            contextBuilder, projectService, "You are IdeaToSpec.",
+            decisionService, clarificationService, wizardService, taskService
+        ) {
+            override suspend fun runAgent(systemPrompt: String, userMessage: String): String {
+                // The Feature 22 FEATURES-step validator rules must mention "isolated" so the
+                // LLM knows to flag lonely graph nodes.
+                assertThat(systemPrompt).contains("isolated")
+                return "Feature noted.\n[CLARIFICATION_NEEDED]: Is Loner truly independent? | It has no edges"
+            }
+        }
+
+        val fields = mapOf<String, Any>(
+            "features" to listOf(
+                mapOf("id" to "a", "title" to "A", "scopes" to listOf("BACKEND")),
+                mapOf("id" to "b", "title" to "B", "scopes" to listOf("BACKEND")),
+                mapOf("id" to "loner", "title" to "Loner", "scopes" to listOf("BACKEND"))
+            ),
+            "edges" to listOf(mapOf("id" to "e1", "from" to "a", "to" to "b"))
+        )
+        agent.processWizardStep(projectId, FlowStepType.FEATURES.name, fields)
+
+        val clarifications = clarificationService.listClarifications(projectId)
+        assertThat(clarifications).isNotEmpty
+        assertTrue(clarifications.any { it.question.contains("Loner") })
     }
 }

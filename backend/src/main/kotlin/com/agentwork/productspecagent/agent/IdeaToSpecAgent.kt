@@ -7,6 +7,8 @@ import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.service.TaskService
 import com.agentwork.productspecagent.service.WizardFeatureInput
 import com.agentwork.productspecagent.service.WizardService
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -124,12 +126,28 @@ open class IdeaToSpecAgent(
             wizardData, step, fields, existingDecisions, existingClarifications
         )
 
-        val prompt = buildWizardStepFeedbackPrompt(step, fields)
-
         val currentStepType = try { FlowStepType.valueOf(step) } catch (_: Exception) { null }
+
+        // Feature 22: Resolve the project's IDEA-step category so that FEATURES-step
+        // processing can (a) render an accurate graph block in the user prompt and
+        // (b) derive category-appropriate default scopes when parsing wizard features.
+        val resolvedCategory = resolveProjectCategory(wizardData, currentStepType, fields)
+
+        val prompt = buildWizardStepFeedbackPrompt(step, fields, resolvedCategory)
+
         val stepPrompt = if (currentStepType != null) buildStepPrompt(currentStepType) else ""
         val localeInstruction = buildLocaleInstruction(locale)
-        val systemPromptWithContext = "$baseSystemPrompt\n\n$stepPrompt\n\n$localeInstruction\n\n$wizardContext"
+
+        // Feature 22: FEATURES-step specific validator rules (e.g. isolated nodes, scope/title
+        // inconsistencies, missing category-typical core features). Kept out of the global
+        // system prompt so other steps are not affected by graph-specific guidance.
+        val featuresValidatorBlock = if (currentStepType == FlowStepType.FEATURES) {
+            "\n\n$FEATURES_VALIDATOR_RULES"
+        } else {
+            ""
+        }
+        val systemPromptWithContext =
+            "$baseSystemPrompt\n\n$stepPrompt\n\n$localeInstruction\n\n$wizardContext$featuresValidatorBlock"
 
         val rawResponse = runAgent(systemPromptWithContext, prompt)
 
@@ -213,8 +231,7 @@ open class IdeaToSpecAgent(
             // saveSpecFile triggers regenerateDocsScaffold which reads tasks to build
             // docs/features/.
             if (!isBlocked && currentStepType == FlowStepType.FEATURES) {
-                // FEATURE-22-TODO Task 6: resolve category from project
-                val wizardFeatures = parseWizardFeatures(fields, category = null)
+                val wizardFeatures = parseWizardFeatures(fields, resolvedCategory)
                 if (wizardFeatures.isNotEmpty()) {
                     try {
                         taskService.replaceWizardFeatureTasks(projectId, wizardFeatures)
@@ -254,7 +271,11 @@ open class IdeaToSpecAgent(
         )
     }
 
-    private fun buildWizardStepFeedbackPrompt(step: String, fields: Map<String, Any>): String {
+    private fun buildWizardStepFeedbackPrompt(
+        step: String,
+        fields: Map<String, Any>,
+        resolvedCategory: String? = null,
+    ): String {
         val fieldsDescription = fields.entries.joinToString("\n") { "- ${it.key}: ${it.value}" }
         return when (step) {
             "IDEA" -> buildString {
@@ -333,6 +354,23 @@ open class IdeaToSpecAgent(
                 appendLine()
                 appendLine(MARKER_REMINDER)
             }
+            "FEATURES" -> buildString {
+                appendLine("The user just completed the FEATURES wizard step. Their input defines the product's feature graph:")
+                val parsedFeatures = parseWizardFeatures(fields, resolvedCategory)
+                val graphBlock = SpecContextBuilder.renderFeaturesBlock(parsedFeatures, resolvedCategory)
+                if (graphBlock.isNotBlank()) {
+                    appendLine()
+                    appendLine(graphBlock)
+                    appendLine()
+                } else {
+                    appendLine(fieldsDescription)
+                    appendLine()
+                }
+                appendLine("Analyze the feature graph against the rules above and decide whether any clarification is needed.")
+                appendLine("Be encouraging and constructive. If the graph is coherent, just acknowledge it briefly and omit any marker.")
+                appendLine()
+                appendLine(MARKER_REMINDER)
+            }
             else -> buildString {
                 appendLine("The user just completed wizard step: $step")
                 appendLine("Their input:")
@@ -349,6 +387,26 @@ open class IdeaToSpecAgent(
     private fun buildStepPrompt(step: FlowStepType): String = when (step) {
         FlowStepType.IDEA -> IDEA_STEP_PROMPT
         else -> ""
+    }
+
+    /**
+     * Feature 22: resolves the project's category from the wizard IDEA step. Mirrors the strategy
+     * used by [SpecContextBuilder.extractCategoryFromIdea]: when the caller is currently on the
+     * IDEA step, fresh edits in [currentFields] take priority over persisted state; otherwise fall
+     * back to the serialized `WizardData.steps["IDEA"].fields["category"]` entry.
+     */
+    private fun resolveProjectCategory(
+        wizardData: WizardData,
+        currentStepType: FlowStepType?,
+        currentFields: Map<String, Any>,
+    ): String? {
+        if (currentStepType == FlowStepType.IDEA) {
+            (currentFields["category"] as? String)?.takeIf { it.isNotBlank() }?.let { return it }
+        }
+        val ideaFields = wizardData.steps[FlowStepType.IDEA.name]?.fields ?: return null
+        val raw = ideaFields["category"] ?: return null
+        val value = (raw as? JsonPrimitive)?.contentOrNull ?: raw.toString()
+        return value.trim().takeIf { it.isNotBlank() && it != "null" }
     }
 
     private fun buildLocaleInstruction(locale: String): String {
@@ -500,6 +558,17 @@ open class IdeaToSpecAgent(
             "Library" -> emptySet()
             else -> setOf(FeatureScope.FRONTEND, FeatureScope.BACKEND)
         }
+
+        /**
+         * Feature 22: validator rules that extend the base system prompt while the wizard is on the
+         * FEATURES step. Injected only when [FlowStepType.FEATURES] is active so other steps stay
+         * unaffected. References the graph block rendered into the user prompt.
+         */
+        const val FEATURES_VALIDATOR_RULES = """Additional validator rules for FEATURES step:
+- If the graph contains isolated nodes (no incoming and no outgoing edges), ask whether this is intentional.
+- If a feature's scope seems inconsistent with its title (e.g. "Login UI" with BACKEND only), emit a clarification.
+- If the category is SaaS / Mobile App / Desktop App and obvious core features are missing (e.g. Auth, Registration), emit a clarification.
+Otherwise remain silent about the graph."""
 
         const val MARKER_REMINDER = """
 OUTPUT REQUIREMENT:
