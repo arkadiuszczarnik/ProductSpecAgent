@@ -6,6 +6,15 @@ import com.agentwork.productspecagent.storage.TaskStorage
 import org.springframework.stereotype.Service
 import java.time.Instant
 
+data class WizardFeatureInput(
+    val id: String,
+    val title: String,
+    val description: String,
+    val scopes: Set<com.agentwork.productspecagent.domain.FeatureScope>,
+    val scopeFields: Map<String, String>,
+    val dependsOn: List<String> = emptyList(),
+)
+
 @Service
 class TaskService(
     private val storage: TaskStorage,
@@ -16,6 +25,55 @@ class TaskService(
         val tasks = agent.generatePlan(projectId)
         tasks.forEach { storage.saveTask(it) }
         return tasks
+    }
+
+    /**
+     * Idempotently regenerate the wizard-derived task tree from the FEATURES wizard step.
+     * Deletes only existing tasks marked with [TaskSource.WIZARD] (and any of their descendants),
+     * then creates a fresh EPIC + Stories + Tasks tree per feature using [PlanGeneratorAgent].
+     * Tasks created via [generatePlan] (PLAN_GENERATOR) or manually (source == null) are preserved.
+     */
+    suspend fun replaceWizardFeatureTasks(
+        projectId: String,
+        features: List<WizardFeatureInput>
+    ): List<SpecTask> {
+        // 1. Find all wizard-sourced tasks plus any descendants of wizard-sourced parents.
+        val all = storage.listTasks(projectId)
+        val wizardIds = all.filter { it.source == TaskSource.WIZARD }.map { it.id }.toMutableSet()
+        // Descendants by parentId (handles the case where a story/task points to a wizard epic
+        // even if the descendant itself somehow has a different/null source).
+        var changed = true
+        while (changed) {
+            changed = false
+            for (t in all) {
+                if (t.parentId != null && t.parentId in wizardIds && t.id !in wizardIds) {
+                    wizardIds.add(t.id)
+                    changed = true
+                }
+            }
+        }
+        wizardIds.forEach { storage.deleteTask(projectId, it) }
+
+        // 2. For each wizard feature, ask the LLM to derive Stories + Tasks under a new EPIC.
+        val highestExistingPriority = all
+            .filter { it.id !in wizardIds }
+            .maxOfOrNull { it.priority } ?: -1
+        var nextPriority = highestExistingPriority + 1
+
+        val created = mutableListOf<SpecTask>()
+        for (feature in features) {
+            val tasks = agent.generatePlanForFeature(
+                projectId = projectId,
+                featureTitle = feature.title,
+                featureDescription = feature.description,
+                featureEstimate = "M",  // FEATURE-22-TODO Task 3/4: derive from LLM response
+                startPriority = nextPriority
+            )
+            tasks.forEach { storage.saveTask(it) }
+            nextPriority += tasks.size
+            created.addAll(tasks)
+        }
+        return created
     }
 
     fun listTasks(projectId: String): List<SpecTask> = storage.listTasks(projectId)

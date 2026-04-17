@@ -1,9 +1,12 @@
 package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.domain.*
+import com.agentwork.productspecagent.domain.FeatureScope
 import com.agentwork.productspecagent.service.ClarificationService
 import com.agentwork.productspecagent.service.DecisionService
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.TaskService
+import com.agentwork.productspecagent.service.WizardFeatureInput
 import com.agentwork.productspecagent.service.WizardService
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -18,6 +21,7 @@ open class IdeaToSpecAgent(
     private val decisionService: DecisionService,
     private val clarificationService: ClarificationService,
     private val wizardService: WizardService,
+    private val taskService: TaskService,
     private val koogRunner: KoogAgentRunner? = null
 ) {
 
@@ -115,7 +119,11 @@ open class IdeaToSpecAgent(
         locale: String = "en"
     ): WizardStepCompleteResponse {
         val wizardData = wizardService.getWizardData(projectId)
-        val wizardContext = contextBuilder.buildWizardContext(wizardData, step, fields)
+        val existingDecisions = decisionService.listDecisions(projectId)
+        val existingClarifications = clarificationService.listClarifications(projectId)
+        val wizardContext = contextBuilder.buildWizardContext(
+            wizardData, step, fields, existingDecisions, existingClarifications
+        )
 
         val prompt = buildWizardStepFeedbackPrompt(step, fields)
 
@@ -152,7 +160,20 @@ open class IdeaToSpecAgent(
         // Determine next step
         val isLastStep = currentStepType != null && stepOrder.indexOf(currentStepType) == stepOrder.size - 1
 
-        val nextStepType = if (currentStepType != null && !isLastStep) {
+        // Feature 18 (Step-Blocker Gate): do NOT advance the flow state if this step
+        // has open blockers. A blocker can be either freshly created by the agent in this
+        // call (decision/clarification marker) OR already existing as PENDING/OPEN in storage.
+        val hasNewBlocker = createdDecisionId != null || createdClarificationId != null
+        val hasExistingBlocker = currentStepType != null && (
+            existingDecisions.any {
+                it.stepType == currentStepType && it.status == DecisionStatus.PENDING
+            } || existingClarifications.any {
+                it.stepType == currentStepType && it.status == ClarificationStatus.OPEN
+            }
+        )
+        val isBlocked = hasNewBlocker || hasExistingBlocker
+
+        val nextStepType = if (currentStepType != null && !isLastStep && !isBlocked) {
             val idx = stepOrder.indexOf(currentStepType)
             if (idx + 1 < stepOrder.size) stepOrder[idx + 1] else null
         } else {
@@ -164,28 +185,51 @@ open class IdeaToSpecAgent(
             val flowState = projectService.getFlowState(projectId)
             val now = java.time.Instant.now().toString()
             val updatedSteps = flowState.steps.map { s ->
-                when (s.stepType) {
-                    currentStepType -> s.copy(status = FlowStepStatus.COMPLETED, updatedAt = now)
-                    nextStepType -> s.copy(status = FlowStepStatus.IN_PROGRESS, updatedAt = now)
+                when {
+                    // Blocked: keep current step IN_PROGRESS, do not mark COMPLETED
+                    isBlocked && s.stepType == currentStepType ->
+                        s.copy(status = FlowStepStatus.IN_PROGRESS, updatedAt = now)
+                    s.stepType == currentStepType ->
+                        s.copy(status = FlowStepStatus.COMPLETED, updatedAt = now)
+                    s.stepType == nextStepType ->
+                        s.copy(status = FlowStepStatus.IN_PROGRESS, updatedAt = now)
                     else -> s
                 }
             }
             val newFlowState = flowState.copy(
                 steps = updatedSteps,
-                currentStep = nextStepType ?: currentStepType
+                currentStep = if (isBlocked) currentStepType else (nextStepType ?: currentStepType)
             )
             projectService.updateFlowState(projectId, newFlowState)
 
-            // Save spec file
+            // Save spec file (always — the user's input is valid, only progression is gated)
             val fileName = step.lowercase() + ".md"
             val title = step.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }
             val fieldsMarkdown = fields.entries.joinToString("\n") { "- **${it.key}**: ${it.value}" }
             val markdownContent = "# $title\n\n$fieldsMarkdown"
+
+            // Feature 21 (Wizard FEATURES -> EPIC tasks): If the user just completed the
+            // FEATURES wizard step without blockers, derive EPIC + Stories + Tasks per
+            // feature via the PlanGeneratorAgent. Must run BEFORE saveSpecFile, because
+            // saveSpecFile triggers regenerateDocsScaffold which reads tasks to build
+            // docs/features/.
+            if (!isBlocked && currentStepType == FlowStepType.FEATURES) {
+                // FEATURE-22-TODO Task 6: resolve category from project
+                val wizardFeatures = parseWizardFeatures(fields, category = null)
+                if (wizardFeatures.isNotEmpty()) {
+                    try {
+                        taskService.replaceWizardFeatureTasks(projectId, wizardFeatures)
+                    } catch (e: Exception) {
+                        logger.warn("Failed to derive tasks from wizard features for project {}: {}", projectId, e.message)
+                    }
+                }
+            }
+
             projectService.saveSpecFile(projectId, fileName, markdownContent)
         }
 
-        // Generate spec summary on last step
-        if (isLastStep && currentStepType != null) {
+        // Generate spec summary on last step (only if not blocked)
+        if (isLastStep && !isBlocked && currentStepType != null) {
             val allWizardData = wizardService.getWizardData(projectId)
             val fullContext = contextBuilder.buildWizardContext(allWizardData, step, fields)
             val summaryPrompt = buildString {
@@ -200,7 +244,7 @@ open class IdeaToSpecAgent(
             projectService.saveSpecFile(projectId, "spec.md", specContent)
         }
 
-        val exportTriggered = isLastStep
+        val exportTriggered = isLastStep && !isBlocked
 
         return WizardStepCompleteResponse(
             message = cleanMessage,
@@ -380,15 +424,89 @@ open class IdeaToSpecAgent(
     }
 
     companion object {
+        fun parseWizardFeatures(raw: Any?, category: String?): List<WizardFeatureInput> {
+            val defaultScopes = defaultScopesFor(category)
+            val featuresRaw: List<Any?>
+            val edgesRaw: List<Any?>
+
+            when (raw) {
+                is Map<*, *> -> {
+                    featuresRaw = (raw["features"] as? List<*>) ?: emptyList<Any>()
+                    edgesRaw = (raw["edges"] as? List<*>) ?: emptyList<Any>()
+                }
+                is List<*> -> {
+                    featuresRaw = raw
+                    edgesRaw = emptyList<Any>()
+                }
+                else -> return emptyList()
+            }
+
+            val dependsByTarget = mutableMapOf<String, MutableList<String>>()
+            for (e in edgesRaw) {
+                val m = e as? Map<*, *> ?: continue
+                val from = m["from"]?.toString() ?: continue
+                val to = m["to"]?.toString() ?: continue
+                dependsByTarget.getOrPut(to) { mutableListOf() }.add(from)
+            }
+
+            val result = mutableListOf<WizardFeatureInput>()
+            for (f in featuresRaw) {
+                val m = when (f) {
+                    is Map<*, *> -> f
+                    is String -> mapOf("title" to f)
+                    else -> continue
+                }
+                val title = (m["title"] ?: m["name"])?.toString()?.trim()
+                if (title.isNullOrBlank()) continue
+                val id = m["id"]?.toString()?.takeIf { it.isNotBlank() } ?: java.util.UUID.randomUUID().toString()
+                val description = (m["description"] ?: m["desc"])?.toString() ?: ""
+                val scopes = parseScopes(m["scopes"], defaultScopes)
+                @Suppress("UNCHECKED_CAST")
+                val scopeFields = (m["scopeFields"] as? Map<String, String>) ?: emptyMap()
+                result.add(WizardFeatureInput(
+                    id = id,
+                    title = title,
+                    description = description,
+                    scopes = scopes,
+                    scopeFields = scopeFields,
+                    dependsOn = dependsByTarget[id] ?: emptyList(),
+                ))
+            }
+            return result
+        }
+
+        private fun parseScopes(raw: Any?, fallback: Set<FeatureScope>): Set<FeatureScope> {
+            val list = raw as? List<*> ?: return fallback
+            return list.mapNotNull { s ->
+                runCatching { FeatureScope.valueOf(s.toString().uppercase()) }.getOrNull()
+            }.toSet().ifEmpty { fallback }
+        }
+
+        private fun defaultScopesFor(category: String?): Set<FeatureScope> = when (category) {
+            "SaaS", "Mobile App", "Desktop App" -> setOf(FeatureScope.FRONTEND, FeatureScope.BACKEND)
+            "API", "CLI Tool" -> setOf(FeatureScope.BACKEND)
+            "Library" -> emptySet()
+            else -> setOf(FeatureScope.FRONTEND, FeatureScope.BACKEND)
+        }
+
         const val MARKER_REMINDER = """
-MANDATORY OUTPUT REQUIREMENT:
-After your feedback text, you MUST end your response with at least one of these markers on its own line:
+OUTPUT REQUIREMENT:
+After your feedback text, you MAY end your response with one of these markers on its own line:
 - [DECISION_NEEDED]: <short title> — when the user faces a strategic choice between 2-3 options
 - [CLARIFICATION_NEEDED]: <question> | <why this matters> — when important information is missing, vague, or contradictory
 
-If the user input is perfect and complete with no ambiguity whatsoever, you may omit markers. But in most cases, there IS something to clarify or decide. Err on the side of including a marker.
+CRITICAL RULES FOR MARKERS:
+1. If the "PREVIOUS CLARIFICATIONS & DECISIONS FOR THIS STEP" section already lists a clarification or decision that covers your concern (answered OR still open), you MUST NOT emit a new marker for the same or similar topic. Treat answered items as confirmed facts and build on them.
+2. Only emit a marker if there is a GENUINELY NEW, distinct gap that is not covered by any previous item.
+3. If all important questions are already covered or answered, OMIT the marker entirely and just give a short acknowledgement. This is the expected case after the first round of clarification.
+4. Do not invent new concerns just to emit a marker. Silence is a valid answer.
 
-Example response ending:
+Example response ending (no new marker because previous clarifications already cover the topic):
+---
+Danke für die Ergänzung. Mit der beantworteten Klärung ist die Idee jetzt ausreichend klar und wir können zum nächsten Schritt.
+---
+
+Example response ending (new marker for a genuinely new concern):
 ---
 Deine Idee ist ein guter Ausgangspunkt! Allerdings ist noch unklar, wer genau die Zielgruppe ist.
 
