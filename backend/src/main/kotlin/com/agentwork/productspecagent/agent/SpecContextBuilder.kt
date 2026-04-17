@@ -199,13 +199,14 @@ class SpecContextBuilder(
             val isolated = features.filter { it.dependsOn.isEmpty() && it.id !in hasOutgoing }
 
             for (f in features) {
+                // exhaustive over FeatureScope subsets
                 val scopeLabel = when {
                     f.scopes.containsAll(setOf(FeatureScope.FRONTEND, FeatureScope.BACKEND)) ->
                         "Frontend + Backend"
                     f.scopes == setOf(FeatureScope.FRONTEND) -> "Frontend"
                     f.scopes == setOf(FeatureScope.BACKEND) -> "Backend"
                     f.scopes.isEmpty() -> "Core"
-                    else -> f.scopes.joinToString("+") { it.name }
+                    else -> error("Unreachable: FeatureScope exhausted. Scopes=${f.scopes}")
                 }
                 val deps = if (f.dependsOn.isEmpty()) "—" else f.dependsOn.joinToString(", ")
                 sb.appendLine("- [${f.id}] ${f.title} ($scopeLabel) — depends on: $deps")

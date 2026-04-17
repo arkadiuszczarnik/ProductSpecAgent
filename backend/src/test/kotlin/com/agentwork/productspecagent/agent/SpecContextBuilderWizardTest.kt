@@ -3,6 +3,7 @@ package com.agentwork.productspecagent.agent
 import com.agentwork.productspecagent.domain.WizardData
 import com.agentwork.productspecagent.domain.WizardStepData
 import kotlinx.serialization.json.JsonPrimitive
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.springframework.beans.factory.annotation.Autowired
@@ -51,5 +52,48 @@ class SpecContextBuilderWizardTest {
 
         assertTrue(context.contains("CURRENT STEP: IDEA"))
         assertTrue(context.contains("Test"))
+    }
+
+    @Test
+    fun `buildWizardContext includes graph block on FEATURES step`() {
+        val fields = mapOf(
+            "features" to listOf(
+                mapOf(
+                    "id" to "f-1",
+                    "title" to "Login",
+                    "scopes" to listOf("BACKEND"),
+                    "scopeFields" to mapOf("apiEndpoints" to "POST /auth/login")
+                )
+            )
+        )
+        val context = contextBuilder.buildWizardContext(
+            wizardData = WizardData(
+                projectId = "test",
+                steps = mapOf(
+                    "IDEA" to WizardStepData(
+                        fields = mapOf("category" to JsonPrimitive("SaaS")),
+                        completedAt = "2026-03-31T10:00:00Z"
+                    )
+                )
+            ),
+            currentStep = "FEATURES",
+            currentFields = fields,
+        )
+
+        assertThat(context).contains("Features & Dependencies")
+    }
+
+    @Test
+    fun `buildWizardContext omits graph block on non-FEATURES step`() {
+        val fields = mapOf(
+            "features" to listOf(mapOf("title" to "X"))
+        )
+        val context = contextBuilder.buildWizardContext(
+            wizardData = WizardData(projectId = "test"),
+            currentStep = "PROBLEM",
+            currentFields = fields,
+        )
+
+        assertThat(context).doesNotContain("Features & Dependencies")
     }
 }
