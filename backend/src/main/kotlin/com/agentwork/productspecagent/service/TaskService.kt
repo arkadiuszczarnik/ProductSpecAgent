@@ -60,17 +60,40 @@ class TaskService(
             .maxOfOrNull { it.priority } ?: -1
         var nextPriority = highestExistingPriority + 1
 
+        // Phase 1: generate EPIC + Stories + Tasks per wizard feature (no dependencies yet).
+        // Collect wizardFeatureId -> EPIC task so Phase 2 can resolve dependsOn into real task IDs.
         val created = mutableListOf<SpecTask>()
+        val byWizardId = LinkedHashMap<String, SpecTask>()
         for (feature in features) {
             val tasks = agent.generatePlanForFeature(
                 projectId = projectId,
                 input = feature,
                 startPriority = nextPriority,
             )
-            tasks.forEach { storage.saveTask(it) }
-            nextPriority += tasks.size
+            val epic = tasks.firstOrNull { it.type == TaskType.EPIC }
+            if (epic != null) {
+                byWizardId[feature.id] = epic
+            }
             created.addAll(tasks)
+            nextPriority += tasks.size
         }
+
+        // Phase 2: resolve dependsOn (wizard feature IDs) into real EPIC task IDs.
+        // Missing targets are silently skipped so an incoming invalid edge does not crash generation.
+        val now = Instant.now().toString()
+        for (feature in features) {
+            if (feature.dependsOn.isEmpty()) continue
+            val epic = byWizardId[feature.id] ?: continue
+            val resolvedDependencies = feature.dependsOn.mapNotNull { byWizardId[it]?.id }
+            if (resolvedDependencies.isEmpty()) continue
+            val updatedEpic = epic.copy(dependencies = resolvedDependencies, updatedAt = now)
+            val idx = created.indexOfFirst { it.id == epic.id }
+            if (idx >= 0) created[idx] = updatedEpic
+            byWizardId[feature.id] = updatedEpic
+        }
+
+        // Persist once, after mapping, so no partial state is written on failure.
+        for (t in created) storage.saveTask(t)
         return created
     }
 
