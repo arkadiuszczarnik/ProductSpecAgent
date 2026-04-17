@@ -29,7 +29,9 @@ export function FeaturesGraphEditor({ projectId }: Props) {
   const allowedScopes = getAllowedScopes(category);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [cycleWarning, setCycleWarning] = useState<string | null>(null);
   const ctxRef = useRef<FeaturesEditorContext | null>(null);
+  const cycleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { width: panelWidth, handleProps } = useResizable({
     initialWidth: 360,
@@ -47,13 +49,24 @@ export function FeaturesGraphEditor({ projectId }: Props) {
   useEffect(() => {
     moveFeatureRef.current = moveFeature;
   }, [moveFeature]);
+  useEffect(() => {
+    return () => {
+      if (cycleTimerRef.current) clearTimeout(cycleTimerRef.current);
+    };
+  }, []);
 
   const editorFactory = useCallback(async (container: HTMLElement) => {
     const ctx = await createFeaturesEditor(container);
     ctx.onNodeSelect((id) => setSelectedId(id));
-    ctx.onConnectionCreate((fromFeatureId, toFeatureId) =>
-      addEdgeRef.current(fromFeatureId, toFeatureId),
-    );
+    ctx.onConnectionCreate((fromFeatureId, toFeatureId) => {
+      const ok = addEdgeRef.current(fromFeatureId, toFeatureId);
+      if (!ok) {
+        setCycleWarning("Zyklus verhindert: Die Verbindung wuerde einen Kreis erzeugen.");
+        if (cycleTimerRef.current) clearTimeout(cycleTimerRef.current);
+        cycleTimerRef.current = setTimeout(() => setCycleWarning(null), 3000);
+      }
+      return ok;
+    });
     ctx.onNodeMove((id, x, y) => moveFeatureRef.current(id, { x, y }));
     ctxRef.current = ctx;
     return ctx as unknown as { destroy: () => void };
@@ -101,6 +114,11 @@ export function FeaturesGraphEditor({ projectId }: Props) {
           className="flex-1"
           style={{ background: "var(--color-background)" }}
         />
+        {cycleWarning && (
+          <div className="border-t bg-amber-500/10 text-amber-300 text-xs px-3 py-1.5">
+            {cycleWarning}
+          </div>
+        )}
         <div className="border-t px-3 py-2 flex items-center gap-2">
           <Button size="sm" onClick={handleAddFeature}>
             <Plus size={14} /> Feature

@@ -5,12 +5,46 @@ import type {
   WizardFeature,
   WizardFeatureEdge,
   WizardFeatureGraph,
+  FeatureScope,
 } from "@/lib/api";
 import { getWizardData, saveWizardStep, completeWizardStep } from "@/lib/api";
 import { formatStepFields } from "@/lib/step-field-labels";
 import { useProjectStore } from "@/lib/stores/project-store";
-import { getVisibleSteps } from "@/lib/category-step-config";
+import { getAllowedScopes, getVisibleSteps } from "@/lib/category-step-config";
 import { wouldCreateCycle } from "@/lib/graph/cycleCheck";
+
+function normalizeFeature(
+  raw: unknown,
+  category: string | undefined,
+  idx: number,
+): WizardFeature {
+  const r = (raw ?? {}) as Partial<WizardFeature> & { estimate?: string };
+  const id =
+    typeof r.id === "string" && r.id.length > 0
+      ? r.id
+      : typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `feat-${Date.now()}-${idx}`;
+  const scopes: FeatureScope[] = Array.isArray(r.scopes)
+    ? r.scopes.filter((s): s is FeatureScope => s === "FRONTEND" || s === "BACKEND")
+    : getAllowedScopes(category);
+  const position =
+    r.position &&
+    typeof r.position === "object" &&
+    typeof r.position.x === "number" &&
+    typeof r.position.y === "number"
+      ? r.position
+      : { x: 0, y: 0 };
+  return {
+    id,
+    title: r.title ?? "",
+    description: r.description ?? "",
+    scopes,
+    scopeFields:
+      r.scopeFields && typeof r.scopeFields === "object" ? r.scopeFields : {},
+    position,
+  };
+}
 
 export const WIZARD_STEPS = [
   { key: "IDEA", label: "Idee" },
@@ -275,11 +309,17 @@ export const useWizardStore = create<WizardState>((set, get) => ({
 
   // --- Feature graph actions ---
 
-  getFeatures: () =>
-    (get().data?.steps.FEATURES?.fields.features as WizardFeature[] | undefined) ?? [],
+  getFeatures: () => {
+    const raw = get().data?.steps.FEATURES?.fields.features;
+    const category = get().data?.steps.IDEA?.fields.category as string | undefined;
+    if (!Array.isArray(raw)) return [];
+    return raw.map((r, i) => normalizeFeature(r, category, i));
+  },
 
-  getEdges: () =>
-    (get().data?.steps.FEATURES?.fields.edges as WizardFeatureEdge[] | undefined) ?? [],
+  getEdges: () => {
+    const raw = get().data?.steps.FEATURES?.fields.edges;
+    return Array.isArray(raw) ? (raw as WizardFeatureEdge[]) : [];
+  },
 
   addFeature: (draft) => {
     const id =
