@@ -66,7 +66,7 @@ class TaskService(
                 projectId = projectId,
                 featureTitle = feature.title,
                 featureDescription = feature.description,
-                featureEstimate = "M",  // FEATURE-22-TODO Task 3/4: derive from LLM response
+                featureEstimate = "M",  // FEATURE-22-TODO Task 4: replace with epic.estimate returned from PlanGeneratorAgent (refactored in Task 3)
                 startPriority = nextPriority
             )
             tasks.forEach { storage.saveTask(it) }

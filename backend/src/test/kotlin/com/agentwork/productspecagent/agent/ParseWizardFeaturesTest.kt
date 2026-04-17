@@ -37,8 +37,8 @@ class ParseWizardFeaturesTest {
         )
         val result = IdeaToSpecAgent.parseWizardFeatures(raw, category = "SaaS")
         assertThat(result).hasSize(2)
-        assertThat(result[0].id).isEqualTo("f-1")
-        assertThat(result[0].scopes).containsExactly(FeatureScope.BACKEND)
+        val login = result.first { it.id == "f-1" }
+        assertThat(login.scopes).containsExactly(FeatureScope.BACKEND)
         val dashboard = result.first { it.id == "f-2" }
         assertThat(dashboard.dependsOn).containsExactly("f-1")
     }

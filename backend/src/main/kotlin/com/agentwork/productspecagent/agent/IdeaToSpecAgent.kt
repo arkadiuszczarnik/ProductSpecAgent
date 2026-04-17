@@ -1,7 +1,6 @@
 package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.domain.*
-import com.agentwork.productspecagent.domain.FeatureScope
 import com.agentwork.productspecagent.service.ClarificationService
 import com.agentwork.productspecagent.service.DecisionService
 import com.agentwork.productspecagent.service.ProjectService
@@ -424,6 +423,17 @@ open class IdeaToSpecAgent(
     }
 
     companion object {
+        /**
+         * Parses wizard-FEATURES step input into a normalized list of [WizardFeatureInput].
+         *
+         * Accepts either:
+         *  - Graph form: a `Map` with keys `"features"` (List<Map>) and optional `"edges"` (List<Map>).
+         *  - Legacy flat form: a `List` of feature maps (or raw strings treated as titles).
+         *  - `null` or unrecognized types → empty list.
+         *
+         * [category] drives the default `scopes` when a feature does not declare them (SaaS/Mobile/Desktop → FRONTEND+BACKEND;
+         * API/CLI → BACKEND only; Library → empty set; otherwise FRONTEND+BACKEND).
+         */
         fun parseWizardFeatures(raw: Any?, category: String?): List<WizardFeatureInput> {
             val defaultScopes = defaultScopesFor(category)
             val featuresRaw: List<Any?>
@@ -461,8 +471,10 @@ open class IdeaToSpecAgent(
                 val id = m["id"]?.toString()?.takeIf { it.isNotBlank() } ?: java.util.UUID.randomUUID().toString()
                 val description = (m["description"] ?: m["desc"])?.toString() ?: ""
                 val scopes = parseScopes(m["scopes"], defaultScopes)
-                @Suppress("UNCHECKED_CAST")
-                val scopeFields = (m["scopeFields"] as? Map<String, String>) ?: emptyMap()
+                val scopeFields: Map<String, String> = (m["scopeFields"] as? Map<*, *>)
+                    ?.mapNotNull { (k, v) -> if (k is String && v != null) k to v.toString() else null }
+                    ?.toMap()
+                    ?: emptyMap()
                 result.add(WizardFeatureInput(
                     id = id,
                     title = title,
