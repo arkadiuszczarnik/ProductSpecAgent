@@ -1,3 +1,5 @@
+import type { FeatureScope } from "@/lib/api";
+
 export const STEP_FIELD_LABELS: Record<string, Record<string, string>> = {
   IDEA: {
     productName: "Produktname",
@@ -45,6 +47,24 @@ export const STEP_FIELD_LABELS: Record<string, Record<string, string>> = {
     styling: "Styling",
     theme: "Theme",
   },
+};
+
+export const SCOPE_FIELD_LABELS: Record<string, string> = {
+  uiComponents: "UI-Komponenten",
+  screens: "Screens",
+  userInteractions: "User-Interaktionen",
+  apiEndpoints: "API-Endpunkte",
+  dataModel: "Datenmodell",
+  sideEffects: "Side-Effects",
+  publicApi: "Public API",
+  typesExposed: "Exponierte Types",
+  examples: "Beispiele",
+};
+
+export const SCOPE_FIELDS_BY_SCOPE: Record<FeatureScope | "CORE", string[]> = {
+  FRONTEND: ["uiComponents", "screens", "userInteractions"],
+  BACKEND: ["apiEndpoints", "dataModel", "sideEffects"],
+  CORE: ["publicApi", "typesExposed", "examples"],
 };
 
 export function formatStepFields(step: string, fields: Record<string, any>): string {

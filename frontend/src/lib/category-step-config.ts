@@ -1,5 +1,7 @@
 // frontend/src/lib/category-step-config.ts
 
+import type { FeatureScope } from "@/lib/api";
+
 export type Category = "SaaS" | "Mobile App" | "CLI Tool" | "Library" | "Desktop App" | "API";
 
 export const ALL_STEP_KEYS = [
@@ -14,11 +16,13 @@ export type FieldOptions = Record<string, Record<string, string[]>>;
 export interface CategoryConfig {
   visibleSteps: string[];
   fieldOptions: FieldOptions;
+  allowedScopes: FeatureScope[];
 }
 
 export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
   "SaaS": {
     visibleSteps: [...BASE_STEPS, "ARCHITECTURE", "BACKEND", "FRONTEND"],
+    allowedScopes: ["FRONTEND", "BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
         architecture: ["Monolith", "Microservices", "Serverless"],
@@ -40,6 +44,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
   },
   "Mobile App": {
     visibleSteps: [...BASE_STEPS, "ARCHITECTURE", "BACKEND", "FRONTEND"],
+    allowedScopes: ["FRONTEND", "BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
         architecture: ["Monolith", "Microservices", "Serverless"],
@@ -61,6 +66,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
   },
   "CLI Tool": {
     visibleSteps: [...BASE_STEPS, "ARCHITECTURE"],
+    allowedScopes: ["BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
         architecture: ["Single Binary", "Multi-Command"],
@@ -71,10 +77,12 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
   },
   "Library": {
     visibleSteps: [...BASE_STEPS],
+    allowedScopes: [],
     fieldOptions: {},
   },
   "Desktop App": {
     visibleSteps: [...BASE_STEPS, "ARCHITECTURE", "BACKEND", "FRONTEND"],
+    allowedScopes: ["FRONTEND", "BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
         architecture: ["Monolith", "Plugin-basiert"],
@@ -96,6 +104,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
   },
   "API": {
     visibleSteps: [...BASE_STEPS, "ARCHITECTURE", "BACKEND"],
+    allowedScopes: ["BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
         architecture: ["Monolith", "Microservices", "Serverless"],
@@ -124,4 +133,9 @@ export function getFieldOptions(category: string | undefined, step: string): Rec
   if (!category) return undefined;
   const config = CATEGORY_STEP_CONFIG[category as Category];
   return config?.fieldOptions[step];
+}
+
+export function getAllowedScopes(category: string | undefined): FeatureScope[] {
+  if (!category) return ["FRONTEND", "BACKEND"];
+  return CATEGORY_STEP_CONFIG[category as Category]?.allowedScopes ?? ["FRONTEND", "BACKEND"];
 }
