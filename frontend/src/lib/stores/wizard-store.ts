@@ -1,9 +1,16 @@
 import { create } from "zustand";
-import type { WizardData, WizardStepData } from "@/lib/api";
+import type {
+  WizardData,
+  WizardStepData,
+  WizardFeature,
+  WizardFeatureEdge,
+  WizardFeatureGraph,
+} from "@/lib/api";
 import { getWizardData, saveWizardStep, completeWizardStep } from "@/lib/api";
 import { formatStepFields } from "@/lib/step-field-labels";
 import { useProjectStore } from "@/lib/stores/project-store";
 import { getVisibleSteps } from "@/lib/category-step-config";
+import { wouldCreateCycle } from "@/lib/graph/cycleCheck";
 
 export const WIZARD_STEPS = [
   { key: "IDEA", label: "Idee" },
@@ -34,6 +41,17 @@ interface WizardState {
   reset: () => void;
   getCategory: () => string | undefined;
   visibleSteps: () => typeof WIZARD_STEPS[number][];
+
+  // Feature graph actions (FEATURES step)
+  getFeatures: () => WizardFeature[];
+  getEdges: () => WizardFeatureEdge[];
+  addFeature: (draft: Omit<WizardFeature, "id">) => string;
+  updateFeature: (id: string, patch: Partial<WizardFeature>) => void;
+  removeFeature: (id: string) => void;
+  addEdge: (from: string, to: string) => boolean;
+  removeEdge: (id: string) => void;
+  moveFeature: (id: string, pos: { x: number; y: number }) => void;
+  applyProposal: (graph: WizardFeatureGraph) => void;
 }
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -178,6 +196,11 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         chatSending: false,
       }));
 
+      // Reload flow state so the Explorer and StepIndicator reflect the
+      // backend-side progression (and so the Explorer re-fetches files when
+      // completedSteps changes — its useEffect depends on that count).
+      await useProjectStore.getState().loadFlowState(projectId);
+
       // Navigate to next step
       if (response.nextStep) {
         const steps = visibleSteps();
@@ -249,4 +272,64 @@ export const useWizardStore = create<WizardState>((set, get) => ({
   },
 
   reset: () => set({ data: null, activeStep: "IDEA", loading: false, saving: false, chatPending: false }),
+
+  // --- Feature graph actions ---
+
+  getFeatures: () =>
+    (get().data?.steps.FEATURES?.fields.features as WizardFeature[] | undefined) ?? [],
+
+  getEdges: () =>
+    (get().data?.steps.FEATURES?.fields.edges as WizardFeatureEdge[] | undefined) ?? [],
+
+  addFeature: (draft) => {
+    const id =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `feat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const feature: WizardFeature = { id, ...draft };
+    get().updateField("FEATURES", "features", [...get().getFeatures(), feature]);
+    return id;
+  },
+
+  updateFeature: (id, patch) => {
+    const next = get().getFeatures().map((f) => (f.id === id ? { ...f, ...patch } : f));
+    get().updateField("FEATURES", "features", next);
+  },
+
+  removeFeature: (id) => {
+    get().updateField(
+      "FEATURES",
+      "features",
+      get().getFeatures().filter((f) => f.id !== id),
+    );
+    get().updateField(
+      "FEATURES",
+      "edges",
+      get().getEdges().filter((e) => e.from !== id && e.to !== id),
+    );
+  },
+
+  addEdge: (from, to) => {
+    if (wouldCreateCycle(get().getEdges(), from, to)) return false;
+    const id =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `edge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const edge: WizardFeatureEdge = { id, from, to };
+    get().updateField("FEATURES", "edges", [...get().getEdges(), edge]);
+    return true;
+  },
+
+  removeEdge: (id) => {
+    get().updateField("FEATURES", "edges", get().getEdges().filter((e) => e.id !== id));
+  },
+
+  moveFeature: (id, pos) => {
+    get().updateFeature(id, { position: pos });
+  },
+
+  applyProposal: (graph) => {
+    get().updateField("FEATURES", "features", graph.features);
+    get().updateField("FEATURES", "edges", graph.edges);
+  },
 }));
