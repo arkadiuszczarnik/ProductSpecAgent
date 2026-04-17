@@ -138,16 +138,8 @@ open class IdeaToSpecAgent(
         val stepPrompt = if (currentStepType != null) buildStepPrompt(currentStepType) else ""
         val localeInstruction = buildLocaleInstruction(locale)
 
-        // Feature 22: FEATURES-step specific validator rules (e.g. isolated nodes, scope/title
-        // inconsistencies, missing category-typical core features). Kept out of the global
-        // system prompt so other steps are not affected by graph-specific guidance.
-        val featuresValidatorBlock = if (currentStepType == FlowStepType.FEATURES) {
-            "\n\n$FEATURES_VALIDATOR_RULES"
-        } else {
-            ""
-        }
         val systemPromptWithContext =
-            "$baseSystemPrompt\n\n$stepPrompt\n\n$localeInstruction\n\n$wizardContext$featuresValidatorBlock"
+            "$baseSystemPrompt\n\n$stepPrompt\n\n$localeInstruction\n\n$wizardContext"
 
         val rawResponse = runAgent(systemPromptWithContext, prompt)
 
@@ -274,7 +266,7 @@ open class IdeaToSpecAgent(
     private fun buildWizardStepFeedbackPrompt(
         step: String,
         fields: Map<String, Any>,
-        resolvedCategory: String? = null,
+        resolvedCategory: String?,
     ): String {
         val fieldsDescription = fields.entries.joinToString("\n") { "- ${it.key}: ${it.value}" }
         return when (step) {
@@ -366,6 +358,12 @@ open class IdeaToSpecAgent(
                     appendLine(fieldsDescription)
                     appendLine()
                 }
+                // Feature 22: FEATURES-step specific validator rules (e.g. isolated nodes, scope/title
+                // inconsistencies, missing category-typical core features). Kept in the user prompt so
+                // the system prompt stays step-independent and other steps are not affected by
+                // graph-specific guidance.
+                appendLine(FEATURES_VALIDATOR_RULES)
+                appendLine()
                 appendLine("Analyze the feature graph against the rules above and decide whether any clarification is needed.")
                 appendLine("Be encouraging and constructive. If the graph is coherent, just acknowledge it briefly and omit any marker.")
                 appendLine()

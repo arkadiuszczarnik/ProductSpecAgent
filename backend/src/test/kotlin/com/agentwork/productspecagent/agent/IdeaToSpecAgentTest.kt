@@ -217,6 +217,9 @@ class IdeaToSpecAgentTest {
         assertThat(lastPrompt)
             .contains("Features & Dependencies (Category: SaaS)")
             .contains("[f-1] Login (Backend)")
+            // Feature 22: the FEATURES-step validator rules live in the user prompt now, not
+            // the system prompt. Verify that the rules ACTUALLY reach the LLM.
+            .contains("isolated nodes")
     }
 
     @Test
@@ -238,14 +241,13 @@ class IdeaToSpecAgentTest {
             )
         )
 
+        val capturedUserPrompts = mutableListOf<String>()
         val agent = object : IdeaToSpecAgent(
             contextBuilder, projectService, "You are IdeaToSpec.",
             decisionService, clarificationService, wizardService, taskService
         ) {
             override suspend fun runAgent(systemPrompt: String, userMessage: String): String {
-                // The Feature 22 FEATURES-step validator rules must mention "isolated" so the
-                // LLM knows to flag lonely graph nodes.
-                assertThat(systemPrompt).contains("isolated")
+                capturedUserPrompts.add(userMessage)
                 return "Feature noted.\n[CLARIFICATION_NEEDED]: Is Loner truly independent? | It has no edges"
             }
         }
@@ -259,6 +261,13 @@ class IdeaToSpecAgentTest {
             "edges" to listOf(mapOf("id" to "e1", "from" to "a", "to" to "b"))
         )
         agent.processWizardStep(projectId, FlowStepType.FEATURES.name, fields)
+
+        // The Feature 22 FEATURES-step validator rules must mention "isolated" so the
+        // LLM knows to flag lonely graph nodes. The rules live in the user prompt (not
+        // the system prompt) so the system prompt stays step-independent.
+        assertThat(capturedUserPrompts).isNotEmpty
+        val userPrompt = capturedUserPrompts.last()
+        assertThat(userPrompt).contains("isolated")
 
         val clarifications = clarificationService.listClarifications(projectId)
         assertThat(clarifications).isNotEmpty
