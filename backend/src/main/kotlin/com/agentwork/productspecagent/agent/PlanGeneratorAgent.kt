@@ -8,6 +8,13 @@ import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
 
+private val VALID_ESTIMATES = linkedSetOf("XS", "S", "M", "L", "XL")
+
+private fun validEstimate(raw: String?): String = raw?.takeIf { it in VALID_ESTIMATES } ?: "M"
+
+private fun sanitizeForPrompt(raw: String, maxLen: Int = 500): String =
+    raw.replace(Regex("\\s+"), " ").trim().take(maxLen)
+
 @Service
 open class PlanGeneratorAgent(
     private val contextBuilder: SpecContextBuilder,
@@ -41,13 +48,13 @@ open class PlanGeneratorAgent(
             appendLine("Break down a single product feature into a small implementation plan.")
             appendLine()
             appendLine("Feature:")
-            appendLine("- Title: ${input.title}")
-            appendLine("- Description: ${input.description}")
+            appendLine("- Title: ${sanitizeForPrompt(input.title, 200)}")
+            appendLine("- Description: ${sanitizeForPrompt(input.description, 500)}")
             appendLine("- Scopes: ${input.scopes.joinToString(", ") { it.name }.ifBlank { "(Library / Core)" }}")
             if (input.scopeFields.isNotEmpty()) {
                 appendLine("- Scope fields:")
                 for ((k, v) in input.scopeFields) {
-                    if (v.isNotBlank()) appendLine("  - $k: $v")
+                    if (v.isNotBlank()) appendLine("  - $k: ${sanitizeForPrompt(v, 200)}")
                 }
             }
             appendLine()
@@ -58,7 +65,7 @@ open class PlanGeneratorAgent(
             appendLine()
             appendLine("Respond with EXACTLY this JSON format (no markdown, no explanation):")
             appendLine("""{"epicEstimate":"M","stories":[{"title":"Story title","description":"desc","estimate":"M","tasks":[{"title":"Task","description":"desc","estimate":"S"}]}]}""")
-            appendLine("Generate 1-3 stories, each with 1-3 tasks. epicEstimate must be one of XS, S, M, L, XL.")
+            appendLine("Generate 1-3 stories, each with 1-3 tasks. epicEstimate must be one of ${VALID_ESTIMATES.joinToString(", ")}.")
             appendLine("Use the same language as the feature title/description.")
         }
         val rawResponse = runAgent(prompt)
@@ -146,7 +153,7 @@ open class PlanGeneratorAgent(
         var priority = startPriority
 
         val parsed = runCatching { json.decodeFromString<FeaturePlanResponse>(jsonStr) }.getOrNull()
-        val epicEstimate = parsed?.epicEstimate?.takeIf { it in setOf("XS", "S", "M", "L", "XL") } ?: "M"
+        val epicEstimate = validEstimate(parsed?.epicEstimate)
 
         val epicId = UUID.randomUUID().toString()
         tasks.add(SpecTask(
@@ -162,7 +169,7 @@ open class PlanGeneratorAgent(
             tasks.add(SpecTask(
                 id = storyId, projectId = projectId, parentId = epicId,
                 type = TaskType.STORY, title = storyDef.title,
-                description = storyDef.description, estimate = storyDef.estimate,
+                description = storyDef.description, estimate = validEstimate(storyDef.estimate),
                 priority = priority++,
                 createdAt = now, updatedAt = now
             ))
@@ -171,7 +178,7 @@ open class PlanGeneratorAgent(
                     id = UUID.randomUUID().toString(), projectId = projectId,
                     parentId = storyId, type = TaskType.TASK,
                     title = taskDef.title, description = taskDef.description,
-                    estimate = taskDef.estimate, priority = priority++,
+                    estimate = validEstimate(taskDef.estimate), priority = priority++,
                     createdAt = now, updatedAt = now
                 ))
             }

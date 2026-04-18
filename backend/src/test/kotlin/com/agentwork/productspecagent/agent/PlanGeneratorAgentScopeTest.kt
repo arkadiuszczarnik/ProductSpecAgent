@@ -102,4 +102,27 @@ class PlanGeneratorAgentScopeTest {
         )
         assertThat(a.capturedPrompt).contains("Library-Komponente")
     }
+
+    @Test
+    fun `story and task with invalid estimate fall back to M`() = runBlocking {
+        val a = agent("""
+            {"epicEstimate":"M","stories":[
+                {"title":"s1","description":"","estimate":"LARGE",
+                 "tasks":[{"title":"t1","description":"","estimate":""}]}
+            ]}
+        """.trimIndent())
+        val tasks = a.generatePlanForFeature(
+            projectId = "p1",
+            input = WizardFeatureInput(
+                id = "f-1", title = "Feature A", description = "",
+                scopes = setOf(FeatureScope.BACKEND),
+                scopeFields = emptyMap(), dependsOn = emptyList(),
+            ),
+            startPriority = 0,
+        )
+        val story = tasks.first { it.type == TaskType.STORY }
+        val task = tasks.first { it.type == TaskType.TASK }
+        assertThat(story.estimate).isEqualTo("M")
+        assertThat(task.estimate).isEqualTo("M")
+    }
 }
