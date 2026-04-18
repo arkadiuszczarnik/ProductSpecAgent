@@ -85,11 +85,11 @@ export async function createFeaturesEditor(
   editor.addPipe((ctx) => {
     if (ctx.type === "connectioncreate") {
       const data = ctx.data as { source: string; target: string };
-      const fromNode = editor.getNode(data.source) as FeatureRNode | undefined;
-      const toNode = editor.getNode(data.target) as FeatureRNode | undefined;
-      if (fromNode && toNode && createCb) {
+      const fromNode = editor.getNode(data.source);
+      const toNode = editor.getNode(data.target);
+      if (fromNode instanceof FeatureRNode && toNode instanceof FeatureRNode && createCb) {
         const ok = createCb(fromNode.featureId, toNode.featureId);
-        if (!ok) return; // undefined cancels the event
+        if (!ok) return;  // undefined cancels the event
       }
     }
     if (ctx.type === "connectionremoved") {
@@ -217,8 +217,10 @@ export async function createFeaturesEditor(
   // A second call while one is in flight overwrites the pending slot (newest wins).
   let applying = false;
   let pending: { features: WizardFeature[]; edges: WizardFeatureEdge[] } | null = null;
+  let destroyed = false;
 
   async function applyGraph(features: WizardFeature[], edges: WizardFeatureEdge[]) {
+    if (destroyed) return;
     if (applying) {
       pending = { features, edges };
       return;
@@ -226,18 +228,33 @@ export async function createFeaturesEditor(
     applying = true;
     try {
       await applyGraphOnce(features, edges);
-      while (pending) {
+      while (pending && !destroyed) {
         const next = pending;
         pending = null;
         await applyGraphOnce(next.features, next.edges);
       }
+    } catch (err) {
+      // If the editor was torn down mid-apply, swallow Rete-internal errors.
+      if (!destroyed) throw err;
     } finally {
       applying = false;
     }
   }
 
   return {
-    destroy: () => area.destroy(),
+    destroy: () => {
+      destroyed = true;
+      selectCb = null;
+      createCb = null;
+      moveCb = null;
+      removeCb = null;
+      renderedFeatures.clear();
+      nodeIdByFeatureId.clear();
+      edgeIdByConnectionId.clear();
+      connectionIdByEdgeId.clear();
+      pending = null;
+      area.destroy();
+    },
     applyGraph,
     autoLayout: async () => {
       await arrange.layout();
