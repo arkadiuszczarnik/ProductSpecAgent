@@ -24,6 +24,32 @@ export async function apiFetch<T>(
 
 export type StepType = "IDEA" | "PROBLEM" | "TARGET_AUDIENCE" | "SCOPE" | "MVP" | "FEATURES" | "ARCHITECTURE" | "BACKEND" | "FRONTEND";
 export type StepStatus = "OPEN" | "IN_PROGRESS" | "COMPLETED";
+
+// ─── Feature Graph Types ──────────────────────────────────────────────────────
+
+export type FeatureScope = "FRONTEND" | "BACKEND";
+
+export interface GraphPosition { x: number; y: number }
+
+export interface WizardFeature {
+  id: string;
+  title: string;
+  scopes: FeatureScope[];
+  description: string;
+  scopeFields: Record<string, string>;
+  position: GraphPosition;
+}
+
+export interface WizardFeatureEdge {
+  id: string;
+  from: string;
+  to: string;
+}
+
+export interface WizardFeatureGraph {
+  features: WizardFeature[];
+  edges: WizardFeatureEdge[];
+}
 export type ProjectStatus = "DRAFT" | "IN_PROGRESS" | "COMPLETED";
 
 export interface FlowStep {
@@ -286,6 +312,12 @@ export async function listClarifications(projectId: string): Promise<Clarificati
 
 export async function getClarification(projectId: string, clarificationId: string): Promise<Clarification> {
   return apiFetch<Clarification>(`/api/v1/projects/${projectId}/clarifications/${clarificationId}`);
+}
+
+export async function proposeFeatures(projectId: string): Promise<WizardFeatureGraph> {
+  return apiFetch<WizardFeatureGraph>(`/api/v1/projects/${projectId}/features/propose`, {
+    method: "POST",
+  });
 }
 
 export async function answerClarification(projectId: string, clarificationId: string, data: AnswerClarificationRequest): Promise<Clarification> {
