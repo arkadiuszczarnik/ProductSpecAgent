@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import type { WizardData, WizardStepData } from "@/lib/api";
+import type { WizardData, WizardStepData, WizardFeature, WizardFeatureEdge, WizardFeatureGraph } from "@/lib/api";
 import { getWizardData, saveWizardStep, completeWizardStep } from "@/lib/api";
+import { wouldCreateCycle } from "@/lib/graph/cycleCheck";
 import { formatStepFields } from "@/lib/step-field-labels";
 import { useProjectStore } from "@/lib/stores/project-store";
 import { getVisibleSteps } from "@/lib/category-step-config";
@@ -34,7 +35,29 @@ interface WizardState {
   reset: () => void;
   getCategory: () => string | undefined;
   visibleSteps: () => typeof WIZARD_STEPS[number][];
+  addFeature: (f: Omit<WizardFeature, "id">) => string;
+  updateFeature: (id: string, patch: Partial<WizardFeature>) => void;
+  removeFeature: (id: string) => void;
+  addEdge: (from: string, to: string) => boolean;
+  removeEdge: (id: string) => void;
+  moveFeature: (id: string, pos: { x: number; y: number }) => void;
+  applyProposal: (graph: WizardFeatureGraph) => void;
 }
+
+// ---------------------------------------------------------------------------
+// Atomic selectors — use with useWizardStore(useShallow(selectFeatures))
+// ---------------------------------------------------------------------------
+
+export const selectFeatures = (s: WizardState): WizardFeature[] =>
+  (s.data?.steps.FEATURES?.fields.features as WizardFeature[] | undefined) ?? [];
+
+export const selectEdges = (s: WizardState): WizardFeatureEdge[] =>
+  (s.data?.steps.FEATURES?.fields.edges as WizardFeatureEdge[] | undefined) ?? [];
+
+export const selectFeatureById = (id: string) => (s: WizardState): WizardFeature | undefined =>
+  selectFeatures(s).find((f) => f.id === id);
+
+// ---------------------------------------------------------------------------
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -249,4 +272,45 @@ export const useWizardStore = create<WizardState>((set, get) => ({
   },
 
   reset: () => set({ data: null, activeStep: "IDEA", loading: false, saving: false, chatPending: false }),
+
+  addFeature: (f) => {
+    const id = crypto.randomUUID();
+    const current = selectFeatures(get());
+    const feature: WizardFeature = { id, ...f };
+    get().updateField("FEATURES", "features", [...current, feature]);
+    return id;
+  },
+
+  updateFeature: (id, patch) => {
+    const next = selectFeatures(get()).map((f) => (f.id === id ? { ...f, ...patch } : f));
+    get().updateField("FEATURES", "features", next);
+  },
+
+  removeFeature: (id) => {
+    const nextFeatures = selectFeatures(get()).filter((f) => f.id !== id);
+    const nextEdges = selectEdges(get()).filter((e) => e.from !== id && e.to !== id);
+    get().updateField("FEATURES", "features", nextFeatures);
+    get().updateField("FEATURES", "edges", nextEdges);
+  },
+
+  addEdge: (from, to) => {
+    const edges = selectEdges(get());
+    if (wouldCreateCycle(edges, from, to)) return false;
+    const edge: WizardFeatureEdge = { id: crypto.randomUUID(), from, to };
+    get().updateField("FEATURES", "edges", [...edges, edge]);
+    return true;
+  },
+
+  removeEdge: (id) => {
+    get().updateField("FEATURES", "edges", selectEdges(get()).filter((e) => e.id !== id));
+  },
+
+  moveFeature: (id, pos) => {
+    get().updateFeature(id, { position: pos });
+  },
+
+  applyProposal: (graph) => {
+    get().updateField("FEATURES", "features", graph.features);
+    get().updateField("FEATURES", "edges", graph.edges);
+  },
 }));
