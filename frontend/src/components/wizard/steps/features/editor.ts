@@ -28,6 +28,7 @@ export interface FeaturesEditorContext {
   autoLayout: () => Promise<void>;
   onNodeSelect: (cb: (featureId: string | null) => void) => void;
   onConnectionCreate: (cb: (from: string, to: string) => boolean) => void; // return false to reject
+  onCycleRejected: (cb: () => void) => void;
   onNodeMove: (cb: (featureId: string, x: number, y: number) => void) => void;
   onConnectionRemove: (cb: (edgeId: string) => void) => void;
 }
@@ -77,6 +78,7 @@ export async function createFeaturesEditor(
 
   let selectCb: ((id: string | null) => void) | null = null;
   let createCb: ((from: string, to: string) => boolean) | null = null;
+  let cycleCb: (() => void) | null = null;
   let moveCb: ((id: string, x: number, y: number) => void) | null = null;
   let removeCb: ((edgeId: string) => void) | null = null;
 
@@ -89,7 +91,10 @@ export async function createFeaturesEditor(
       const toNode = editor.getNode(data.target);
       if (fromNode instanceof FeatureRNode && toNode instanceof FeatureRNode && createCb) {
         const ok = createCb(fromNode.featureId, toNode.featureId);
-        if (!ok) return;  // undefined cancels the event
+        if (!ok) {
+          cycleCb?.();
+          return;  // undefined cancels the event
+        }
       }
     }
     if (ctx.type === "connectionremoved") {
@@ -246,6 +251,7 @@ export async function createFeaturesEditor(
       destroyed = true;
       selectCb = null;
       createCb = null;
+      cycleCb = null;
       moveCb = null;
       removeCb = null;
       renderedFeatures.clear();
@@ -265,6 +271,9 @@ export async function createFeaturesEditor(
     },
     onConnectionCreate: (cb) => {
       createCb = cb;
+    },
+    onCycleRejected: (cb) => {
+      cycleCb = cb;
     },
     onNodeMove: (cb) => {
       moveCb = cb;

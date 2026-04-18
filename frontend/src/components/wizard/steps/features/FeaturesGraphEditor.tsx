@@ -70,6 +70,9 @@ export function FeaturesGraphEditor({ projectId }: Props) {
       const ctx = await createFeaturesEditor(container);
       ctx.onNodeSelect(setSelectedId);
       ctx.onConnectionCreate((from, to) => addEdge(from, to));
+      ctx.onCycleRejected(() => {
+        alert("Zyklus verhindert: Die Kante wuerde eine Schleife erzeugen.");
+      });
       ctx.onNodeMove((id, x, y) => moveFeature(id, { x, y }));
       ctx.onConnectionRemove((edgeId) => removeEdge(edgeId));
       ctxRef.current = ctx;

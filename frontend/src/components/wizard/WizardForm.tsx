@@ -32,6 +32,8 @@ interface WizardFormProps {
   onBlockerClick?: (tab: "decisions" | "clarifications") => void;
 }
 
+type NavigableBlockerTab = "decisions" | "clarifications";
+
 export function WizardForm({ projectId, onBlockerClick }: WizardFormProps) {
   const { activeStep, saving, chatPending, completeStep, goPrev, visibleSteps } = useWizardStore();
   const { isBlocked, blockerSummary, firstBlockerTab } = useStepBlockers(activeStep);
@@ -47,7 +49,9 @@ export function WizardForm({ projectId, onBlockerClick }: WizardFormProps) {
 
   async function handleNext() {
     if (isBlocked) {
-      onBlockerClick?.(firstBlockerTab);
+      if (firstBlockerTab !== "empty-graph") {
+        onBlockerClick?.(firstBlockerTab as NavigableBlockerTab);
+      }
       return;
     }
     await completeStep(projectId, activeStep);
@@ -71,7 +75,11 @@ export function WizardForm({ projectId, onBlockerClick }: WizardFormProps) {
         {isBlocked && (
           <BlockerBanner
             summary={blockerSummary}
-            onClick={() => onBlockerClick?.(firstBlockerTab)}
+            onClick={
+              firstBlockerTab !== "empty-graph"
+                ? () => onBlockerClick?.(firstBlockerTab as NavigableBlockerTab)
+                : undefined
+            }
           />
         )}
         <div className="flex items-center justify-between">
