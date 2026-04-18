@@ -51,6 +51,9 @@ class TaskServiceWizardGraphTest {
         }
     }
 
+    // Convenience alias used by the new tests
+    private fun makeFakeAgent(): PlanGeneratorAgent = fakeAgentReturningOneEpicPerInput()
+
     @Test
     fun `phase 2 maps wizard-feature dependsOn ids to generated epic ids`() {
         val storage = TaskStorage(tmp.toString())
@@ -112,5 +115,55 @@ class TaskServiceWizardGraphTest {
         }
 
         assertThat(storage.listTasks("p1").map { it.id }).contains("manual-1")
+    }
+
+    @Test
+    fun `chain dependency A → B → C resolves both edges`() {
+        val storage = TaskStorage(tmp.toString())
+        val agent = makeFakeAgent()
+        val svc = TaskService(storage, agent)
+        val inputs = listOf(
+            WizardFeatureInput(id = "f-1", title = "A", description = "",
+                scopes = setOf(FeatureScope.BACKEND), scopeFields = emptyMap(), dependsOn = emptyList()),
+            WizardFeatureInput(id = "f-2", title = "B", description = "",
+                scopes = setOf(FeatureScope.BACKEND), scopeFields = emptyMap(), dependsOn = listOf("f-1")),
+            WizardFeatureInput(id = "f-3", title = "C", description = "",
+                scopes = setOf(FeatureScope.BACKEND), scopeFields = emptyMap(), dependsOn = listOf("f-2")),
+        )
+        val result = runBlocking { svc.replaceWizardFeatureTasks("p1", inputs) }
+        assertThat(result.single { it.title == "A" }.dependencies).isEmpty()
+        assertThat(result.single { it.title == "B" }.dependencies).containsExactly("epic-f-1")
+        assertThat(result.single { it.title == "C" }.dependencies).containsExactly("epic-f-2")
+    }
+
+    @Test
+    fun `multi-source dependency A,B → C is fully resolved`() {
+        val storage = TaskStorage(tmp.toString())
+        val agent = makeFakeAgent()
+        val svc = TaskService(storage, agent)
+        val inputs = listOf(
+            WizardFeatureInput(id = "f-1", title = "A", description = "",
+                scopes = setOf(FeatureScope.BACKEND), scopeFields = emptyMap(), dependsOn = emptyList()),
+            WizardFeatureInput(id = "f-2", title = "B", description = "",
+                scopes = setOf(FeatureScope.BACKEND), scopeFields = emptyMap(), dependsOn = emptyList()),
+            WizardFeatureInput(id = "f-3", title = "C", description = "",
+                scopes = setOf(FeatureScope.BACKEND), scopeFields = emptyMap(), dependsOn = listOf("f-1", "f-2")),
+        )
+        val result = runBlocking { svc.replaceWizardFeatureTasks("p1", inputs) }
+        assertThat(result.single { it.title == "C" }.dependencies)
+            .containsExactlyInAnyOrder("epic-f-1", "epic-f-2")
+    }
+
+    @Test
+    fun `unknown dependsOn id is silently ignored`() {
+        val storage = TaskStorage(tmp.toString())
+        val agent = makeFakeAgent()
+        val svc = TaskService(storage, agent)
+        val inputs = listOf(
+            WizardFeatureInput(id = "f-1", title = "X", description = "",
+                scopes = setOf(FeatureScope.BACKEND), scopeFields = emptyMap(), dependsOn = listOf("non-existent")),
+        )
+        val result = runBlocking { svc.replaceWizardFeatureTasks("p1", inputs) }
+        assertThat(result.single().dependencies).isEmpty()
     }
 }

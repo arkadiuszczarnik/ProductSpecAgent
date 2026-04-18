@@ -3,6 +3,7 @@ package com.agentwork.productspecagent.service
 import com.agentwork.productspecagent.agent.PlanGeneratorAgent
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.storage.TaskStorage
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Instant
 
@@ -20,6 +21,7 @@ class TaskService(
     private val storage: TaskStorage,
     private val agent: PlanGeneratorAgent
 ) {
+    private val logger = LoggerFactory.getLogger(TaskService::class.java)
     suspend fun generatePlan(projectId: String): List<SpecTask> {
         storage.deleteAllTasks(projectId)
         val tasks = agent.generatePlan(projectId)
@@ -63,6 +65,11 @@ class TaskService(
         projectId: String,
         features: List<WizardFeatureInput>,
     ): List<SpecTask> {
+        require(features.map { it.id }.toSet().size == features.size) {
+            val dupes = features.groupBy { it.id }.filter { it.value.size > 1 }.keys
+            "Duplicate feature IDs in input: $dupes"
+        }
+
         // Delete existing wizard-generated tasks (specSection == FEATURES) before regenerating
         val existing = storage.listTasks(projectId)
         for (t in existing) {
@@ -83,7 +90,8 @@ class TaskService(
                 input = feature,
                 startPriority = nextPriority,
             )
-            val epic = tasks.first { it.type == TaskType.EPIC }
+            val epic = tasks.firstOrNull { it.type == TaskType.EPIC }
+                ?: error("Agent returned no EPIC for feature '${feature.id}' ('${feature.title}')")
             byWizardId[feature.id] = epic
             created.addAll(tasks)
             nextPriority += tasks.size
@@ -93,7 +101,10 @@ class TaskService(
         for (feature in features) {
             val depsAsTaskIds = feature.dependsOn.mapNotNull { byWizardId[it]?.id }
             if (depsAsTaskIds.isEmpty()) continue
-            val epic = byWizardId[feature.id] ?: continue
+            val epic = byWizardId[feature.id] ?: run {
+                logger.warn("byWizardId missing entry for feature '{}' during Phase 2 — skipping dependency mapping", feature.id)
+                continue
+            }
             val updatedEpic = epic.copy(dependencies = depsAsTaskIds, updatedAt = Instant.now().toString())
             val idx = created.indexOfFirst { it.id == epic.id }
             if (idx >= 0) created[idx] = updatedEpic
