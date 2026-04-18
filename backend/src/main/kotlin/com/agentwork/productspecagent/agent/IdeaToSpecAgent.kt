@@ -4,8 +4,10 @@ import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.ClarificationService
 import com.agentwork.productspecagent.service.DecisionService
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.TaskService
 import com.agentwork.productspecagent.service.WizardFeatureInput
 import com.agentwork.productspecagent.service.WizardService
+import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -19,7 +21,8 @@ open class IdeaToSpecAgent(
     private val decisionService: DecisionService,
     private val clarificationService: ClarificationService,
     private val wizardService: WizardService,
-    private val koogRunner: KoogAgentRunner? = null
+    private val koogRunner: KoogAgentRunner? = null,
+    private val taskService: TaskService? = null,
 ) {
 
     private val logger = LoggerFactory.getLogger(IdeaToSpecAgent::class.java)
@@ -118,7 +121,9 @@ open class IdeaToSpecAgent(
         val wizardData = wizardService.getWizardData(projectId)
         val wizardContext = contextBuilder.buildWizardContext(wizardData, step, fields)
 
-        val prompt = buildWizardStepFeedbackPrompt(step, fields)
+        val wizardCategory = wizardData.steps["IDEA"]?.fields?.get("category")
+            ?.let { runCatching { (it as? JsonPrimitive)?.content }.getOrNull() }
+        val prompt = buildWizardStepFeedbackPrompt(step, fields, wizardCategory)
 
         val currentStepType = try { FlowStepType.valueOf(step) } catch (_: Exception) { null }
         val stepPrompt = if (currentStepType != null) buildStepPrompt(currentStepType) else ""
@@ -148,6 +153,15 @@ open class IdeaToSpecAgent(
                 projectId, clarificationQuestion, clarificationReason, currentStepType
             )
             createdClarificationId = clarification.id
+        }
+
+        // FEATURES step: parse graph input and persist wizard feature tasks
+        if (currentStepType == FlowStepType.FEATURES && taskService != null) {
+            val parsedFeatures = parseWizardFeatures(fields, wizardCategory)
+            if (parsedFeatures.isNotEmpty()) {
+                logger.info("processWizardStep(FEATURES) — calling replaceWizardFeatureTasks with {} features", parsedFeatures.size)
+                taskService.replaceWizardFeatureTasks(projectId, parsedFeatures)
+            }
         }
 
         // Determine next step
@@ -212,9 +226,37 @@ open class IdeaToSpecAgent(
         )
     }
 
-    private fun buildWizardStepFeedbackPrompt(step: String, fields: Map<String, Any>): String {
+    private fun buildWizardStepFeedbackPrompt(
+        step: String,
+        fields: Map<String, Any>,
+        category: String? = null,
+    ): String {
         val fieldsDescription = fields.entries.joinToString("\n") { "- ${it.key}: ${it.value}" }
         return when (step) {
+            "FEATURES" -> buildString {
+                appendLine("The user just completed the FEATURES wizard step.")
+                appendLine()
+
+                val parsedFeatures = parseWizardFeatures(fields, category)
+                if (parsedFeatures.isNotEmpty()) {
+                    appendLine(SpecContextBuilder.renderFeaturesBlock(parsedFeatures, category))
+                    appendLine()
+                } else {
+                    appendLine(fieldsDescription)
+                    appendLine()
+                }
+
+                appendLine("Validator rules for the FEATURES step:")
+                appendLine("- If the graph contains isolated nodes (no incoming and no outgoing edges), ask the user whether that is intentional.")
+                appendLine("- If a feature's scope seems inconsistent with its title (e.g. 'Login UI' with BACKEND only), emit a clarification.")
+                appendLine("- If the category is SaaS / Mobile / Desktop and obvious core features are missing (e.g. Auth, Registration), emit a clarification.")
+                appendLine("Otherwise remain silent on those points.")
+                appendLine()
+                appendLine("Provide brief, helpful feedback about the feature graph.")
+                appendLine("Be encouraging and mention any suggestions for improvement if applicable.")
+                appendLine()
+                appendLine(MARKER_REMINDER)
+            }
             "IDEA" -> buildString {
                 appendLine("The user just completed the IDEA wizard step with the following input:")
                 appendLine(fieldsDescription)
