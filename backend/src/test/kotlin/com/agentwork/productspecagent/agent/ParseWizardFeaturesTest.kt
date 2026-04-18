@@ -62,4 +62,22 @@ class ParseWizardFeaturesTest {
         assertThat(IdeaToSpecAgent.parseWizardFeatures(null, category = "SaaS")).isEmpty()
         assertThat(IdeaToSpecAgent.parseWizardFeatures(emptyList<Any>(), category = "SaaS")).isEmpty()
     }
+
+    @Test
+    fun `accumulates multiple edges to the same target feature`() {
+        val raw = mapOf(
+            "features" to listOf(
+                mapOf("id" to "f-1", "title" to "Auth", "scopes" to listOf("BACKEND")),
+                mapOf("id" to "f-2", "title" to "Profile", "scopes" to listOf("BACKEND")),
+                mapOf("id" to "f-3", "title" to "Dashboard", "scopes" to listOf("FRONTEND")),
+            ),
+            "edges" to listOf(
+                mapOf("id" to "e-1", "from" to "f-1", "to" to "f-3"),
+                mapOf("id" to "e-2", "from" to "f-2", "to" to "f-3"),
+            ),
+        )
+        val result = IdeaToSpecAgent.parseWizardFeatures(raw, category = "SaaS")
+        val dashboard = result.first { it.id == "f-3" }
+        assertThat(dashboard.dependsOn).containsExactlyInAnyOrder("f-1", "f-2")
+    }
 }
