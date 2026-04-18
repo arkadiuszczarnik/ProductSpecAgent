@@ -2,14 +2,19 @@ package com.agentwork.productspecagent.export
 
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
 import org.springframework.stereotype.Component
 
 @Component
 class ScaffoldContextBuilder(
     private val projectService: ProjectService,
     private val taskService: TaskService,
-    private val decisionService: DecisionService
+    private val decisionService: DecisionService,
+    private val wizardService: WizardService? = null,
 ) {
+    private val json = Json { ignoreUnknownKeys = true }
+
     private fun readNonBlankSpec(projectId: String, fileName: String): String? {
         val content = projectService.readSpecFile(projectId, fileName)?.trim()
         return if (content.isNullOrBlank()) null else content
@@ -23,6 +28,12 @@ class ScaffoldContextBuilder(
 
         val epics = tasks.filter { it.type == TaskType.EPIC }.sortedBy { it.priority }
 
+        // Build id→title map for dependency resolution
+        val idToTitle = epics.associate { it.id to it.title }
+
+        // Load wizard features for scope enrichment (best-effort, null if unavailable)
+        val wizardFeaturesByTitle: Map<String, WizardFeature> = loadWizardFeaturesByTitle(projectId)
+
         val features = epics.mapIndexed { i, epic ->
             val number = i + 1
             val slug = epic.title.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(50)
@@ -31,6 +42,17 @@ class ScaffoldContextBuilder(
                 stories.any { s -> s.id == t.parentId } && t.type == TaskType.TASK
             }
 
+            val dependencies = if (epic.dependencies.isEmpty()) {
+                "—"
+            } else {
+                epic.dependencies
+                    .mapNotNull { idToTitle[it] }
+                    .joinToString(", ")
+                    .ifBlank { "—" }
+            }
+
+            val wizardFeature = wizardFeaturesByTitle[epic.title]
+
             FeatureContext(
                 number = number,
                 title = epic.title,
@@ -38,12 +60,14 @@ class ScaffoldContextBuilder(
                 filename = "${String.format("%02d", number)}-$slug.md",
                 description = epic.description,
                 estimate = epic.estimate,
-                dependencies = if (i == 0) "—" else "Feature $i",
+                dependencies = dependencies,
                 stories = stories.mapIndexed { si, s ->
                     StoryContext(si + 1, s.title, s.description)
                 },
                 acceptanceCriteria = subtasks.map { TaskContext(it.title, it.description) },
-                tasks = (stories + subtasks).map { TaskContext(it.title, it.description) }
+                tasks = (stories + subtasks).map { TaskContext(it.title, it.description) },
+                scope = scopeLabel(wizardFeature?.scopes),
+                scopeFields = wizardFeature?.scopeFields ?: emptyMap(),
             )
         }
 
@@ -79,5 +103,31 @@ class ScaffoldContextBuilder(
             backendContent = backendContent,
             frontendContent = frontendContent
         )
+    }
+
+    /**
+     * Reads wizard features from the FEATURES step and returns them indexed by title.
+     * Returns an empty map if wizard service is unavailable or no features are stored.
+     */
+    private fun loadWizardFeaturesByTitle(projectId: String): Map<String, WizardFeature> {
+        val svc = wizardService ?: return emptyMap()
+        return try {
+            val wizardData = svc.getWizardData(projectId)
+            val featuresElement = wizardData.steps["FEATURES"]?.fields?.get("features")
+                ?: return emptyMap()
+            val graph = json.decodeFromJsonElement<WizardFeatureGraph>(featuresElement)
+            graph.features.associateBy { it.title }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun scopeLabel(scopes: Set<FeatureScope>?): String? = when {
+        scopes == null -> null
+        scopes == setOf(FeatureScope.FRONTEND) -> "Frontend"
+        scopes == setOf(FeatureScope.BACKEND) -> "Backend"
+        scopes.size == 2 && scopes.containsAll(setOf(FeatureScope.FRONTEND, FeatureScope.BACKEND)) -> "Frontend + Backend"
+        scopes.isEmpty() -> "Core"
+        else -> null
     }
 }

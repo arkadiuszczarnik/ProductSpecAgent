@@ -29,7 +29,9 @@ data class FeatureContext(
     val dependencies: String,
     val stories: List<StoryContext>,
     val acceptanceCriteria: List<TaskContext>,
-    val tasks: List<TaskContext>
+    val tasks: List<TaskContext>,
+    val scope: String? = null,
+    val scopeFields: Map<String, String> = emptyMap(),
 )
 
 data class StoryContext(val index: Int, val title: String, val description: String)
