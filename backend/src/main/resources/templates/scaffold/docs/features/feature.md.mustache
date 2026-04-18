@@ -1,9 +1,5 @@
 # Feature {{number}}: {{title}}
 
-{{#scope}}
-**Scope:** {{.}}
-
-{{/scope}}
 ## Zusammenfassung
 {{description}}
 
@@ -17,51 +13,6 @@
 - [ ] {{title}}{{#description}}: {{description}}{{/description}}
 {{/acceptanceCriteria}}
 
-{{#hasUiComponents}}
-## UI-Komponenten
-{{scopeFields.uiComponents}}
-
-{{/hasUiComponents}}
-{{#hasScreens}}
-## Screens
-{{scopeFields.screens}}
-
-{{/hasScreens}}
-{{#hasUserInteractions}}
-## User-Interaktionen
-{{scopeFields.userInteractions}}
-
-{{/hasUserInteractions}}
-{{#hasApiEndpoints}}
-## API-Endpunkte
-{{scopeFields.apiEndpoints}}
-
-{{/hasApiEndpoints}}
-{{#hasDataModel}}
-## Datenmodell
-{{scopeFields.dataModel}}
-
-{{/hasDataModel}}
-{{#hasSideEffects}}
-## Side-Effects
-{{scopeFields.sideEffects}}
-
-{{/hasSideEffects}}
-{{#hasPublicApi}}
-## Public API
-{{scopeFields.publicApi}}
-
-{{/hasPublicApi}}
-{{#hasTypesExposed}}
-## Exponierte Types
-{{scopeFields.typesExposed}}
-
-{{/hasTypesExposed}}
-{{#hasExamples}}
-## Beispiele
-{{scopeFields.examples}}
-
-{{/hasExamples}}
 ## Abhaengigkeiten
 {{dependencies}}
 

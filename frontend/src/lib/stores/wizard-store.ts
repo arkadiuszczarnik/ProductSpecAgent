@@ -1,50 +1,9 @@
 import { create } from "zustand";
-import type {
-  WizardData,
-  WizardStepData,
-  WizardFeature,
-  WizardFeatureEdge,
-  WizardFeatureGraph,
-  FeatureScope,
-} from "@/lib/api";
+import type { WizardData, WizardStepData } from "@/lib/api";
 import { getWizardData, saveWizardStep, completeWizardStep } from "@/lib/api";
 import { formatStepFields } from "@/lib/step-field-labels";
 import { useProjectStore } from "@/lib/stores/project-store";
-import { getAllowedScopes, getVisibleSteps } from "@/lib/category-step-config";
-import { wouldCreateCycle } from "@/lib/graph/cycleCheck";
-
-function normalizeFeature(
-  raw: unknown,
-  category: string | undefined,
-  idx: number,
-): WizardFeature {
-  const r = (raw ?? {}) as Partial<WizardFeature> & { estimate?: string };
-  const id =
-    typeof r.id === "string" && r.id.length > 0
-      ? r.id
-      : typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `feat-${Date.now()}-${idx}`;
-  const scopes: FeatureScope[] = Array.isArray(r.scopes)
-    ? r.scopes.filter((s): s is FeatureScope => s === "FRONTEND" || s === "BACKEND")
-    : getAllowedScopes(category);
-  const position =
-    r.position &&
-    typeof r.position === "object" &&
-    typeof r.position.x === "number" &&
-    typeof r.position.y === "number"
-      ? r.position
-      : { x: 0, y: 0 };
-  return {
-    id,
-    title: r.title ?? "",
-    description: r.description ?? "",
-    scopes,
-    scopeFields:
-      r.scopeFields && typeof r.scopeFields === "object" ? r.scopeFields : {},
-    position,
-  };
-}
+import { getVisibleSteps } from "@/lib/category-step-config";
 
 export const WIZARD_STEPS = [
   { key: "IDEA", label: "Idee" },
@@ -75,17 +34,6 @@ interface WizardState {
   reset: () => void;
   getCategory: () => string | undefined;
   visibleSteps: () => typeof WIZARD_STEPS[number][];
-
-  // Feature graph actions (FEATURES step)
-  getFeatures: () => WizardFeature[];
-  getEdges: () => WizardFeatureEdge[];
-  addFeature: (draft: Omit<WizardFeature, "id">) => string;
-  updateFeature: (id: string, patch: Partial<WizardFeature>) => void;
-  removeFeature: (id: string) => void;
-  addEdge: (from: string, to: string) => boolean;
-  removeEdge: (id: string) => void;
-  moveFeature: (id: string, pos: { x: number; y: number }) => void;
-  applyProposal: (graph: WizardFeatureGraph) => void;
 }
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -230,11 +178,6 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         chatSending: false,
       }));
 
-      // Reload flow state so the Explorer and StepIndicator reflect the
-      // backend-side progression (and so the Explorer re-fetches files when
-      // completedSteps changes — its useEffect depends on that count).
-      await useProjectStore.getState().loadFlowState(projectId);
-
       // Navigate to next step
       if (response.nextStep) {
         const steps = visibleSteps();
@@ -306,70 +249,4 @@ export const useWizardStore = create<WizardState>((set, get) => ({
   },
 
   reset: () => set({ data: null, activeStep: "IDEA", loading: false, saving: false, chatPending: false }),
-
-  // --- Feature graph actions ---
-
-  getFeatures: () => {
-    const raw = get().data?.steps.FEATURES?.fields.features;
-    const category = get().data?.steps.IDEA?.fields.category as string | undefined;
-    if (!Array.isArray(raw)) return [];
-    return raw.map((r, i) => normalizeFeature(r, category, i));
-  },
-
-  getEdges: () => {
-    const raw = get().data?.steps.FEATURES?.fields.edges;
-    return Array.isArray(raw) ? (raw as WizardFeatureEdge[]) : [];
-  },
-
-  addFeature: (draft) => {
-    const id =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `feat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const feature: WizardFeature = { id, ...draft };
-    get().updateField("FEATURES", "features", [...get().getFeatures(), feature]);
-    return id;
-  },
-
-  updateFeature: (id, patch) => {
-    const next = get().getFeatures().map((f) => (f.id === id ? { ...f, ...patch } : f));
-    get().updateField("FEATURES", "features", next);
-  },
-
-  removeFeature: (id) => {
-    get().updateField(
-      "FEATURES",
-      "features",
-      get().getFeatures().filter((f) => f.id !== id),
-    );
-    get().updateField(
-      "FEATURES",
-      "edges",
-      get().getEdges().filter((e) => e.from !== id && e.to !== id),
-    );
-  },
-
-  addEdge: (from, to) => {
-    if (wouldCreateCycle(get().getEdges(), from, to)) return false;
-    const id =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `edge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const edge: WizardFeatureEdge = { id, from, to };
-    get().updateField("FEATURES", "edges", [...get().getEdges(), edge]);
-    return true;
-  },
-
-  removeEdge: (id) => {
-    get().updateField("FEATURES", "edges", get().getEdges().filter((e) => e.id !== id));
-  },
-
-  moveFeature: (id, pos) => {
-    get().updateFeature(id, { position: pos });
-  },
-
-  applyProposal: (graph) => {
-    get().updateField("FEATURES", "features", graph.features);
-    get().updateField("FEATURES", "edges", graph.edges);
-  },
 }));

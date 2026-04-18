@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export async function apiFetch<T>(
   path: string,
@@ -54,6 +54,7 @@ export interface ProjectResponse {
 
 export interface CreateProjectRequest {
   name: string;
+  idea: string;
 }
 
 export interface ChatRequest {
@@ -424,36 +425,4 @@ export async function completeWizardStep(
     `/api/v1/projects/${projectId}/agent/wizard-step-complete`,
     { method: "POST", body: JSON.stringify(data) }
   );
-}
-
-// ─── Wizard Feature Graph Types ──────────────────────────────────────────────
-
-export type FeatureScope = "FRONTEND" | "BACKEND";
-
-export interface GraphPosition { x: number; y: number }
-
-export interface WizardFeature {
-  id: string;
-  title: string;
-  scopes: FeatureScope[];
-  description: string;
-  scopeFields: Record<string, string>;
-  position: GraphPosition;
-}
-
-export interface WizardFeatureEdge {
-  id: string;
-  from: string;
-  to: string;
-}
-
-export interface WizardFeatureGraph {
-  features: WizardFeature[];
-  edges: WizardFeatureEdge[];
-}
-
-export async function proposeFeatures(projectId: string): Promise<WizardFeatureGraph> {
-  return apiFetch<WizardFeatureGraph>(`/api/v1/projects/${projectId}/features/propose`, {
-    method: "POST",
-  });
 }

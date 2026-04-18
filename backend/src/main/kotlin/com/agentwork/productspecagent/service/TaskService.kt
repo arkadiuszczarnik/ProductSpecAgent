@@ -6,15 +6,6 @@ import com.agentwork.productspecagent.storage.TaskStorage
 import org.springframework.stereotype.Service
 import java.time.Instant
 
-data class WizardFeatureInput(
-    val id: String,
-    val title: String,
-    val description: String,
-    val scopes: Set<com.agentwork.productspecagent.domain.FeatureScope>,
-    val scopeFields: Map<String, String>,
-    val dependsOn: List<String> = emptyList(),
-)
-
 @Service
 class TaskService(
     private val storage: TaskStorage,
@@ -25,76 +16,6 @@ class TaskService(
         val tasks = agent.generatePlan(projectId)
         tasks.forEach { storage.saveTask(it) }
         return tasks
-    }
-
-    /**
-     * Idempotently regenerate the wizard-derived task tree from the FEATURES wizard step.
-     * Deletes only existing tasks marked with [TaskSource.WIZARD] (and any of their descendants),
-     * then creates a fresh EPIC + Stories + Tasks tree per feature using [PlanGeneratorAgent].
-     * Tasks created via [generatePlan] (PLAN_GENERATOR) or manually (source == null) are preserved.
-     */
-    suspend fun replaceWizardFeatureTasks(
-        projectId: String,
-        features: List<WizardFeatureInput>
-    ): List<SpecTask> {
-        // 1. Find all wizard-sourced tasks plus any descendants of wizard-sourced parents.
-        val all = storage.listTasks(projectId)
-        val wizardIds = all.filter { it.source == TaskSource.WIZARD }.map { it.id }.toMutableSet()
-        // Descendants by parentId (handles the case where a story/task points to a wizard epic
-        // even if the descendant itself somehow has a different/null source).
-        var changed = true
-        while (changed) {
-            changed = false
-            for (t in all) {
-                if (t.parentId != null && t.parentId in wizardIds && t.id !in wizardIds) {
-                    wizardIds.add(t.id)
-                    changed = true
-                }
-            }
-        }
-        wizardIds.forEach { storage.deleteTask(projectId, it) }
-
-        // 2. For each wizard feature, ask the LLM to derive Stories + Tasks under a new EPIC.
-        val highestExistingPriority = all
-            .filter { it.id !in wizardIds }
-            .maxOfOrNull { it.priority } ?: -1
-        var nextPriority = highestExistingPriority + 1
-
-        // Phase 1: generate EPIC + Stories + Tasks per wizard feature (no dependencies yet).
-        // Collect wizardFeatureId -> EPIC task so Phase 2 can resolve dependsOn into real task IDs.
-        val created = mutableListOf<SpecTask>()
-        val byWizardId = LinkedHashMap<String, SpecTask>()
-        for (feature in features) {
-            val tasks = agent.generatePlanForFeature(
-                projectId = projectId,
-                input = feature,
-                startPriority = nextPriority,
-            )
-            val epic = tasks.firstOrNull { it.type == TaskType.EPIC }
-            if (epic != null) {
-                byWizardId[feature.id] = epic
-            }
-            created.addAll(tasks)
-            nextPriority += tasks.size
-        }
-
-        // Phase 2: resolve dependsOn (wizard feature IDs) into real EPIC task IDs.
-        // Missing targets are silently skipped so an incoming invalid edge does not crash generation.
-        val now = Instant.now().toString()
-        for (feature in features) {
-            if (feature.dependsOn.isEmpty()) continue
-            val epic = byWizardId[feature.id] ?: continue
-            val resolvedDependencies = feature.dependsOn.mapNotNull { byWizardId[it]?.id }
-            if (resolvedDependencies.isEmpty()) continue
-            val updatedEpic = epic.copy(dependencies = resolvedDependencies, updatedAt = now)
-            val idx = created.indexOfFirst { it.id == epic.id }
-            if (idx >= 0) created[idx] = updatedEpic
-            byWizardId[feature.id] = updatedEpic
-        }
-
-        // Persist once, after mapping, so no partial state is written on failure.
-        for (t in created) storage.saveTask(t)
-        return created
     }
 
     fun listTasks(projectId: String): List<SpecTask> = storage.listTasks(projectId)
