@@ -115,8 +115,10 @@ class ScaffoldContextBuilder(
             val wizardData = svc.getWizardData(projectId)
             val featuresElement = wizardData.steps["FEATURES"]?.fields?.get("features")
                 ?: return emptyMap()
-            val graph = json.decodeFromJsonElement<WizardFeatureGraph>(featuresElement)
-            graph.features.associateBy { it.title }
+            // The frontend store writes features as a flat JsonArray<WizardFeature>, NOT
+            // as a WizardFeatureGraph object. Edges are stored as a separate sibling field.
+            val features = json.decodeFromJsonElement<List<WizardFeature>>(featuresElement)
+            features.associateBy { it.title }
         } catch (_: Exception) {
             emptyMap()
         }
