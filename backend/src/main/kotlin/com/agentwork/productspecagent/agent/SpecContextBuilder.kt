@@ -13,7 +13,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.stereotype.Component
 
 @Component
-class SpecContextBuilder(
+open class SpecContextBuilder(
     private val projectService: ProjectService,
     private val wizardService: WizardService? = null
 ) {
@@ -87,7 +87,7 @@ class SpecContextBuilder(
         }.trim()
     }
 
-    fun buildProposalContext(projectId: String): String {
+    open fun buildProposalContext(projectId: String): String {
         val svc = wizardService ?: throw IllegalStateException("WizardService not available")
         val sb = StringBuilder()
         listOf("idea.md", "problem.md", "target_audience.md", "scope.md", "mvp.md").forEach { f ->
