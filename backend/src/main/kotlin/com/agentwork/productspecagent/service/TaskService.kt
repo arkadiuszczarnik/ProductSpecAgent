@@ -6,6 +6,15 @@ import com.agentwork.productspecagent.storage.TaskStorage
 import org.springframework.stereotype.Service
 import java.time.Instant
 
+data class WizardFeatureInput(
+    val id: String,
+    val title: String,
+    val description: String,
+    val scopes: Set<com.agentwork.productspecagent.domain.FeatureScope>,
+    val scopeFields: Map<String, String>,
+    val dependsOn: List<String> = emptyList(),
+)
+
 @Service
 class TaskService(
     private val storage: TaskStorage,

@@ -4,6 +4,7 @@ import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.ClarificationService
 import com.agentwork.productspecagent.service.DecisionService
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.WizardFeatureInput
 import com.agentwork.productspecagent.service.WizardService
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -447,5 +448,77 @@ Erst wenn der Nutzer bestätigt hat, markiere mit [STEP_COMPLETE].
 
 === END IDEA STEP INSTRUCTIONS ===
         """.trimIndent()
+
+        private val uuid = java.util.UUID::randomUUID
+
+        /**
+         * Parses raw wizard feature input into a typed list of WizardFeatureInput.
+         * Supports two input shapes:
+         *  - Legacy flat list: List<Map<*,*>> — features without explicit scopes/ids/edges
+         *  - Graph shape: Map with "features" and "edges" keys
+         *
+         * The [category] parameter determines default scopes when none are specified.
+         */
+        fun parseWizardFeatures(raw: Any?, category: String?): List<WizardFeatureInput> {
+            val defaultScopes = defaultScopesFor(category)
+            val featuresRaw: List<Any?>
+            val edgesRaw: List<Any?>
+
+            when (raw) {
+                is Map<*, *> -> {
+                    featuresRaw = (raw["features"] as? List<*>) ?: emptyList<Any>()
+                    edgesRaw = (raw["edges"] as? List<*>) ?: emptyList<Any>()
+                }
+                is List<*> -> {
+                    featuresRaw = raw
+                    edgesRaw = emptyList<Any>()
+                }
+                else -> return emptyList()
+            }
+
+            // Parse edges first: map target -> list of source IDs (dependsOn)
+            val dependsByTarget = mutableMapOf<String, MutableList<String>>()
+            for (e in edgesRaw) {
+                val m = e as? Map<*, *> ?: continue
+                val from = m["from"]?.toString() ?: continue
+                val to = m["to"]?.toString() ?: continue
+                dependsByTarget.getOrPut(to) { mutableListOf() }.add(from)
+            }
+
+            val result = mutableListOf<WizardFeatureInput>()
+            for (f in featuresRaw) {
+                val m = f as? Map<*, *> ?: if (f is String) mapOf("title" to f) else continue
+                val title = (m["title"] ?: m["name"])?.toString()?.trim()
+                if (title.isNullOrBlank()) continue
+                val id = m["id"]?.toString()?.ifBlank { null } ?: uuid().toString()
+                val description = (m["description"] ?: m["desc"])?.toString() ?: ""
+                val scopes = parseScopes(m["scopes"], defaultScopes)
+                @Suppress("UNCHECKED_CAST")
+                val scopeFields = (m["scopeFields"] as? Map<String, String>) ?: emptyMap()
+                result.add(WizardFeatureInput(
+                    id = id,
+                    title = title,
+                    description = description,
+                    scopes = scopes,
+                    scopeFields = scopeFields,
+                    dependsOn = dependsByTarget[id] ?: emptyList(),
+                ))
+            }
+            return result
+        }
+
+        private fun parseScopes(raw: Any?, fallback: Set<FeatureScope>): Set<FeatureScope> {
+            val list = raw as? List<*> ?: return fallback
+            return list.mapNotNull { s ->
+                runCatching { FeatureScope.valueOf(s.toString().uppercase()) }.getOrNull()
+            }.toSet().ifEmpty { fallback }
+        }
+
+        private fun defaultScopesFor(category: String?): Set<FeatureScope> = when (category) {
+            "SaaS", "Mobile App", "Desktop App" -> setOf(FeatureScope.FRONTEND, FeatureScope.BACKEND)
+            "API", "CLI Tool" -> setOf(FeatureScope.BACKEND)
+            "Library" -> emptySet()
+            else -> setOf(FeatureScope.FRONTEND, FeatureScope.BACKEND)
+        }
     }
 }
