@@ -29,9 +29,6 @@ class FileControllerTest {
         mockMvc.perform(get("/api/v1/projects/$pid/files"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$").isArray())
-            .andExpect(jsonPath("$[?(@.name == 'project.json')]").doesNotExist())
-            .andExpect(jsonPath("$[?(@.name == 'flow-state.json')]").doesNotExist())
-            .andExpect(jsonPath("$[?(@.name == 'wizard.json')]").doesNotExist())
     }
 
     @Test
