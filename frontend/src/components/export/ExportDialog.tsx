@@ -67,6 +67,13 @@ export function ExportDialog({ projectId, projectName, open, onClose }: ExportDi
               <p className="text-xs text-muted-foreground">SPEC.md, README.md, .gitignore</p>
             </div>
           </label>
+          <label className="flex items-center gap-3 rounded-md border px-3 py-2.5 opacity-70 cursor-not-allowed transition-colors">
+            <input type="checkbox" checked={true} disabled className="accent-primary" />
+            <div>
+              <span className="text-sm font-medium">Docs scaffold</span>
+              <p className="text-xs text-muted-foreground">docs/features, docs/architecture, docs/backend, docs/frontend</p>
+            </div>
+          </label>
           <label className="flex items-center gap-3 rounded-md border px-3 py-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
             <input type="checkbox" checked={includeDecisions} onChange={(e) => setIncludeDecisions(e.target.checked)} className="accent-primary" />
             <div>

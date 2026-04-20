@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Loader2, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Download, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWizardStore } from "@/lib/stores/wizard-store";
+import { useProjectStore } from "@/lib/stores/project-store";
 import { useStepBlockers } from "@/lib/hooks/use-step-blockers";
 import { BlockerBanner } from "./BlockerBanner";
 import { IdeaForm } from "./steps/IdeaForm";
@@ -30,49 +31,61 @@ const FORM_MAP: Record<string, React.ComponentType<{ projectId: string }>> = {
 interface WizardFormProps {
   projectId: string;
   onBlockerClick?: (tab: "decisions" | "clarifications") => void;
+  onExportClick?: () => void;
 }
 
 type NavigableBlockerTab = "decisions" | "clarifications";
 
-export function WizardForm({ projectId, onBlockerClick }: WizardFormProps) {
+export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardFormProps) {
   const { activeStep, saving, chatPending, completeStep, goPrev, visibleSteps } = useWizardStore();
+  const flowState = useProjectStore((s) => s.flowState);
   const { isBlocked, blockerSummary, firstBlockerTab } = useStepBlockers(activeStep);
 
   const steps = visibleSteps();
-  const stepInfo = steps.find((s) => s.key === activeStep);
   const stepIdx = steps.findIndex((s) => s.key === activeStep);
   const isFirst = stepIdx === 0;
   const isLast = stepIdx === steps.length - 1;
   const isWorking = saving || chatPending;
 
+  // Once the last visible step is COMPLETED in flow state, the wizard is done —
+  // clicking the button should open Export instead of re-triggering the agent.
+  const lastStepKey = steps[steps.length - 1]?.key;
+  const lastStepCompleted =
+    !!lastStepKey &&
+    flowState?.steps.find((s) => s.stepType === lastStepKey)?.status === "COMPLETED";
+  const wizardDone = isLast && lastStepCompleted;
+
   const FormComponent = FORM_MAP[activeStep];
 
   async function handleNext() {
+    if (wizardDone) {
+      onExportClick?.();
+      return;
+    }
     if (isBlocked) {
       if (firstBlockerTab !== "empty-graph") {
         onBlockerClick?.(firstBlockerTab as NavigableBlockerTab);
       }
       return;
     }
-    await completeStep(projectId, activeStep);
+    const result = await completeStep(projectId, activeStep);
+    if (result?.exportTriggered) {
+      onExportClick?.();
+    }
   }
 
   return (
     <div className="flex flex-col h-full">
       {/* Form Content */}
       <div className="flex-1 overflow-y-auto px-8 py-6">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-lg font-bold mb-1">{stepInfo?.label ?? activeStep}</h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            Schritt {stepIdx + 1} von {steps.length}
-          </p>
+        <div className={activeStep === "FEATURES" ? "" : "max-w-2xl mx-auto"}>
           {FormComponent && <FormComponent projectId={projectId} />}
         </div>
       </div>
 
       {/* Navigation */}
       <div className="shrink-0 border-t px-8 py-3 flex flex-col gap-2 bg-card/50">
-        {isBlocked && (
+        {isBlocked && !wizardDone && (
           <BlockerBanner
             summary={blockerSummary}
             onClick={
@@ -96,10 +109,12 @@ export function WizardForm({ projectId, onBlockerClick }: WizardFormProps) {
             <Button
               size="sm"
               onClick={handleNext}
-              disabled={isWorking || isBlocked}
+              disabled={isWorking || (isBlocked && !wizardDone)}
               className="gap-1.5"
             >
-              {isLast ? (
+              {wizardDone ? (
+                <><Download size={14} /> Exportieren</>
+              ) : isLast ? (
                 <><Save size={14} /> Abschliessen</>
               ) : (
                 <>Weiter <ArrowRight size={14} /></>

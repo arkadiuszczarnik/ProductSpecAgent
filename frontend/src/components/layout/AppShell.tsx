@@ -84,11 +84,9 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="flex h-screen bg-background">
       <IconRail />
-      {isWorkspace ? (
-        <>{children}</>
-      ) : (
-        <main className="flex-1 overflow-y-auto">{children}</main>
-      )}
+      <main className={cn("flex-1", isWorkspace ? "overflow-hidden" : "overflow-y-auto")}>
+        {children}
+      </main>
     </div>
   );
 }

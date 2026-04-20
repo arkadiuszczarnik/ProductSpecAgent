@@ -67,7 +67,7 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
 
   if (projectLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
+      <div className="flex h-full items-center justify-center bg-background">
         <Loader2 size={24} className="animate-spin text-muted-foreground" />
       </div>
     );
@@ -75,7 +75,7 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
 
   if (projectError) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background">
+      <div className="flex h-full flex-col items-center justify-center gap-4 bg-background">
         <p className="text-sm text-destructive">{projectError}</p>
         <Link href="/projects" className="text-sm text-primary hover:underline">Back to Projects</Link>
       </div>
@@ -83,7 +83,7 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background overflow-hidden">
+    <div className="flex h-full flex-col bg-background overflow-hidden">
       <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-2.5">
         <Link href="/projects" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft size={14} />
@@ -116,7 +116,11 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
         <div className="flex flex-1 flex-col overflow-hidden border-r">
           <StepIndicator />
           <div className="flex-1 overflow-hidden">
-            <WizardForm projectId={id} onBlockerClick={(tab) => setRightTab(tab)} />
+            <WizardForm
+              projectId={id}
+              onBlockerClick={(tab) => setRightTab(tab)}
+              onExportClick={() => setShowExport(true)}
+            />
           </div>
         </div>
         <div className="shrink-0 overflow-hidden flex flex-row" style={{ width: sidebarWidth }}>

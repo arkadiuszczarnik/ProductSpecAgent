@@ -4,7 +4,12 @@ import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-
 import { ReactPlugin, Presets as ReactPresets } from "rete-react-plugin";
 import { AutoArrangePlugin, Presets as ArrangePresets } from "rete-auto-arrange-plugin";
 import { createRoot } from "react-dom/client";
-import { FeatureRNode, FeatureNodeComponent } from "./FeatureNode";
+import {
+  FeatureRNode,
+  FeatureNodeComponent,
+  FeatureSocketComponent,
+  FeatureConnectionComponent,
+} from "./FeatureNode";
 import type { WizardFeature, WizardFeatureEdge, FeatureScope } from "@/lib/api";
 
 // NOTE on types: Rete's plugins expose `ClassicScheme` over `Classic.Node` + `Classic.Connection<Node, Node>`
@@ -57,6 +62,12 @@ export async function createFeaturesEditor(
         node() {
           return FeatureNodeComponent as unknown as React.ComponentType;
         },
+        socket() {
+          return FeatureSocketComponent as unknown as React.ComponentType;
+        },
+        connection() {
+          return FeatureConnectionComponent as unknown as React.ComponentType;
+        },
       },
     }),
   );
@@ -83,8 +94,17 @@ export async function createFeaturesEditor(
   let removeCb: ((edgeId: string) => void) | null = null;
 
   // ---- Event wiring ----
+  // `suppressPipeEvents` guards against feedback loops while `applyGraphOnce` is
+  // mirroring the store back into Rete. `editor.addConnection(...)` and
+  // `editor.removeConnection(...)` both emit pipe events that would otherwise
+  // re-enter `createCb`/`removeCb`, push a duplicate/phantom edge into the
+  // store, re-run the useEffect, and loop forever (as seen in the Firefox
+  // "Script terminated by timeout" stack).
+  let suppressPipeEvents = false;
+
   // Cycle prevention — intercept connection creation via editor pipe.
   editor.addPipe((ctx) => {
+    if (suppressPipeEvents) return ctx;
     if (ctx.type === "connectioncreate") {
       const data = ctx.data as { source: string; target: string };
       const fromNode = editor.getNode(data.source);
@@ -128,93 +148,112 @@ export async function createFeaturesEditor(
 
   // ---- applyGraph — incremental diff against the closure map ----
   async function applyGraphOnce(features: WizardFeature[], edges: WizardFeatureEdge[]) {
-    const desiredFeatures = new Map<string, WizardFeature>(features.map((f) => [f.id, f]));
-    const desiredEdges = new Map<string, WizardFeatureEdge>(edges.map((e) => [e.id, e]));
+    suppressPipeEvents = true;
+    try {
+      const desiredFeatures = new Map<string, WizardFeature>(features.map((f) => [f.id, f]));
+      const desiredEdges = new Map<string, WizardFeatureEdge>(edges.map((e) => [e.id, e]));
 
-    // 1. Remove nodes that are no longer desired. Catch errors — a concurrent
-    //    user-delete may have already removed them.
-    for (const [featureId, reteNodeId] of Array.from(nodeIdByFeatureId.entries())) {
-      if (!desiredFeatures.has(featureId)) {
-        try {
-          await editor.removeNode(reteNodeId);
-        } catch {
-          /* may already be gone */
+      // 1. Remove nodes that are no longer desired. Catch errors — a concurrent
+      //    user-delete may have already removed them.
+      for (const [featureId, reteNodeId] of Array.from(nodeIdByFeatureId.entries())) {
+        if (!desiredFeatures.has(featureId)) {
+          try {
+            await editor.removeNode(reteNodeId);
+          } catch {
+            /* may already be gone */
+          }
+          nodeIdByFeatureId.delete(featureId);
+          renderedFeatures.delete(featureId);
         }
-        nodeIdByFeatureId.delete(featureId);
-        renderedFeatures.delete(featureId);
       }
-    }
 
-    // 2. Add new nodes; update changed ones in place.
-    for (const f of features) {
-      const existingReteId = nodeIdByFeatureId.get(f.id);
-      if (!existingReteId) {
-        // NEW node
-        const node = new FeatureRNode(f.id, f.title, f.scopes);
-        node.addInput("in", new ClassicPreset.Input(socket, "depends on"));
-        node.addOutput("out", new ClassicPreset.Output(socket, "required by"));
-        await editor.addNode(node);
-        await area.translate(node.id, { x: f.position.x, y: f.position.y });
-        nodeIdByFeatureId.set(f.id, node.id);
+      // 2. Add new nodes; update changed ones in place.
+      for (const f of features) {
+        const existingReteId = nodeIdByFeatureId.get(f.id);
+        if (!existingReteId) {
+          // NEW node
+          const node = new FeatureRNode(f.id, f.title, f.scopes);
+          node.addInput("in", new ClassicPreset.Input(socket, "depends on"));
+          node.addOutput("out", new ClassicPreset.Output(socket, "required by"));
+          await editor.addNode(node);
+          await area.translate(node.id, { x: f.position.x, y: f.position.y });
+          nodeIdByFeatureId.set(f.id, node.id);
+          renderedFeatures.set(f.id, {
+            title: f.title,
+            scopesKey: scopesKey(f.scopes),
+            x: f.position.x,
+            y: f.position.y,
+          });
+          continue;
+        }
+        // UPDATE in place.
+        const rendered = renderedFeatures.get(f.id)!;
+        const newScopesKey = scopesKey(f.scopes);
+        const node = editor.getNode(existingReteId) as FeatureRNode | undefined;
+        if (node && (rendered.title !== f.title || rendered.scopesKey !== newScopesKey)) {
+          node.label = f.title;
+          node.scopes = f.scopes;
+          await area.update("node", existingReteId); // React re-renders the custom node
+        }
+        if (rendered.x !== f.position.x || rendered.y !== f.position.y) {
+          // programmatic translate — will NOT fire `nodedragged` (only `nodetranslated`, which we don't listen to)
+          await area.translate(existingReteId, { x: f.position.x, y: f.position.y });
+        }
         renderedFeatures.set(f.id, {
           title: f.title,
-          scopesKey: scopesKey(f.scopes),
+          scopesKey: newScopesKey,
           x: f.position.x,
           y: f.position.y,
         });
-        continue;
       }
-      // UPDATE in place.
-      const rendered = renderedFeatures.get(f.id)!;
-      const newScopesKey = scopesKey(f.scopes);
-      const node = editor.getNode(existingReteId) as FeatureRNode | undefined;
-      if (node && (rendered.title !== f.title || rendered.scopesKey !== newScopesKey)) {
-        node.label = f.title;
-        node.scopes = f.scopes;
-        await area.update("node", existingReteId); // React re-renders the custom node
-      }
-      if (rendered.x !== f.position.x || rendered.y !== f.position.y) {
-        // programmatic translate — will NOT fire `nodedragged` (only `nodetranslated`, which we don't listen to)
-        await area.translate(existingReteId, { x: f.position.x, y: f.position.y });
-      }
-      renderedFeatures.set(f.id, {
-        title: f.title,
-        scopesKey: newScopesKey,
-        x: f.position.x,
-        y: f.position.y,
-      });
-    }
 
-    // 3. Remove stale connections.
-    for (const [connId, edgeId] of Array.from(edgeIdByConnectionId.entries())) {
-      if (!desiredEdges.has(edgeId)) {
-        try {
-          await editor.removeConnection(connId);
-        } catch {
-          /* may already be gone */
+      // 3. Remove stale connections.
+      for (const [connId, edgeId] of Array.from(edgeIdByConnectionId.entries())) {
+        if (!desiredEdges.has(edgeId)) {
+          try {
+            await editor.removeConnection(connId);
+          } catch {
+            /* may already be gone */
+          }
+          edgeIdByConnectionId.delete(connId);
+          connectionIdByEdgeId.delete(edgeId);
         }
-        edgeIdByConnectionId.delete(connId);
-        connectionIdByEdgeId.delete(edgeId);
       }
-    }
-    // 4. Add new connections.
-    for (const e of edges) {
-      if (connectionIdByEdgeId.has(e.id)) continue;
-      const fromReteId = nodeIdByFeatureId.get(e.from);
-      const toReteId = nodeIdByFeatureId.get(e.to);
-      if (!fromReteId || !toReteId) continue;
-      const fromNode = editor.getNode(fromReteId) as FeatureRNode | undefined;
-      const toNode = editor.getNode(toReteId) as FeatureRNode | undefined;
-      if (!fromNode || !toNode) continue;
-      const conn = new ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>(
-        fromNode,
-        "out",
-        toNode,
-        "in",
-      );
-      await editor.addConnection(conn);
-      edgeIdByConnectionId.set(conn.id, e.id);
-      connectionIdByEdgeId.set(e.id, conn.id);
+      // 4. Add new connections.
+      for (const e of edges) {
+        if (connectionIdByEdgeId.has(e.id)) continue;
+        const fromReteId = nodeIdByFeatureId.get(e.from);
+        const toReteId = nodeIdByFeatureId.get(e.to);
+        if (!fromReteId || !toReteId) continue;
+
+        // If the user just drag-created this edge, Rete already has the
+        // Connection — the store was populated by createCb before our maps
+        // were updated. Reuse the existing Connection instead of adding a
+        // duplicate.
+        const existing = editor
+          .getConnections()
+          .find((c) => c.source === fromReteId && c.target === toReteId);
+        if (existing) {
+          edgeIdByConnectionId.set(existing.id, e.id);
+          connectionIdByEdgeId.set(e.id, existing.id);
+          continue;
+        }
+
+        const fromNode = editor.getNode(fromReteId) as FeatureRNode | undefined;
+        const toNode = editor.getNode(toReteId) as FeatureRNode | undefined;
+        if (!fromNode || !toNode) continue;
+        const conn = new ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>(
+          fromNode,
+          "out",
+          toNode,
+          "in",
+        );
+        await editor.addConnection(conn);
+        edgeIdByConnectionId.set(conn.id, e.id);
+        connectionIdByEdgeId.set(e.id, conn.id);
+      }
+    } finally {
+      suppressPipeEvents = false;
     }
   }
 

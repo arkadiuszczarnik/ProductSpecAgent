@@ -29,7 +29,7 @@ interface WizardState {
   setActiveStep: (step: string) => void;
   updateField: (step: string, field: string, value: any) => void;
   saveStep: (projectId: string, step: string) => Promise<void>;
-  completeStep: (projectId: string, step: string) => Promise<void>;
+  completeStep: (projectId: string, step: string) => Promise<{ exportTriggered: boolean } | null>;
   goNext: () => void;
   goPrev: () => void;
   reset: () => void;
@@ -147,7 +147,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
 
   completeStep: async (projectId, step) => {
     const { data, visibleSteps } = get();
-    if (!data) return;
+    if (!data) return null;
     const stepData = data.steps[step] ?? { fields: {}, completedAt: null };
     const completed = { ...stepData, completedAt: new Date().toISOString() };
 
@@ -158,7 +158,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
       set({ data: result, saving: false });
     } catch {
       set({ saving: false });
-      return;
+      return null;
     }
 
     // Format fields as readable chat message
@@ -235,13 +235,15 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         const systemMsg = {
           id: `wizard-export-${Date.now()}`,
           role: "system" as const,
-          content: "Export wurde gestartet. Das Projekt wird jetzt exportiert...",
+          content: "Spezifikation abgeschlossen. Du kannst das Projekt jetzt exportieren.",
           timestamp: Date.now(),
         };
         useProjectStore.setState((s) => ({
           messages: [...s.messages, systemMsg],
         }));
       }
+
+      return { exportTriggered: !!response.exportTriggered };
     } catch (err) {
       const errMsg = {
         id: `wizard-err-${Date.now()}`,
@@ -254,6 +256,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         chatSending: false,
       }));
       set({ chatPending: false });
+      return null;
     }
   },
 

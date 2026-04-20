@@ -65,6 +65,13 @@ export function FeaturesGraphEditor({ projectId }: Props) {
     maxWidth: 560,
   });
 
+  // Flag read by the post-apply effect below. We cannot call `autoLayout()`
+  // straight from the "+ Feature" click: at that moment the Rete node hasn't
+  // been rendered yet — `applyGraph` runs in the fingerprint effect on the
+  // next React commit. Setting a ref here defers the call until after the
+  // node actually exists in the editor.
+  const shouldAutoLayoutRef = useRef(false);
+
   const editorFactory = useCallback(
     async (container: HTMLElement) => {
       const ctx = await createFeaturesEditor(container);
@@ -76,6 +83,15 @@ export function FeaturesGraphEditor({ projectId }: Props) {
       ctx.onNodeMove((id, x, y) => moveFeature(id, { x, y }));
       ctx.onConnectionRemove((edgeId) => removeEdge(edgeId));
       ctxRef.current = ctx;
+
+      // Initial paint — the fingerprint effect below already ran during the
+      // render that mounted the editor (ctxRef was still null, so it no-op'd)
+      // and won't re-fire until the fingerprint actually changes. Without
+      // this call, pre-existing features stay invisible until the user edits
+      // the graph. Read the latest store snapshot to stay in sync with any
+      // mutations that landed while we were awaiting createFeaturesEditor.
+      const state = useWizardStore.getState();
+      await ctx.applyGraph(selectFeatures(state), selectEdges(state));
       return ctx as unknown as { destroy: () => void };
     },
     [addEdge, moveFeature, removeEdge],
@@ -99,7 +115,13 @@ export function FeaturesGraphEditor({ projectId }: Props) {
 
   useEffect(() => {
     if (!ctxRef.current) return;
-    ctxRef.current.applyGraph(features, edges);
+    const runAutoLayout = shouldAutoLayoutRef.current;
+    shouldAutoLayoutRef.current = false;
+    const ctx = ctxRef.current;
+    (async () => {
+      await ctx.applyGraph(features, edges);
+      if (runAutoLayout) await ctx.autoLayout();
+    })();
     // Depend on fingerprint only — features/edges identities are already
     // captured in it. The editor's coalescing queue (see editor.ts) serializes
     // concurrent calls safely.
@@ -128,6 +150,7 @@ export function FeaturesGraphEditor({ projectId }: Props) {
                 position: { x: 0, y: 0 },
               });
               setSelectedId(id);
+              shouldAutoLayoutRef.current = true;
             }}
           >
             <Plus size={14} /> Feature
