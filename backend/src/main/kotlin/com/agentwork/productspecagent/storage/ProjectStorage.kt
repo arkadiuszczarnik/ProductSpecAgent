@@ -92,6 +92,19 @@ class ProjectStorage(
         Files.writeString(file, content)
     }
 
+    /** Returns every file under `data/projects/{id}/docs/` as `(relativePath, content)` pairs. */
+    fun listDocsFiles(projectId: String): List<Pair<String, String>> {
+        val docs = projectDir(projectId).resolve("docs")
+        if (!Files.exists(docs)) return emptyList()
+        val projectRoot = projectDir(projectId)
+        return Files.walk(docs).use { stream ->
+            stream.filter { Files.isRegularFile(it) }.toList()
+        }.map { file ->
+            val rel = projectRoot.relativize(file).toString().replace('\\', '/')
+            rel to Files.readString(file)
+        }
+    }
+
     fun saveWizardData(projectId: String, data: WizardData) {
         val dir = projectDir(projectId)
         Files.createDirectories(dir)

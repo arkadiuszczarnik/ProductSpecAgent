@@ -31,6 +31,11 @@ class ExportService(
             // .gitignore
             zip.addEntry("$prefix/.gitignore", ".DS_Store\nnode_modules/\n.env\n")
 
+            // Docs scaffold — always included (docs/features, docs/architecture, docs/backend, docs/frontend)
+            for ((relativePath, content) in projectService.listDocsFiles(projectId)) {
+                zip.addEntry("$prefix/$relativePath", content)
+            }
+
             // Decisions
             if (request.includeDecisions) {
                 val decisions = decisionService.listDecisions(projectId)

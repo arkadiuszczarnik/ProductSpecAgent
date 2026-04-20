@@ -123,9 +123,12 @@ open class IdeaToSpecAgent(
 
         val wizardCategory = wizardData.steps["IDEA"]?.fields?.get("category")
             ?.let { runCatching { (it as? JsonPrimitive)?.content }.getOrNull() }
-        val prompt = buildWizardStepFeedbackPrompt(step, fields, wizardCategory)
 
         val currentStepType = try { FlowStepType.valueOf(step) } catch (_: Exception) { null }
+        val isLastStep = currentStepType != null && stepOrder.indexOf(currentStepType) == stepOrder.size - 1
+
+        val prompt = buildWizardStepFeedbackPrompt(step, fields, wizardCategory, isLastStep)
+
         val stepPrompt = if (currentStepType != null) buildStepPrompt(currentStepType) else ""
         val localeInstruction = buildLocaleInstruction(locale)
         val systemPromptWithContext = "$baseSystemPrompt\n\n$stepPrompt\n\n$localeInstruction\n\n$wizardContext"
@@ -137,18 +140,23 @@ open class IdeaToSpecAgent(
         val clarificationQuestion = clarification?.first
         val clarificationReason = clarification?.second
 
-        logger.info("processWizardStep({}) markers – decision={}, clarification={}", step, decisionTitle, clarificationQuestion)
+        logger.info(
+            "processWizardStep({}) markers – decision={}, clarification={}, isLastStep={}",
+            step, decisionTitle, clarificationQuestion, isLastStep
+        )
 
         val cleanMessage = cleanMarkers(rawResponse)
 
+        // On the final step the wizard is ending — discard any agent-emitted blocker markers
+        // to prevent the infinite "Abschliessen"-loop where each click produces a fresh clarification.
         var createdDecisionId: String? = null
-        if (decisionTitle != null && currentStepType != null) {
+        if (!isLastStep && decisionTitle != null && currentStepType != null) {
             val decision = decisionService.createDecision(projectId, decisionTitle, currentStepType)
             createdDecisionId = decision.id
         }
 
         var createdClarificationId: String? = null
-        if (clarificationQuestion != null && clarificationReason != null && currentStepType != null) {
+        if (!isLastStep && clarificationQuestion != null && clarificationReason != null && currentStepType != null) {
             val clarification = clarificationService.createClarification(
                 projectId, clarificationQuestion, clarificationReason, currentStepType
             )
@@ -164,9 +172,7 @@ open class IdeaToSpecAgent(
             }
         }
 
-        // Determine next step
-        val isLastStep = currentStepType != null && stepOrder.indexOf(currentStepType) == stepOrder.size - 1
-
+        // Determine next step (isLastStep already computed above)
         val nextStepType = if (currentStepType != null && !isLastStep) {
             val idx = stepOrder.indexOf(currentStepType)
             if (idx + 1 < stepOrder.size) stepOrder[idx + 1] else null
@@ -230,8 +236,23 @@ open class IdeaToSpecAgent(
         step: String,
         fields: Map<String, Any>,
         category: String? = null,
+        isLastStep: Boolean = false,
     ): String {
         val fieldsDescription = fields.entries.joinToString("\n") { "- ${it.key}: ${it.value}" }
+
+        // Finalization prompt on the last step — no marker reminder, agent should just close out.
+        if (isLastStep) {
+            return buildString {
+                appendLine("The user just completed the FINAL wizard step: $step")
+                appendLine("Their input for this step:")
+                appendLine(fieldsDescription)
+                appendLine()
+                appendLine("This is the last step of the wizard. The specification is now complete.")
+                appendLine("Provide a short, positive closing message (2-3 sentences) acknowledging the user's input.")
+                appendLine("Do NOT ask for clarifications. Do NOT propose decisions. Do NOT emit any markers.")
+            }
+        }
+
         return when (step) {
             "FEATURES" -> buildString {
                 appendLine("The user just completed the FEATURES wizard step.")

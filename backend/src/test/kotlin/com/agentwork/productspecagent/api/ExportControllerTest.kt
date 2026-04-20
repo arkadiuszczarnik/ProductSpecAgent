@@ -64,4 +64,43 @@ class ExportControllerTest {
             .andExpect(status().isOk())
     }
 
+    @Test
+    fun `POST export ZIP includes docs scaffold directory`() {
+        val pid = createProject()
+
+        val result = mockMvc.perform(
+            post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
+                .content("""{"includeDecisions":true,"includeClarifications":true,"includeTasks":true}""")
+        )
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val entries = mutableListOf<String>()
+        ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                entries.add(entry.name)
+                entry = zis.nextEntry
+            }
+        }
+
+        // Docs scaffold is always included, created on project creation
+        assertTrue(
+            entries.any { it.endsWith("docs/features/00-feature-set-overview.md") },
+            "ZIP should contain docs/features/00-feature-set-overview.md, got: $entries"
+        )
+        assertTrue(
+            entries.any { it.endsWith("docs/architecture/overview.md") },
+            "ZIP should contain docs/architecture/overview.md, got: $entries"
+        )
+        assertTrue(
+            entries.any { it.endsWith("docs/backend/api.md") },
+            "ZIP should contain docs/backend/api.md, got: $entries"
+        )
+        assertTrue(
+            entries.any { it.endsWith("docs/frontend/design.md") },
+            "ZIP should contain docs/frontend/design.md, got: $entries"
+        )
+    }
+
 }
