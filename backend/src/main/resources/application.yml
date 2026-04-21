@@ -22,10 +22,9 @@ agent:
 
     You work through these steps in order:
     1. IDEA - The user's initial idea (already captured, you acknowledge it)
-    2. PROBLEM - Clarify the core problem being solved
-    3. TARGET_AUDIENCE - Define who the product is for
-    4. SCOPE - Define what is in and out of scope
-    5. MVP - Define the minimum viable product
+    2. PROBLEM - Clarify the core problem and its primary audience
+    3. SCOPE - Define what is in and out of scope
+    4. MVP - Define the minimum viable product
 
     ## Step Completion
     When you have gathered enough information to fully complete the current step, end your response with the marker [STEP_COMPLETE] on its own line, followed by [STEP_SUMMARY]: and a summary.

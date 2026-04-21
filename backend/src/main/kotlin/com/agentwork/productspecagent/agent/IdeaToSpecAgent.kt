@@ -282,7 +282,7 @@ open class IdeaToSpecAgent(
                 appendLine("The user just completed the IDEA wizard step with the following input:")
                 appendLine(fieldsDescription)
                 appendLine()
-                appendLine("IMPORTANT: This is the IDEA step. Focus ONLY on the idea itself. Do NOT discuss problem statement, target audience, value proposition, or technical details – these are handled in later steps (PROBLEM, TARGET_AUDIENCE, SCOPE, etc.).")
+                appendLine("IMPORTANT: This is the IDEA step. Focus ONLY on the idea itself. Do NOT discuss problem statement, target audience, value proposition, or technical details – these are handled in later steps (PROBLEM, SCOPE, etc.).")
                 appendLine()
                 appendLine("Analyze ONLY the idea:")
                 appendLine("1. Is the product idea clearly described? Can you understand what the product is supposed to DO?")
@@ -299,27 +299,15 @@ open class IdeaToSpecAgent(
                 appendLine("The user just completed the PROBLEM wizard step with the following input:")
                 appendLine(fieldsDescription)
                 appendLine()
-                appendLine("Analyze the problem definition:")
+                appendLine("This step now covers BOTH the core problem AND the primary target audience + their pain points.")
+                appendLine("Analyze the combined problem-and-audience definition:")
                 appendLine("1. Is the core problem clearly defined and specific enough?")
-                appendLine("2. Are the current solutions and their shortcomings well understood?")
-                appendLine("3. Are the pain points concrete and measurable?")
+                appendLine("2. Is the primary audience concrete (not 'everyone' or 'users')?")
+                appendLine("3. Are the pain points tied to the stated audience and problem?")
                 appendLine()
+                appendLine("The generated problem.md spec should document problem, audience, and pain points together in one coherent section.")
+                appendLine("If the audience is too broad or a strategic choice is needed (e.g., B2B vs B2C), use [DECISION_NEEDED].")
                 appendLine("If there are contradictions or missing aspects, use [CLARIFICATION_NEEDED].")
-                appendLine("Be encouraging and constructive.")
-                appendLine()
-                appendLine(MARKER_REMINDER)
-            }
-            "TARGET_AUDIENCE" -> buildString {
-                appendLine("The user just completed the TARGET_AUDIENCE wizard step with the following input:")
-                appendLine(fieldsDescription)
-                appendLine()
-                appendLine("Analyze the target audience definition:")
-                appendLine("1. Is the primary audience clearly defined?")
-                appendLine("2. Are user needs specific and actionable?")
-                appendLine("3. Is there a potential conflict between primary and secondary audiences?")
-                appendLine()
-                appendLine("If the audience is too broad or there is a strategic choice to make (e.g., B2B vs B2C), use [DECISION_NEEDED].")
-                appendLine("If important details are missing, use [CLARIFICATION_NEEDED].")
                 appendLine("Be encouraging and constructive.")
                 appendLine()
                 appendLine(MARKER_REMINDER)
@@ -466,7 +454,7 @@ Du bist ein erfahrener Produktberater. In diesem Schritt geht es NUR darum, die 
 
 WICHTIG – ABGRENZUNG:
 - Sprich NICHT über Problemstellung, Zielgruppe, Nutzerwert, Pricing oder technische Details.
-- Diese Themen werden in späteren Schritten behandelt (PROBLEM, TARGET_AUDIENCE, SCOPE, MVP, etc.).
+- Diese Themen werden in späteren Schritten behandelt (PROBLEM, SCOPE, MVP, etc.).
 - Auch wenn die Idee vage ist: bleibe beim Thema "Was ist das Produkt? Was soll es tun?"
 
 ## Dein Vorgehen:

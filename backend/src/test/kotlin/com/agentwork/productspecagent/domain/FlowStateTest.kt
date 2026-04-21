@@ -8,7 +8,7 @@ class FlowStateTest {
     @Test
     fun `createInitialFlowState creates all 9 steps`() {
         val flowState = createInitialFlowState("test-project-id")
-        assertEquals(9, flowState.steps.size)
+        assertEquals(8, flowState.steps.size)
     }
 
     @Test
@@ -42,7 +42,7 @@ class FlowStateTest {
     fun `createInitialFlowState steps are in correct order`() {
         val flowState = createInitialFlowState("test-project-id")
         val expectedOrder = listOf(
-            FlowStepType.IDEA, FlowStepType.PROBLEM, FlowStepType.TARGET_AUDIENCE,
+            FlowStepType.IDEA, FlowStepType.PROBLEM,
             FlowStepType.SCOPE, FlowStepType.MVP,
             FlowStepType.FEATURES, FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND
         )

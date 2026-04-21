@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import java.time.Instant
 
 enum class FlowStepType {
-    IDEA, PROBLEM, TARGET_AUDIENCE, SCOPE, MVP,
+    IDEA, PROBLEM, SCOPE, MVP,
     FEATURES, ARCHITECTURE, BACKEND, FRONTEND
 }
 
