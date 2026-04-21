@@ -26,7 +26,7 @@ class ProjectServiceTest {
     }
 
     @Test
-    fun `createProject saves project, flowState, and idea file`() {
+    fun `createProject saves project and flowState`() {
         val response = service.createProject("My Project")
 
         assertEquals("My Project", response.project.name)

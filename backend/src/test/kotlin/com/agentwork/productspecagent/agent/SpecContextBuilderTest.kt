@@ -37,7 +37,6 @@ class SpecContextBuilderTest {
     @Test
     fun `buildContext includes completed step content`() {
         val project = projectService.createProject("My App")
-        // The idea.md is already saved by createProject
 
         val context = builder.buildContext(project.project.id)
         // IDEA step is IN_PROGRESS, not COMPLETED, so it won't be in completed steps
