@@ -36,11 +36,10 @@ export async function seedSaaSProjectToFeatures(
   // Seed IDEA..MVP via PUT /wizard/{step} — save only, no LLM trigger.
   // WizardStepData shape: { fields: Map<String, JsonElement>, completedAt?: String }
   const steps: Array<[string, Record<string, unknown>]> = [
-    ["IDEA",            { idea: "E2E smoke-test project", category: "SaaS" }],
-    ["PROBLEM",         { problem: "Validate graph editor end-to-end" }],
-    ["TARGET_AUDIENCE", { audience: "Developers" }],
-    ["SCOPE",           { scope: "Smoke only" }],
-    ["MVP",             { mvp: "Add/rename/connect nodes + persist" }],
+    ["IDEA",    { idea: "E2E smoke-test project", category: "SaaS" }],
+    ["PROBLEM", { coreProblem: "Validate graph editor end-to-end", primaryAudience: "Developers" }],
+    ["SCOPE",   { scope: "Smoke only" }],
+    ["MVP",     { mvp: "Add/rename/connect nodes + persist" }],
   ];
 
   for (const [step, fields] of steps) {
