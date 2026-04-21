@@ -80,7 +80,6 @@ export interface ProjectResponse {
 
 export interface CreateProjectRequest {
   name: string;
-  idea: string;
 }
 
 export interface ChatRequest {
