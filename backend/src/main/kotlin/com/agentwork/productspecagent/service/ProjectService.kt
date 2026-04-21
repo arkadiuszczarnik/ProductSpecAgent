@@ -50,8 +50,6 @@ class ProjectService(
         )
         storage.saveWizardData(project.id, initialWizard)
 
-        storage.saveSpecStep(project.id, "idea.md", "# Idea\n\n")
-
         // Generate initial docs scaffold
         generateDocsScaffold(project.id, name)
 

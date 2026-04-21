@@ -32,12 +32,12 @@ class FileControllerTest {
     }
 
     @Test
-    fun `GET files includes spec directory`() {
+    fun `GET files includes docs directory`() {
         val pid = createProject()
         mockMvc.perform(get("/api/v1/projects/$pid/files"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[?(@.name == 'spec')]").exists())
-            .andExpect(jsonPath("$[?(@.name == 'spec')].isDirectory").value(true))
+            .andExpect(jsonPath("$[?(@.name == 'docs')]").exists())
+            .andExpect(jsonPath("$[?(@.name == 'docs')].isDirectory").value(true))
     }
 
     @Test
@@ -54,7 +54,7 @@ class FileControllerTest {
     @Test
     fun `GET file content for spec file`() {
         val pid = createProject()
-        mockMvc.perform(get("/api/v1/projects/$pid/files/spec/idea.md"))
+        mockMvc.perform(get("/api/v1/projects/$pid/files/docs/features/00-feature-set-overview.md"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.language").value("markdown"))
             .andExpect(jsonPath("$.content").isNotEmpty())

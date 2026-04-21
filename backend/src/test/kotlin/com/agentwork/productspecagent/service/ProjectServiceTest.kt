@@ -112,4 +112,10 @@ class ProjectServiceTest {
             wizard.steps["IDEA"]?.fields?.get("productName")
         )
     }
+
+    @Test
+    fun `createProject does not create spec idea md`() {
+        val response = service.createProject("TaskFlow Pro")
+        assertNull(service.readSpecFile(response.project.id, "idea.md"))
+    }
 }
