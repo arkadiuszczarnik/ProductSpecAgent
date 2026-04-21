@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 class FlowStateTest {
 
     @Test
-    fun `createInitialFlowState creates all 9 steps`() {
+    fun `createInitialFlowState creates all 8 steps`() {
         val flowState = createInitialFlowState("test-project-id")
         assertEquals(8, flowState.steps.size)
     }
