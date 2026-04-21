@@ -8,13 +8,8 @@ export const STEP_FIELD_LABELS: Record<string, Record<string, string>> = {
   },
   PROBLEM: {
     coreProblem: "Kernproblem",
-    affected: "Wer ist betroffen?",
-    workarounds: "Aktuelle Workarounds",
-  },
-  TARGET_AUDIENCE: {
-    primaryAudience: "Primaere Zielgruppe",
+    primaryAudience: "Primäre Zielgruppe",
     painPoints: "Pain Points",
-    secondaryAudience: "Sekundaere Zielgruppe",
   },
   SCOPE: {
     inScope: "In Scope",
@@ -68,7 +63,7 @@ export const SCOPE_FIELDS_BY_SCOPE: Record<FeatureScope | "CORE", string[]> = {
 export function formatStepFields(step: string, fields: Record<string, any>): string {
   const labels = STEP_FIELD_LABELS[step] ?? {};
   const stepLabel: Record<string, string> = {
-    IDEA: "Idee", PROBLEM: "Problem", TARGET_AUDIENCE: "Zielgruppe",
+    IDEA: "Idee", PROBLEM: "Problem & Zielgruppe",
     SCOPE: "Scope", MVP: "MVP", FEATURES: "Features",
     ARCHITECTURE: "Architektur", BACKEND: "Backend", FRONTEND: "Frontend",
   };

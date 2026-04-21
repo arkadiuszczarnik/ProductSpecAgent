@@ -25,7 +25,6 @@ type AreaExtra = any;
 const STEPS: { type: StepType; label: string }[] = [
   { type: "IDEA", label: "Idee" },
   { type: "PROBLEM", label: "Problem" },
-  { type: "TARGET_AUDIENCE", label: "Zielgruppe" },
   { type: "SCOPE", label: "Scope" },
   { type: "MVP", label: "MVP" },
 ];

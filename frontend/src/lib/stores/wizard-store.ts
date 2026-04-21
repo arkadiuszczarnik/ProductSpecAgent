@@ -8,8 +8,7 @@ import { getVisibleSteps } from "@/lib/category-step-config";
 
 export const WIZARD_STEPS = [
   { key: "IDEA", label: "Idee" },
-  { key: "PROBLEM", label: "Problem" },
-  { key: "TARGET_AUDIENCE", label: "Zielgruppe" },
+  { key: "PROBLEM", label: "Problem & Zielgruppe" },
   { key: "SCOPE", label: "Scope" },
   { key: "MVP", label: "MVP" },
   { key: "FEATURES", label: "Features" },
