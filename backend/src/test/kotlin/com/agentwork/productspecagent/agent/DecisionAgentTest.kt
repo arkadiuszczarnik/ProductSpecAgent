@@ -31,7 +31,7 @@ class DecisionAgentTest {
 
     @Test
     fun `generateDecision parses valid JSON response`() = runBlocking {
-        val project = projectService.createProject("Test", "An idea")
+        val project = projectService.createProject("Test")
         val agent = createFakeAgent("""
             {"options":[
                 {"label":"Include in MVP","pros":["Users need it"],"cons":["More time"],"recommended":true},
@@ -52,7 +52,7 @@ class DecisionAgentTest {
 
     @Test
     fun `generateDecision handles malformed JSON gracefully`() = runBlocking {
-        val project = projectService.createProject("Test", "An idea")
+        val project = projectService.createProject("Test")
         val agent = createFakeAgent("This is not JSON at all")
 
         val decision = agent.generateDecision(project.project.id, "Fallback test", FlowStepType.MVP)

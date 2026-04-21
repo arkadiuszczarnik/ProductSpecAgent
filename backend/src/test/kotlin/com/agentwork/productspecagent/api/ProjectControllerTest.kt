@@ -21,7 +21,7 @@ class ProjectControllerTest {
         mockMvc.perform(
             post("/api/v1/projects")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name": "Test Project", "idea": "A great idea"}""")
+                .content("""{"name": "Test Project"}""")
         )
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.project.name").value("Test Project"))
@@ -36,7 +36,7 @@ class ProjectControllerTest {
         mockMvc.perform(
             post("/api/v1/projects")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name": "List Test", "idea": "Idea"}""")
+                .content("""{"name": "List Test"}""")
         )
 
         mockMvc.perform(get("/api/v1/projects"))
@@ -58,7 +58,7 @@ class ProjectControllerTest {
         val createResult = mockMvc.perform(
             post("/api/v1/projects")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name": "CRUD Test", "idea": "Test idea"}""")
+                .content("""{"name": "CRUD Test"}""")
         )
             .andExpect(status().isCreated())
             .andReturn()

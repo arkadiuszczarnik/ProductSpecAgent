@@ -21,7 +21,7 @@ class ProjectService(
     @Lazy private val scaffoldContextBuilder: ScaffoldContextBuilder? = null
 ) {
 
-    fun createProject(name: String, idea: String): ProjectResponse {
+    fun createProject(name: String): ProjectResponse {
         val now = Instant.now().toString()
         val project = Project(
             id = UUID.randomUUID().toString(),
@@ -35,7 +35,7 @@ class ProjectService(
 
         storage.saveProject(project)
         storage.saveFlowState(flowState)
-        storage.saveSpecStep(project.id, "idea.md", "# Idea\n\n$idea")
+        storage.saveSpecStep(project.id, "idea.md", "# Idea\n\n")
 
         // Generate initial docs scaffold
         generateDocsScaffold(project.id, name)

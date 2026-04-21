@@ -27,7 +27,7 @@ class SpecContextBuilderTest {
 
     @Test
     fun `buildContext includes project name and current step`() {
-        val project = projectService.createProject("My App", "A great app idea")
+        val project = projectService.createProject("My App")
         val context = builder.buildContext(project.project.id)
 
         assertContains(context, "My App")
@@ -36,7 +36,7 @@ class SpecContextBuilderTest {
 
     @Test
     fun `buildContext includes completed step content`() {
-        val project = projectService.createProject("My App", "A great idea")
+        val project = projectService.createProject("My App")
         // The idea.md is already saved by createProject
 
         val context = builder.buildContext(project.project.id)

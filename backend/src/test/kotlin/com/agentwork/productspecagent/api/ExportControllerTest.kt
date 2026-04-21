@@ -21,7 +21,7 @@ class ExportControllerTest {
     private fun createProject(): String {
         val result = mockMvc.perform(
             post("/api/v1/projects").contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Export Test","idea":"An idea for export"}""")
+                .content("""{"name":"Export Test"}""")
         ).andExpect(status().isCreated()).andReturn()
         return """"id"\s*:\s*"([^"]+)"""".toRegex().find(result.response.contentAsString)!!.groupValues[1]
     }

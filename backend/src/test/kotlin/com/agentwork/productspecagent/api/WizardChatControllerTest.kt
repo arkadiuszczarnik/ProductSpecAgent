@@ -47,7 +47,7 @@ class WizardChatControllerTest {
         val result = mockMvc.perform(
             post("/api/v1/projects")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name": "$name", "idea": "A great idea"}""")
+                .content("""{"name": "$name"}""")
         ).andExpect(status().isCreated()).andReturn()
 
         val body = result.response.contentAsString

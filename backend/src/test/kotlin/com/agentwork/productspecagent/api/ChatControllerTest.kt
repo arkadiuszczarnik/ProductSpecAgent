@@ -56,7 +56,7 @@ class ChatControllerTest {
         val createResult = mockMvc.perform(
             post("/api/v1/projects")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name": "Chat Test", "idea": "A great idea"}""")
+                .content("""{"name": "Chat Test"}""")
         )
             .andExpect(status().isCreated())
             .andReturn()
@@ -82,7 +82,7 @@ class ChatControllerTest {
         val createResult = mockMvc.perform(
             post("/api/v1/projects")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name": "Flow Test", "idea": "Another idea"}""")
+                .content("""{"name": "Flow Test"}""")
         )
             .andExpect(status().isCreated())
             .andReturn()
@@ -106,7 +106,7 @@ class ChatControllerTest {
         val createResult = mockMvc.perform(
             post("/api/v1/projects")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name": "Blank Test", "idea": "Idea"}""")
+                .content("""{"name": "Blank Test"}""")
         )
             .andExpect(status().isCreated())
             .andReturn()

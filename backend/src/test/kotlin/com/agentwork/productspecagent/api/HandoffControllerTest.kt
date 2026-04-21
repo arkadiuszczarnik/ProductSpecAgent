@@ -21,7 +21,7 @@ class HandoffControllerTest {
     private fun createProject(): String {
         val result = mockMvc.perform(
             post("/api/v1/projects").contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Handoff Test","idea":"An idea for handoff testing"}""")
+                .content("""{"name":"Handoff Test"}""")
         ).andExpect(status().isCreated()).andReturn()
         return """"id"\s*:\s*"([^"]+)"""".toRegex().find(result.response.contentAsString)!!.groupValues[1]
     }

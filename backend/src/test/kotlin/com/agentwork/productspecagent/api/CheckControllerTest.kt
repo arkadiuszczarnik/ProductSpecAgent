@@ -18,7 +18,7 @@ class CheckControllerTest {
     private fun createProject(): String {
         val result = mockMvc.perform(
             post("/api/v1/projects").contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Check Test","idea":"An idea"}""")
+                .content("""{"name":"Check Test"}""")
         ).andExpect(status().isCreated()).andReturn()
         return """"id"\s*:\s*"([^"]+)"""".toRegex().find(result.response.contentAsString)!!.groupValues[1]
     }

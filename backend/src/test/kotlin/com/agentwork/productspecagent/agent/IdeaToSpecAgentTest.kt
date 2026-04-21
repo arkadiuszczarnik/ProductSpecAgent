@@ -115,7 +115,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat returns plain message when no STEP_COMPLETE marker`() = runBlocking {
-        val project = projectService.createProject("Test", "My idea")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent("What problem are you solving?")
 
         val response = agent.chat(project.project.id, "Hello")
@@ -127,7 +127,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat advances flow when STEP_COMPLETE marker present`() = runBlocking {
-        val project = projectService.createProject("Test", "My idea")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent(
             "Great idea!\n[STEP_COMPLETE]\n[STEP_SUMMARY]: The idea is about productivity tracking."
         )
@@ -155,7 +155,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat does not advance beyond FRONTEND step`() = runBlocking {
-        val project = projectService.createProject("Test", "Idea")
+        val project = projectService.createProject("Test")
         // Manually advance to FRONTEND step (the last step)
         val flowState = projectService.getFlowState(project.project.id)
         val allCompleted = flowState.steps.map { step ->
@@ -175,7 +175,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat strips markers from message`() = runBlocking {
-        val project = projectService.createProject("Test", "Idea")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent("Summary done.\n[STEP_COMPLETE]\n[STEP_SUMMARY]: The summary.")
 
         val response = agent.chat(project.project.id, "Summarize")
@@ -187,7 +187,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat creates decision when DECISION_NEEDED marker present`() = runBlocking {
-        val project = projectService.createProject("Test", "My idea")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent(
             "I think we need to decide on the scope.\n[DECISION_NEEDED]: Should feature X be in MVP?"
         )
@@ -205,7 +205,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `chat creates clarification when CLARIFICATION_NEEDED marker present`() = runBlocking {
-        val project = projectService.createProject("Test", "My idea")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent(
             "I noticed a gap.\n[CLARIFICATION_NEEDED]: How should offline users sync? | The spec mentions both online-first and offline support"
         )
@@ -223,7 +223,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `FEATURES step passes graph block to agent prompt`() = runBlocking {
-        val project = projectService.createProject("Test", "Graph feature test")
+        val project = projectService.createProject("Test")
         val captured = mutableListOf<String>()
         val agent = createCapturingAgent(agentResponse = "OK.", capturedUserPrompts = captured)
 
@@ -255,7 +255,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `processWizardStep on FRONTEND ignores CLARIFICATION_NEEDED marker`() = runBlocking {
-        val project = projectService.createProject("Test", "Finalize test")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent(
             "Alles sieht gut aus!\n[CLARIFICATION_NEEDED]: Welches Theme? | Theme ist unklar"
         )
@@ -275,7 +275,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `processWizardStep on FRONTEND ignores DECISION_NEEDED marker`() = runBlocking {
-        val project = projectService.createProject("Test", "Finalize test")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent(
             "Looks great!\n[DECISION_NEEDED]: Light vs. dark?"
         )
@@ -294,7 +294,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `processWizardStep on FRONTEND does not include MARKER_REMINDER in prompt`() = runBlocking {
-        val project = projectService.createProject("Test", "Prompt test")
+        val project = projectService.createProject("Test")
         val captured = mutableListOf<String>()
         val agent = createCapturingAgent(agentResponse = "Done.", capturedUserPrompts = captured)
 
@@ -315,7 +315,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `processWizardStep on non-last step still creates clarification from marker`() = runBlocking {
-        val project = projectService.createProject("Test", "Non-last test")
+        val project = projectService.createProject("Test")
         val agent = createTestAgent(
             "Gut!\n[CLARIFICATION_NEEDED]: Wer ist die Zielgruppe? | Grundlage fuer alles weitere"
         )
@@ -334,7 +334,7 @@ class IdeaToSpecAgentTest {
 
     @Test
     fun `FEATURES step calls replaceWizardFeatureTasks with parsed input`() = runBlocking {
-        val project = projectService.createProject("Test", "Task replacement test")
+        val project = projectService.createProject("Test")
         val fakePlanAgentForSpy = object : PlanGeneratorAgent(contextBuilder) {
             override suspend fun generatePlanForFeature(
                 projectId: String,

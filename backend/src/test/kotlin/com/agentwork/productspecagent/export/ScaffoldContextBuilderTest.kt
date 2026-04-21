@@ -57,7 +57,7 @@ class ScaffoldContextBuilderTest {
 
         builder = ScaffoldContextBuilder(projectService, taskService, decisionService)
 
-        val resp = projectService.createProject("Test Project", "An idea")
+        val resp = projectService.createProject("Test Project")
         projectId = resp.project.id
     }
 

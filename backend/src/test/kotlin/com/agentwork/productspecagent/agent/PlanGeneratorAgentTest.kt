@@ -21,7 +21,7 @@ class PlanGeneratorAgentTest {
         val storage = ProjectStorage(tempDir.toString())
         val projectService = ProjectService(storage)
         contextBuilder = SpecContextBuilder(projectService)
-        val response = projectService.createProject("Test", "An idea")
+        val response = projectService.createProject("Test")
         projectId = response.project.id
     }
 

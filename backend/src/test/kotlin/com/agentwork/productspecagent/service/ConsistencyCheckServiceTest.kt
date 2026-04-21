@@ -47,7 +47,7 @@ class ConsistencyCheckServiceTest {
 
     @Test
     fun `clean project returns passed report`() {
-        val project = projectService.createProject("Clean", "A clean project")
+        val project = projectService.createProject("Clean")
         val report = checkService.runChecks(project.project.id)
 
         assertTrue(report.summary.passed)
@@ -56,7 +56,7 @@ class ConsistencyCheckServiceTest {
 
     @Test
     fun `detects unresolved decisions`() {
-        val project = projectService.createProject("Test", "Idea")
+        val project = projectService.createProject("Test")
         val pid = project.project.id
 
         // Create a pending decision directly via storage
@@ -73,7 +73,7 @@ class ConsistencyCheckServiceTest {
 
     @Test
     fun `detects open clarifications`() {
-        val project = projectService.createProject("Test", "Idea")
+        val project = projectService.createProject("Test")
         val pid = project.project.id
 
         val clarification = Clarification(
@@ -89,7 +89,7 @@ class ConsistencyCheckServiceTest {
 
     @Test
     fun `detects coverage gaps`() {
-        val project = projectService.createProject("Test", "Idea")
+        val project = projectService.createProject("Test")
         val report = checkService.runChecks(project.project.id)
 
         // No tasks at all → all steps uncovered
@@ -98,7 +98,7 @@ class ConsistencyCheckServiceTest {
 
     @Test
     fun `summary counts are correct`() {
-        val project = projectService.createProject("Test", "Idea")
+        val project = projectService.createProject("Test")
         val report = checkService.runChecks(project.project.id)
 
         assertEquals(

@@ -15,7 +15,7 @@ class ProjectController(private val projectService: ProjectService) {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun createProject(@RequestBody request: CreateProjectRequest): ProjectResponse {
-        return projectService.createProject(request.name, request.idea)
+        return projectService.createProject(request.name)
     }
 
     @GetMapping

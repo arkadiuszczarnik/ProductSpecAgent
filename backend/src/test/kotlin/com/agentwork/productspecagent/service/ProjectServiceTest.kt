@@ -24,7 +24,7 @@ class ProjectServiceTest {
 
     @Test
     fun `createProject saves project, flowState, and idea file`() {
-        val response = service.createProject("My Project", "A great idea")
+        val response = service.createProject("My Project")
 
         assertEquals("My Project", response.project.name)
         assertEquals(ProjectStatus.DRAFT, response.project.status)
@@ -39,7 +39,7 @@ class ProjectServiceTest {
 
     @Test
     fun `getProject returns project and flowState`() {
-        val created = service.createProject("Test", "Idea")
+        val created = service.createProject("Test")
         val response = service.getProject(created.project.id)
 
         assertEquals(created.project.id, response.project.id)
@@ -55,7 +55,7 @@ class ProjectServiceTest {
 
     @Test
     fun `deleteProject removes project`() {
-        val created = service.createProject("Delete Me", "Idea")
+        val created = service.createProject("Delete Me")
         service.deleteProject(created.project.id)
 
         assertThrows(ProjectNotFoundException::class.java) {
@@ -72,8 +72,8 @@ class ProjectServiceTest {
 
     @Test
     fun `listProjects returns all projects`() {
-        service.createProject("P1", "Idea 1")
-        service.createProject("P2", "Idea 2")
+        service.createProject("P1")
+        service.createProject("P2")
 
         val result = service.listProjects()
         assertEquals(2, result.size)
@@ -86,7 +86,7 @@ class ProjectServiceTest {
 
     @Test
     fun `getFlowState returns flowState for existing project`() {
-        val created = service.createProject("Flow", "Idea")
+        val created = service.createProject("Flow")
         val result = service.getFlowState(created.project.id)
 
         assertEquals(created.project.id, result.projectId)

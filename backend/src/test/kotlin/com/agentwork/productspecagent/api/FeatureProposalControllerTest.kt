@@ -68,7 +68,7 @@ class FeatureProposalControllerTest {
         val result = mockMvc.perform(
             post("/api/v1/projects")
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                .content("""{"name": "$name", "idea": "An idea"}""")
+                .content("""{"name": "$name"}""")
         ).andExpect(status().isCreated()).andReturn()
 
         return """"id"\s*:\s*"([^"]+)"""".toRegex()

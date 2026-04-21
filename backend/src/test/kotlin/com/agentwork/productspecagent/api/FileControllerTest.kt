@@ -18,7 +18,7 @@ class FileControllerTest {
     private fun createProject(): String {
         val result = mockMvc.perform(
             post("/api/v1/projects").contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"File Test","idea":"An idea"}""")
+                .content("""{"name":"File Test"}""")
         ).andExpect(status().isCreated()).andReturn()
         return """"id"\s*:\s*"([^"]+)"""".toRegex().find(result.response.contentAsString)!!.groupValues[1]
     }

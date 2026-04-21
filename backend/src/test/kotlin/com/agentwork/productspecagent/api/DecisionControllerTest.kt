@@ -37,7 +37,7 @@ class DecisionControllerTest {
         val result = mockMvc.perform(
             post("/api/v1/projects")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Decision Test","idea":"An idea"}""")
+                .content("""{"name":"Decision Test"}""")
         ).andExpect(status().isCreated()).andReturn()
         val body = result.response.contentAsString
         return """"id"\s*:\s*"([^"]+)"""".toRegex().find(body)!!.groupValues[1]

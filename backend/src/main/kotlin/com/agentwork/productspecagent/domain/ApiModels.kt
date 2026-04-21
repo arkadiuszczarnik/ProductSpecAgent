@@ -1,8 +1,7 @@
 package com.agentwork.productspecagent.domain
 
 data class CreateProjectRequest(
-    val name: String,
-    val idea: String
+    val name: String
 )
 
 data class ProjectResponse(

@@ -22,7 +22,7 @@ class ClarificationControllerTest {
         val result = mockMvc.perform(
             post("/api/v1/projects")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Clarification Test","idea":"An idea"}""")
+                .content("""{"name":"Clarification Test"}""")
         ).andExpect(status().isCreated()).andReturn()
         return """"id"\s*:\s*"([^"]+)"""".toRegex().find(result.response.contentAsString)!!.groupValues[1]
     }

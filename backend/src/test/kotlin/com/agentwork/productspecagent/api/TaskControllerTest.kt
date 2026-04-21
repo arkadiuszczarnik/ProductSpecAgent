@@ -32,7 +32,7 @@ class TaskControllerTest {
     private fun createProject(): String {
         val result = mockMvc.perform(
             post("/api/v1/projects").contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Task Test","idea":"An idea"}""")
+                .content("""{"name":"Task Test"}""")
         ).andExpect(status().isCreated()).andReturn()
         return """"id"\s*:\s*"([^"]+)"""".toRegex().find(result.response.contentAsString)!!.groupValues[1]
     }
