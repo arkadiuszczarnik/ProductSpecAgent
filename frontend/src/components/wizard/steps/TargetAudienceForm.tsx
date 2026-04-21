@@ -1,6 +1,5 @@
 "use client";
 import { FormField } from "../FormField";
-import { ChipSelect } from "../ChipSelect";
 import { TagInput } from "../TagInput";
 import { useWizardStore } from "@/lib/stores/wizard-store";
 
@@ -20,9 +19,6 @@ export function TargetAudienceForm({ projectId }: { projectId: string }) {
       </FormField>
       <FormField label="Pain Points">
         <TagInput tags={getTags("painPoints")} onAdd={(t) => set("painPoints", [...getTags("painPoints"), t])} onRemove={(t) => set("painPoints", getTags("painPoints").filter((x: string) => x !== t))} placeholder="Pain Point eingeben + Enter" />
-      </FormField>
-      <FormField label="Technisches Level">
-        <ChipSelect options={["Nicht-technisch", "Technisch", "Entwickler"]} value={get("techLevel")} onChange={(v) => set("techLevel", v)} />
       </FormField>
       <FormField label="Sekundaere Zielgruppe">
         <input value={get("secondary")} onChange={(e) => set("secondary", e.target.value)}

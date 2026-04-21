@@ -14,7 +14,6 @@ export const STEP_FIELD_LABELS: Record<string, Record<string, string>> = {
   TARGET_AUDIENCE: {
     primaryAudience: "Primaere Zielgruppe",
     painPoints: "Pain Points",
-    techLevel: "Technisches Level",
     secondaryAudience: "Sekundaere Zielgruppe",
   },
   SCOPE: {
