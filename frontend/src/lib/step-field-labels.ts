@@ -10,7 +10,6 @@ export const STEP_FIELD_LABELS: Record<string, Record<string, string>> = {
     coreProblem: "Kernproblem",
     affected: "Wer ist betroffen?",
     workarounds: "Aktuelle Workarounds",
-    impact: "Auswirkung (Impact)",
   },
   TARGET_AUDIENCE: {
     primaryAudience: "Primaere Zielgruppe",
