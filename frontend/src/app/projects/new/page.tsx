@@ -12,11 +12,10 @@ import { cn } from "@/lib/utils";
 export default function NewProjectPage() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [idea, setIdea] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = name.trim().length > 0 && idea.trim().length > 0 && !loading;
+  const canSubmit = name.trim().length > 0 && !loading;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -24,7 +23,7 @@ export default function NewProjectPage() {
     setLoading(true);
     setError(null);
     try {
-      const resp = await createProject({ name: name.trim(), idea: idea.trim() });
+      const resp = await createProject({ name: name.trim() });
       router.push(`/projects/${resp.project.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create project");
@@ -52,7 +51,7 @@ export default function NewProjectPage() {
               <CardTitle className="text-xl">New Project</CardTitle>
             </div>
             <CardDescription>
-              Give your project a name and describe your product idea. The agent will guide you through the spec process.
+              Gib deinem Projekt einen Namen. Die Idee beschreibst du anschließend im Wizard.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -73,25 +72,6 @@ export default function NewProjectPage() {
                     "w-full rounded-md border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground",
                     "focus:outline-none focus:ring-2 focus:ring-ring",
                     "disabled:opacity-50"
-                  )}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="project-idea" className="block text-sm font-medium">
-                  Product Idea
-                </label>
-                <textarea
-                  id="project-idea"
-                  value={idea}
-                  onChange={(e) => setIdea(e.target.value)}
-                  placeholder="Describe your product idea in a few sentences..."
-                  rows={5}
-                  disabled={loading}
-                  className={cn(
-                    "w-full resize-y rounded-md border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground",
-                    "focus:outline-none focus:ring-2 focus:ring-ring",
-                    "disabled:opacity-50 min-h-[120px]"
                   )}
                 />
               </div>
