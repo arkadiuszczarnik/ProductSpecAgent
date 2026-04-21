@@ -1,12 +1,15 @@
 package com.agentwork.productspecagent.service
 
 import com.agentwork.productspecagent.domain.*
+import com.agentwork.productspecagent.domain.WizardData
+import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.export.DocsScaffoldGenerator
 import com.agentwork.productspecagent.export.ScaffoldContext
 import com.agentwork.productspecagent.export.ScaffoldContextBuilder
 import com.agentwork.productspecagent.export.FeatureContext
 import com.agentwork.productspecagent.export.DecisionContext
 import com.agentwork.productspecagent.storage.ProjectStorage
+import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import java.time.Instant
@@ -35,6 +38,18 @@ class ProjectService(
 
         storage.saveProject(project)
         storage.saveFlowState(flowState)
+
+        // Prefill wizard IDEA.productName so the user doesn't re-type the name.
+        val initialWizard = WizardData(
+            projectId = project.id,
+            steps = mapOf(
+                "IDEA" to WizardStepData(
+                    fields = mapOf("productName" to JsonPrimitive(name))
+                )
+            )
+        )
+        storage.saveWizardData(project.id, initialWizard)
+
         storage.saveSpecStep(project.id, "idea.md", "# Idea\n\n")
 
         // Generate initial docs scaffold

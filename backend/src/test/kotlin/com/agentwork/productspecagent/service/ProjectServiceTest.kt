@@ -2,6 +2,7 @@ package com.agentwork.productspecagent.service
 
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.storage.ProjectStorage
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -15,11 +16,13 @@ class ProjectServiceTest {
 
     private lateinit var storage: ProjectStorage
     private lateinit var service: ProjectService
+    private lateinit var wizardService: WizardService
 
     @BeforeEach
     fun setUp() {
         storage = ProjectStorage(tempDir.toString())
         service = ProjectService(storage)
+        wizardService = WizardService(storage)
     }
 
     @Test
@@ -98,5 +101,15 @@ class ProjectServiceTest {
         assertThrows(ProjectNotFoundException::class.java) {
             service.getFlowState("ghost")
         }
+    }
+
+    @Test
+    fun `createProject initializes wizard IDEA productName with project name`() {
+        val response = service.createProject("TaskFlow Pro")
+        val wizard = wizardService.getWizardData(response.project.id)
+        assertEquals(
+            JsonPrimitive("TaskFlow Pro"),
+            wizard.steps["IDEA"]?.fields?.get("productName")
+        )
     }
 }
