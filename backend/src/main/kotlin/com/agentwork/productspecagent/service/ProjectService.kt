@@ -70,7 +70,6 @@ class ProjectService(
                 projectName = projectName,
                 features = emptyList(),
                 decisions = emptyList(),
-                scopeContent = null,
                 mvpContent = null,
                 techStack = "See SPEC.md for tech stack details.",
                 problemContent = null,

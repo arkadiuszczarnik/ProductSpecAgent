@@ -82,7 +82,6 @@ class ScaffoldContextBuilder(
                 )
             }
 
-        val scopeContent = readNonBlankSpec(projectId, "scope.md")
         val mvpContent = readNonBlankSpec(projectId, "mvp.md")
         val problemContent = readNonBlankSpec(projectId, "problem.md")
         val targetAudienceContent = readNonBlankSpec(projectId, "target_audience.md")
@@ -94,7 +93,6 @@ class ScaffoldContextBuilder(
             projectName = project.name,
             features = features,
             decisions = resolvedDecisions,
-            scopeContent = scopeContent,
             mvpContent = mvpContent,
             techStack = "See SPEC.md for full tech stack details.",
             problemContent = problemContent,

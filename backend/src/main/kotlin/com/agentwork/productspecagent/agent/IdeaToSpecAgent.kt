@@ -282,7 +282,7 @@ open class IdeaToSpecAgent(
                 appendLine("The user just completed the IDEA wizard step with the following input:")
                 appendLine(fieldsDescription)
                 appendLine()
-                appendLine("IMPORTANT: This is the IDEA step. Focus ONLY on the idea itself. Do NOT discuss problem statement, target audience, value proposition, or technical details – these are handled in later steps (PROBLEM, SCOPE, etc.).")
+                appendLine("IMPORTANT: This is the IDEA step. Focus ONLY on the idea itself. Do NOT discuss problem statement, target audience, value proposition, or technical details – these are handled in later steps (PROBLEM, FEATURES, etc.).")
                 appendLine()
                 appendLine("Analyze ONLY the idea:")
                 appendLine("1. Is the product idea clearly described? Can you understand what the product is supposed to DO?")
@@ -308,21 +308,6 @@ open class IdeaToSpecAgent(
                 appendLine("The generated problem.md spec should document problem, audience, and pain points together in one coherent section.")
                 appendLine("If the audience is too broad or a strategic choice is needed (e.g., B2B vs B2C), use [DECISION_NEEDED].")
                 appendLine("If there are contradictions or missing aspects, use [CLARIFICATION_NEEDED].")
-                appendLine("Be encouraging and constructive.")
-                appendLine()
-                appendLine(MARKER_REMINDER)
-            }
-            "SCOPE" -> buildString {
-                appendLine("The user just completed the SCOPE wizard step with the following input:")
-                appendLine(fieldsDescription)
-                appendLine()
-                appendLine("Analyze the scope definition:")
-                appendLine("1. Is the boundary between in-scope and out-of-scope clear?")
-                appendLine("2. Are the constraints realistic?")
-                appendLine("3. Is the scope appropriate for the stated timeline and budget?")
-                appendLine()
-                appendLine("If a scope trade-off needs user input (e.g., reduce features vs. extend timeline), use [DECISION_NEEDED].")
-                appendLine("If constraints are unclear or contradictory, use [CLARIFICATION_NEEDED].")
                 appendLine("Be encouraging and constructive.")
                 appendLine()
                 appendLine(MARKER_REMINDER)
@@ -454,7 +439,7 @@ Du bist ein erfahrener Produktberater. In diesem Schritt geht es NUR darum, die 
 
 WICHTIG – ABGRENZUNG:
 - Sprich NICHT über Problemstellung, Zielgruppe, Nutzerwert, Pricing oder technische Details.
-- Diese Themen werden in späteren Schritten behandelt (PROBLEM, SCOPE, MVP, etc.).
+- Diese Themen werden in späteren Schritten behandelt (PROBLEM, FEATURES, MVP, etc.).
 - Auch wenn die Idee vage ist: bleibe beim Thema "Was ist das Produkt? Was soll es tun?"
 
 ## Dein Vorgehen:

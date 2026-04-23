@@ -90,7 +90,7 @@ open class SpecContextBuilder(
     open fun buildProposalContext(projectId: String): String {
         val svc = wizardService ?: throw IllegalStateException("WizardService not available")
         val sb = StringBuilder()
-        listOf("idea.md", "problem.md", "target_audience.md", "scope.md", "mvp.md").forEach { f ->
+        listOf("idea.md", "problem.md", "target_audience.md", "mvp.md").forEach { f ->
             projectService.readSpecFile(projectId, f)?.let {
                 sb.appendLine("## $f").appendLine(it).appendLine()
             }

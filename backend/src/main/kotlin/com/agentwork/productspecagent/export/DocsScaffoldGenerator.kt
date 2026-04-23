@@ -9,7 +9,6 @@ data class ScaffoldContext(
     val projectName: String,
     val features: List<FeatureContext>,
     val decisions: List<DecisionContext>,
-    val scopeContent: String?,
     val mvpContent: String?,
     val techStack: String,
     val problemContent: String?,
