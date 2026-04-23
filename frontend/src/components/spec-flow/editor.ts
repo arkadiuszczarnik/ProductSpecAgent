@@ -24,9 +24,12 @@ type AreaExtra = any;
 
 const STEPS: { type: StepType; label: string }[] = [
   { type: "IDEA", label: "Idee" },
-  { type: "PROBLEM", label: "Problem" },
-  { type: "SCOPE", label: "Scope" },
+  { type: "PROBLEM", label: "Problem & Zielgruppe" },
+  { type: "FEATURES", label: "Features" },
   { type: "MVP", label: "MVP" },
+  { type: "ARCHITECTURE", label: "Architektur" },
+  { type: "BACKEND", label: "Backend" },
+  { type: "FRONTEND", label: "Frontend" },
 ];
 
 export interface EditorContext {

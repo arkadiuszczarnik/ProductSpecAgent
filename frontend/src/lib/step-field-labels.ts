@@ -11,10 +11,6 @@ export const STEP_FIELD_LABELS: Record<string, Record<string, string>> = {
     primaryAudience: "Primäre Zielgruppe",
     painPoints: "Pain Points",
   },
-  SCOPE: {
-    inScope: "In Scope",
-    outOfScope: "Out of Scope",
-  },
   MVP: {
     mvpGoal: "MVP-Ziel",
     mvpFeatures: "MVP Features",
@@ -64,7 +60,7 @@ export function formatStepFields(step: string, fields: Record<string, any>): str
   const labels = STEP_FIELD_LABELS[step] ?? {};
   const stepLabel: Record<string, string> = {
     IDEA: "Idee", PROBLEM: "Problem & Zielgruppe",
-    SCOPE: "Scope", MVP: "MVP", FEATURES: "Features",
+    FEATURES: "Features", MVP: "MVP",
     ARCHITECTURE: "Architektur", BACKEND: "Backend", FRONTEND: "Frontend",
   };
 

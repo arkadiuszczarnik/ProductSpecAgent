@@ -5,11 +5,11 @@ import type { FeatureScope } from "./api";
 export type Category = "SaaS" | "Mobile App" | "CLI Tool" | "Library" | "Desktop App" | "API";
 
 export const ALL_STEP_KEYS = [
-  "IDEA", "PROBLEM", "SCOPE", "MVP",
-  "FEATURES", "ARCHITECTURE", "BACKEND", "FRONTEND",
+  "IDEA", "PROBLEM", "FEATURES", "MVP",
+  "ARCHITECTURE", "BACKEND", "FRONTEND",
 ] as const;
 
-const BASE_STEPS = ["IDEA", "PROBLEM", "SCOPE", "MVP", "FEATURES"] as const;
+const BASE_STEPS = ["IDEA", "PROBLEM", "FEATURES", "MVP"] as const;
 
 export type FieldOptions = Record<string, Record<string, string[]>>;
 

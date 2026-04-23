@@ -8,7 +8,8 @@ export interface SeededProject {
 
 /**
  * Creates a minimal SaaS project seeded through IDEA→MVP so the FEATURES
- * step is reachable without triggering any AI/LLM calls.
+ * step is already seeded without triggering any AI/LLM calls. The actual
+ * feature graph is built by the Playwright test.
  *
  * DTO shapes verified against:
  *   - backend/.../domain/ApiModels.kt     → CreateProjectRequest { name, idea }
@@ -36,10 +37,10 @@ export async function seedSaaSProjectToFeatures(
   // Seed IDEA..MVP via PUT /wizard/{step} — save only, no LLM trigger.
   // WizardStepData shape: { fields: Map<String, JsonElement>, completedAt?: String }
   const steps: Array<[string, Record<string, unknown>]> = [
-    ["IDEA",    { idea: "E2E smoke-test project", category: "SaaS" }],
-    ["PROBLEM", { coreProblem: "Validate graph editor end-to-end", primaryAudience: "Developers" }],
-    ["SCOPE",   { scope: "Smoke only" }],
-    ["MVP",     { mvp: "Add/rename/connect nodes + persist" }],
+    ["IDEA",     { idea: "E2E smoke-test project", category: "SaaS" }],
+    ["PROBLEM",  { coreProblem: "Validate graph editor end-to-end", primaryAudience: "Developers" }],
+    ["FEATURES", { features: [] }],
+    ["MVP",      { goal: "Add/rename/connect nodes + persist" }],
   ];
 
   for (const [step, fields] of steps) {

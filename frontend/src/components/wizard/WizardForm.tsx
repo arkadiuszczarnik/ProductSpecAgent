@@ -8,7 +8,6 @@ import { useStepBlockers } from "@/lib/hooks/use-step-blockers";
 import { BlockerBanner } from "./BlockerBanner";
 import { IdeaForm } from "./steps/IdeaForm";
 import { ProblemForm } from "./steps/ProblemForm";
-import { ScopeForm } from "./steps/ScopeForm";
 import { MvpForm } from "./steps/MvpForm";
 import { FeaturesForm } from "./steps/FeaturesForm";
 import { ArchitectureForm } from "./steps/ArchitectureForm";
@@ -18,7 +17,6 @@ import { FrontendForm } from "./steps/FrontendForm";
 const FORM_MAP: Record<string, React.ComponentType<{ projectId: string }>> = {
   IDEA: IdeaForm,
   PROBLEM: ProblemForm,
-  SCOPE: ScopeForm,
   MVP: MvpForm,
   FEATURES: FeaturesForm,
   ARCHITECTURE: ArchitectureForm,

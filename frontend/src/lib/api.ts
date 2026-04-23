@@ -22,7 +22,7 @@ export async function apiFetch<T>(
 
 // ─── Domain Types ────────────────────────────────────────────────────────────
 
-export type StepType = "IDEA" | "PROBLEM" | "SCOPE" | "MVP" | "FEATURES" | "ARCHITECTURE" | "BACKEND" | "FRONTEND";
+export type StepType = "IDEA" | "PROBLEM" | "FEATURES" | "MVP" | "ARCHITECTURE" | "BACKEND" | "FRONTEND";
 export type StepStatus = "OPEN" | "IN_PROGRESS" | "COMPLETED";
 
 // ─── Feature Graph Types ──────────────────────────────────────────────────────
