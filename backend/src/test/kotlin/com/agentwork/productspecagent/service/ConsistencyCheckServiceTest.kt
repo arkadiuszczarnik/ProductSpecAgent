@@ -61,7 +61,7 @@ class ConsistencyCheckServiceTest {
 
         // Create a pending decision directly via storage
         val decision = Decision(
-            id = "d1", projectId = pid, stepType = FlowStepType.SCOPE,
+            id = "d1", projectId = pid, stepType = FlowStepType.FEATURES,
             title = "MVP scope?", options = emptyList(), recommendation = "TBD",
             createdAt = "2026-03-30T00:00:00Z"
         )
@@ -77,7 +77,7 @@ class ConsistencyCheckServiceTest {
         val pid = project.project.id
 
         val clarification = Clarification(
-            id = "c1", projectId = pid, stepType = FlowStepType.SCOPE,
+            id = "c1", projectId = pid, stepType = FlowStepType.FEATURES,
             question = "How handle offline?", reason = "Contradiction",
             createdAt = "2026-03-30T00:00:00Z"
         )

@@ -50,7 +50,7 @@ class DecisionControllerTest {
         val createResult = mockMvc.perform(
             post("/api/v1/projects/$projectId/decisions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"title":"MVP scope?","stepType":"SCOPE"}""")
+                .content("""{"title":"MVP scope?","stepType":"FEATURES"}""")
         )
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.title").value("MVP scope?"))
@@ -73,7 +73,7 @@ class DecisionControllerTest {
         mockMvc.perform(
             post("/api/v1/projects/$projectId/decisions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"title":"Decision 1","stepType":"SCOPE"}""")
+                .content("""{"title":"Decision 1","stepType":"FEATURES"}""")
         ).andExpect(status().isCreated())
 
         mockMvc.perform(get("/api/v1/projects/$projectId/decisions"))

@@ -15,7 +15,7 @@ class DecisionStorageTest {
     private fun storage() = DecisionStorage(tempDir.toString())
 
     private fun sampleDecision(id: String = "d1", projectId: String = "p1") = Decision(
-        id = id, projectId = projectId, stepType = FlowStepType.SCOPE,
+        id = id, projectId = projectId, stepType = FlowStepType.FEATURES,
         title = "Test decision",
         options = listOf(
             DecisionOption("opt-1", "Option A", listOf("pro1"), listOf("con1"), true),

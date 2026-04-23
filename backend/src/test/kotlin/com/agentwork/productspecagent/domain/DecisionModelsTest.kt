@@ -8,7 +8,7 @@ class DecisionModelsTest {
     @Test
     fun `Decision has PENDING status by default`() {
         val decision = Decision(
-            id = "d1", projectId = "p1", stepType = FlowStepType.SCOPE,
+            id = "d1", projectId = "p1", stepType = FlowStepType.FEATURES,
             title = "Should feature X be in MVP?",
             options = listOf(
                 DecisionOption("opt-1", "Include in MVP", listOf("Users need it"), listOf("More dev time"), true)

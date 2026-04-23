@@ -39,7 +39,7 @@ class ClarificationControllerTest {
     @Test
     fun `create and get clarification`() {
         val pid = createProject()
-        val c = clarificationService.createClarification(pid, "How handle offline?", "Contradicting reqs", FlowStepType.SCOPE)
+        val c = clarificationService.createClarification(pid, "How handle offline?", "Contradicting reqs", FlowStepType.FEATURES)
 
         mockMvc.perform(get("/api/v1/projects/$pid/clarifications/${c.id}"))
             .andExpect(status().isOk())

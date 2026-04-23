@@ -39,10 +39,10 @@ class DecisionAgentTest {
             ],"recommendation":"Include because users need it early."}
         """.trimIndent())
 
-        val decision = agent.generateDecision(project.project.id, "MVP scope?", FlowStepType.SCOPE)
+        val decision = agent.generateDecision(project.project.id, "MVP scope?", FlowStepType.FEATURES)
 
         assertEquals("MVP scope?", decision.title)
-        assertEquals(FlowStepType.SCOPE, decision.stepType)
+        assertEquals(FlowStepType.FEATURES, decision.stepType)
         assertEquals(DecisionStatus.PENDING, decision.status)
         assertEquals(2, decision.options.size)
         assertTrue(decision.options[0].recommended)

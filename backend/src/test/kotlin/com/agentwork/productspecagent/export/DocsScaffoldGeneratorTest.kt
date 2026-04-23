@@ -19,7 +19,6 @@ class DocsScaffoldGeneratorTest {
             )
         ),
         decisions = listOf(DecisionContext("Use JWT", "JWT tokens", "Stateless auth")),
-        scopeContent = "Core auth features only.",
         mvpContent = "Login + Register.",
         techStack = "Kotlin + Spring Boot",
         problemContent = null,
@@ -54,7 +53,6 @@ class DocsScaffoldGeneratorTest {
         val arch = result["docs/architecture/overview.md"]
         assertNotNull(arch)
         assertContains(arch, "Use JWT")
-        assertContains(arch, "Core auth features only.")
     }
 
     @Test
@@ -80,7 +78,6 @@ class DocsScaffoldGeneratorTest {
         projectName = "Test App",
         features = emptyList(),
         decisions = emptyList(),
-        scopeContent = "Core auth features only.",
         mvpContent = "Login + Register.",
         techStack = "Kotlin + Spring Boot",
         problemContent = "Users cannot manage credentials securely.",

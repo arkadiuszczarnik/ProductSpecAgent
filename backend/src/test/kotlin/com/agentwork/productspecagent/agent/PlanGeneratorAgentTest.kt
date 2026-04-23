@@ -31,7 +31,7 @@ class PlanGeneratorAgentTest {
 
     @Test
     fun `generates tasks from valid JSON`() = runBlocking {
-        val agent = fakeAgent("""{"epics":[{"title":"Auth","description":"Login system","estimate":"L","specSection":"SCOPE","stories":[{"title":"Login Page","description":"Build login","estimate":"M","tasks":[{"title":"Form UI","description":"Create form","estimate":"S"}]}]}]}""")
+        val agent = fakeAgent("""{"epics":[{"title":"Auth","description":"Login system","estimate":"L","specSection":"FEATURES","stories":[{"title":"Login Page","description":"Build login","estimate":"M","tasks":[{"title":"Form UI","description":"Create form","estimate":"S"}]}]}]}""")
 
         val tasks = agent.generatePlan(projectId)
 

@@ -6,9 +6,9 @@ import org.junit.jupiter.api.Test
 class FlowStateTest {
 
     @Test
-    fun `createInitialFlowState creates all 8 steps`() {
+    fun `createInitialFlowState creates all 7 steps`() {
         val flowState = createInitialFlowState("test-project-id")
-        assertEquals(8, flowState.steps.size)
+        assertEquals(7, flowState.steps.size)
     }
 
     @Test
@@ -43,8 +43,8 @@ class FlowStateTest {
         val flowState = createInitialFlowState("test-project-id")
         val expectedOrder = listOf(
             FlowStepType.IDEA, FlowStepType.PROBLEM,
-            FlowStepType.SCOPE, FlowStepType.MVP,
-            FlowStepType.FEATURES, FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND
+            FlowStepType.FEATURES, FlowStepType.MVP,
+            FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND
         )
         assertEquals(expectedOrder, flowState.steps.map { it.stepType })
     }

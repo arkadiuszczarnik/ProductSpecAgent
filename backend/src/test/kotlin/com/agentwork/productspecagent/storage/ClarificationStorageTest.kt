@@ -14,7 +14,7 @@ class ClarificationStorageTest {
     private fun storage() = ClarificationStorage(tempDir.toString())
 
     private fun sample(id: String = "c1", projectId: String = "p1") = Clarification(
-        id = id, projectId = projectId, stepType = FlowStepType.SCOPE,
+        id = id, projectId = projectId, stepType = FlowStepType.FEATURES,
         question = "How handle offline?", reason = "Contradicting requirements",
         createdAt = "2026-03-30T12:00:00Z"
     )

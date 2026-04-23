@@ -89,7 +89,7 @@ class ProjectStorageTest {
         assertNotNull(loaded)
         assertEquals(flowState.projectId, loaded!!.projectId)
         assertEquals(flowState.currentStep, loaded.currentStep)
-        assertEquals(8, loaded.steps.size)
+        assertEquals(7, loaded.steps.size)
     }
 
     @Test
