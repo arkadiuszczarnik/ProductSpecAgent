@@ -30,7 +30,7 @@ open class PlanGeneratorAgent(
             appendLine(context)
             appendLine()
             appendLine("Respond with EXACTLY this JSON format (no markdown, no explanation):")
-            appendLine("""{"epics":[{"title":"Epic title","description":"desc","estimate":"L","specSection":"SCOPE","stories":[{"title":"Story","description":"desc","estimate":"M","tasks":[{"title":"Task","description":"desc","estimate":"S"}]}]}]}""")
+            appendLine("""{"epics":[{"title":"Epic title","description":"desc","estimate":"L","specSection":"FEATURES","stories":[{"title":"Story","description":"desc","estimate":"M","tasks":[{"title":"Task","description":"desc","estimate":"S"}]}]}]}""")
             appendLine("Generate 2-4 epics, each with 1-3 stories, each story with 1-3 tasks.")
         }
 
