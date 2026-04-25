@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, Loader2, Scale, MessageSquare, HelpCircle, Layers, Download, ShieldCheck, Bot, FolderTree } from "lucide-react";
+import { ArrowLeft, ChevronRight, Loader2, Scale, MessageSquare, HelpCircle, Layers, Download, ShieldCheck, Bot, FolderTree, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExportDialog } from "@/components/export/ExportDialog";
 import { HandoffDialog } from "@/components/handoff/HandoffDialog";
@@ -15,6 +15,7 @@ import { useClarificationStore } from "@/lib/stores/clarification-store";
 import { useTaskStore } from "@/lib/stores/task-store";
 import { TaskTree } from "@/components/tasks/TaskTree";
 import { CheckResultsPanel } from "@/components/checks/CheckResultsPanel";
+import { DocumentsPanel } from "@/components/documents/DocumentsPanel";
 import { ExplorerPanel } from "@/components/explorer/ExplorerPanel";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { WizardForm } from "@/components/wizard/WizardForm";
@@ -38,7 +39,7 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
   const [showExplorer, setShowExplorer] = useState(true);
   const [showExport, setShowExport] = useState(false);
   const [showHandoff, setShowHandoff] = useState(false);
-  const [rightTab, setRightTab] = useState<"chat" | "decisions" | "clarifications" | "tasks" | "checks">("chat");
+  const [rightTab, setRightTab] = useState<"chat" | "decisions" | "clarifications" | "tasks" | "checks" | "documents">("chat");
   const { decisions, loadDecisions: loadDecs, reset: resetDecs } = useDecisionStore();
   const pendingCount = decisions.filter((d) => d.status === "PENDING").length;
   const { clarifications: clars, loadClarifications: loadClars, reset: resetClars } = useClarificationStore();
@@ -182,6 +183,15 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
             >
               <ShieldCheck size={13} /> Checks
             </button>
+            <button
+              onClick={() => setRightTab("documents")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors",
+                rightTab === "documents" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <FileText size={13} /> Documents
+            </button>
           </div>
           {/* Tab content */}
           <div className="flex-1 overflow-hidden">
@@ -193,8 +203,10 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
               <ClarificationList projectId={id} />
             ) : rightTab === "tasks" ? (
               <TaskTree projectId={id} />
-            ) : (
+            ) : rightTab === "checks" ? (
               <CheckResultsPanel projectId={id} />
+            ) : (
+              <DocumentsPanel projectId={id} />
             )}
           </div>
           </div>
