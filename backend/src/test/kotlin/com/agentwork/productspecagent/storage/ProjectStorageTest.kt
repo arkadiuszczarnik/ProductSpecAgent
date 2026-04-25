@@ -107,4 +107,31 @@ class ProjectStorageTest {
         assertTrue(specFile.toFile().exists())
         assertEquals("# My Idea\nThis is a great idea.", specFile.toFile().readText())
     }
+
+    @Test
+    fun `project with collectionId saves and loads correctly`() {
+        val project = Project(
+            id = "p1",
+            name = "Demo",
+            ownerId = "u1",
+            status = ProjectStatus.DRAFT,
+            createdAt = "2026-04-24T10:00:00Z",
+            updatedAt = "2026-04-24T10:00:00Z",
+            collectionId = "col-abc-123"
+        )
+        storage.saveProject(project)
+        val loaded = storage.loadProject("p1")!!
+        assertEquals("col-abc-123", loaded.collectionId)
+    }
+
+    @Test
+    fun `project loads correctly when collectionId is missing in JSON`() {
+        val storage = ProjectStorage(tempDir.toString())
+        val dir = tempDir.resolve("projects/p1")
+        java.nio.file.Files.createDirectories(dir)
+        val legacyJson = """{"id":"p1","name":"Old","ownerId":"u1","status":"DRAFT","createdAt":"x","updatedAt":"y"}"""
+        java.nio.file.Files.writeString(dir.resolve("project.json"), legacyJson)
+        val loaded = storage.loadProject("p1")!!
+        assertNull(loaded.collectionId)
+    }
 }

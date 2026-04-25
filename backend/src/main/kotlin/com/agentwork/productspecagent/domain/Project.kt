@@ -13,5 +13,6 @@ data class Project(
     val ownerId: String,
     val status: ProjectStatus,
     val createdAt: String,
-    val updatedAt: String
+    val updatedAt: String,
+    val collectionId: String? = null
 )
