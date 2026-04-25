@@ -6,6 +6,10 @@ spring:
     name: product-spec-agent
   jackson:
     default-property-inclusion: always
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
 
 cors:
   allowed-origins: "http://localhost:3000"
@@ -60,3 +64,7 @@ agent:
 
 app:
   data-path: ./data
+
+graphmesh:
+  url: ${GRAPHMESH_URL:http://localhost:8083/graphql}
+  request-timeout: 30s
