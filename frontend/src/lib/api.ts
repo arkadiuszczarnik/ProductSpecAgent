@@ -457,3 +457,40 @@ export async function completeWizardStep(
     { method: "POST", body: JSON.stringify(data) }
   );
 }
+
+// ------- Documents -------
+
+export type DocumentState = "UPLOADED" | "PROCESSING" | "EXTRACTED" | "FAILED";
+
+export interface ProjectDocument {
+  id: string;
+  title: string;
+  mimeType: string;
+  state: DocumentState;
+  createdAt: string;
+}
+
+export async function uploadDocument(projectId: string, file: File): Promise<ProjectDocument> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/documents`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error ?? `Upload failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function listDocuments(projectId: string): Promise<ProjectDocument[]> {
+  return apiFetch<ProjectDocument[]>(`/api/v1/projects/${projectId}/documents`);
+}
+
+export async function deleteDocument(projectId: string, documentId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/documents/${documentId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+}
