@@ -37,6 +37,7 @@ dependencies {
     implementation("com.github.spullara.mustache.java:compiler:0.9.14")
 
     // Test
+    testImplementation("com.squareup.okhttp3:mockwebserver3:5.3.2")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
