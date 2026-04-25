@@ -69,7 +69,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       try {
         const docs = await apiListDocuments(projectId);
         set({ documents: docs });
-        const allTerminal = docs.every((d) => TERMINAL_STATES.includes(d.state));
+        const allTerminal = docs.length > 0 && docs.every((d) => TERMINAL_STATES.includes(d.state));
         if (allTerminal) get().stopPolling();
       } catch {
         // silently ignore poll errors; keep polling
