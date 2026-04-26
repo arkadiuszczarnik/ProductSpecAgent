@@ -112,7 +112,7 @@ Backend nutzt Spring `RestClient` (Spring Boot 4 nativ, synchron). Keine neue De
 | Datei | Änderung |
 |---|---|
 | `domain/Project.kt` | Neues Feld `collectionId: String? = null`. |
-| `domain/Document.kt` (neu) | `data class Document(id, title, mimeType, state: DocumentState, uploadedAt)` + Enum. |
+| `domain/Document.kt` (neu) | `data class Document(id, title, mimeType, state: DocumentState, createdAt)` + Enum. |
 | `infrastructure/graphmesh/GraphMeshClient.kt` (neu) | `RestClient`-Wrapper, GraphQL-Helper, Methoden `createCollection`, `uploadDocument`, `listDocuments`, `deleteDocument`. |
 | `infrastructure/graphmesh/GraphMeshConfig.kt` (neu) | `@ConfigurationProperties("graphmesh")`. |
 | `infrastructure/graphmesh/GraphMeshException.kt` (neu) | Subtypen `Unavailable`, `GraphQlError`. |
@@ -136,8 +136,8 @@ Backend nutzt Spring `RestClient` (Spring Boot 4 nativ, synchron). Keine neue De
 | Methode | Pfad | Body | Response |
 |---|---|---|---|
 | `POST` | `/api/v1/projects/{id}/documents` | `multipart/form-data: file` | `201 { documentId, title, mimeType, state }` |
-| `GET`  | `/api/v1/projects/{id}/documents` | — | `200 [{ id, title, mimeType, state, uploadedAt }]` |
-| `GET`  | `/api/v1/projects/{id}/documents/{docId}` | — | `200 { id, title, mimeType, state, uploadedAt }` |
+| `GET`  | `/api/v1/projects/{id}/documents` | — | `200 [{ id, title, mimeType, state, createdAt }]` |
+| `GET`  | `/api/v1/projects/{id}/documents/{docId}` | — | `200 { id, title, mimeType, state, createdAt }` |
 | `DELETE` | `/api/v1/projects/{id}/documents/{docId}` | — | `204` |
 
 ## Fehlerbehandlung
@@ -162,14 +162,14 @@ Document-State `FAILED` in der Liste: rotes Badge, Trash-Icon aktiv, kein Auto-R
 | `DocumentServiceTest` | Gemockter Client: Lazy-Erzeugung, idempotenter zweiter Upload, Persistenz nach `createCollection`-Erfolg. |
 | `DocumentControllerTest` (`@WebMvcTest`) | Multipart-Validierung, alle Status-Codes, JSON-Shape. |
 | `ProjectStorageTest` (erweitert) | `collectionId` round-trip + Default `null` für alte JSON-Files. |
-| `DocumentsPanel.test.tsx` | Drop-zone, State-Badges, Polling-Stop. |
 
-E2E nicht erweitert. Manueller Smoke-Test im done-doc.
+
+Frontend hat keinen Test-Runner (siehe `frontend/CLAUDE.md`) — Verifikation per manuellem Browser-Smoke-Test, dokumentiert im done-doc.
 
 ## Risiken & Verifikation vor Implementierung
 
 1. **`deleteDocument`-Mutation in GraphMesh existiert?** Per Schema-Introspection prüfen (`{ __schema { mutationType { fields { name } } } }`). Fallback: Delete aus Plan entfernen, als Folge-Feature in GraphMesh.
-2. **`documents(collectionId: ID!)`-Query-Shape** — verifizieren ob `state`/`uploadedAt` direkt am Document hängen.
+2. **`documents(collectionId: ID!)`-Query-Shape** — verifizieren ob `state`/`createdAt` direkt am Document hängen.
 3. **GraphMesh-Erreichbarkeit beim manuellen Test** — Container muss laufen. Stop-Test (Container herunterfahren) explizit Teil des Smoke-Tests.
 
 ## Abwärtskompatibilität
@@ -184,3 +184,110 @@ E2E nicht erweitert. Manueller Smoke-Test im done-doc.
 ## Aufwand
 
 M (Medium).
+
+---
+
+## Erweiterung 2026-04-26: Lokale Persistenz + Export-Option
+
+### Motivation
+
+Nach erstem Live-Einsatz wurde klar: Hochgeladene Dokumente sind ausschließlich in GraphMesh sichtbar. Der User möchte sie (a) im Frontend-Explorer-Tree sehen und (b) optional ins ZIP-Export-Archiv aufnehmen können. GraphMesh bleibt Source of Truth für Document-Metadaten und -States; lokal entsteht eine zusätzliche Kopie als Convenience.
+
+### Ziele der Erweiterung
+
+- Erfolgreich hochgeladene Dateien werden parallel zu GraphMesh unter `data/projects/{id}/uploads/` abgelegt und tauchen im Explorer-Tree auf.
+- Klick auf Binärdateien (PDF, etc.) im Explorer crasht nicht — der Viewer zeigt einen klaren Hinweis.
+- Beim ZIP-Export kann der User per Checkbox entscheiden, ob die Originaldateien mit ins Archiv kommen (Default an).
+
+### Nicht-Ziele
+
+- Keine Migration bestehender Dokumente (die nur in GraphMesh existieren) zurück ins lokale Filesystem.
+- Kein Inline-Viewer für PDFs/Bilder — bewusst minimal gehalten.
+- Keine Konsistenz-Reparatur, falls User manuell im Filesystem Dateien löscht/verschiebt.
+
+### Design-Entscheidungen
+
+**Reihenfolge beim Upload: GraphMesh first, dann lokal.** GraphMesh ist authoritativ — bei lokalem Schreib-Fehler bricht der Upload nicht ab, der Fehler wird nur geloggt. Andersherum hätten wir verwaiste lokale Dateien ohne GraphMesh-Eintrag. So ist GraphMesh konsistent, lokal nur „best effort".
+
+**Index-Datei statt Filename-Encoding.** `uploads/.index.json` mappt `documentId → filename`. Alternative wäre, die docId in den Dateinamen zu kodieren (z. B. `{uuid}-{title}`) — verworfen, weil das den Explorer-Tree mit UUIDs verschandelt. Die Index-Datei ist hidden im Frontend (Punkt-Präfix wird beim Listing nicht herausgefiltert, aber im UX kaum sichtbar; Export schließt sie explizit aus).
+
+**Auto-Rename bei Filename-Konflikten.** Stiller Datenverlust durch Überschreiben ist nicht akzeptabel. Suffix `(2)/(3)/...` analog macOS/Finder ist intuitiv und konfliktfrei. Title in GraphMesh bleibt unverändert; nur die Disk-Datei trägt das Suffix. Das passt zur Trennung „GraphMesh = Logik, Filesystem = Convenience".
+
+**Binär-Erkennung per Extension-Whitelist.** `FileController.readFile` erkennt Binär anhand der Dateiendung (`.pdf`, `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.zip`) und liefert eine `FileContent` mit `binary: true` ohne Inhalt. Der Frontend-Viewer rendert dann eine Hinweis-Box. Alternative: MIME-Detection per Magic Bytes — verworfen, weil Extension hier ausreicht und Komplexität spart.
+
+**Export-Default `true` für Documents.** Konsistent mit den anderen Export-Toggles (alle default an). Argument für `false` (Größe) wurde verworfen — User kann aktiv abwählen, wenn er ein schlankes ZIP will.
+
+### Architektur-Erweiterung
+
+```
+DocumentService.upload
+   ├─► GraphMeshClient.uploadDocument   (authoritativ)
+   └─► UploadStorage.save               (best effort, nur bei GraphMesh-Erfolg)
+
+DocumentService.delete
+   ├─► GraphMeshClient.deleteDocument
+   └─► UploadStorage.delete
+
+ExportService.exportProject (mit includeDocuments=true)
+   └─► reads data/projects/{id}/uploads/* → ZIP <prefix>/uploads/
+
+FileController.readFile (für Binär-Extension)
+   └─► returns FileContent(binary=true, content=null, ...)
+
+Filesystem-Layout:
+   data/projects/{id}/uploads/
+       spec.pdf
+       requirements (2).md
+       .index.json       ← {docId: filename}
+```
+
+### Backend-Änderungen (Erweiterung)
+
+| Datei | Änderung |
+|---|---|
+| `storage/UploadStorage.kt` (neu) | `save(projectId, docId, title, bytes) → filename`, `delete(projectId, docId)`, `list(projectId): List<String>`. Index intern verwaltet. Sanitize + Auto-Rename. |
+| `service/DocumentService.kt` | Nach erfolgreichem `uploadDocument` → `UploadStorage.save(...)` (try/catch IOException, nur log). In `delete(...)` zusätzlich `UploadStorage.delete(...)`. |
+| `api/FileController.kt` | `readFile`: Binär-Extension-Check; bei Treffer `FileContent(binary=true, content="", ...)`. |
+| `domain/FileContent.kt` | Optionales Feld `binary: Boolean = false`. |
+| `domain/ExportModels.kt` | `ExportRequest.includeDocuments: Boolean = true`. |
+| `export/ExportService.kt` | Wenn `includeDocuments`: iteriere `uploads/`, packe Dateien (außer `.index.json`) als ZIP-Entries `<prefix>/uploads/{filename}`. |
+
+### Frontend-Änderungen (Erweiterung)
+
+| Datei | Änderung |
+|---|---|
+| `lib/api.ts` | `FileContent.binary?: boolean`; `exportProject(...)` um `includeDocuments`-Param. |
+| `components/explorer/SpecFileViewer.tsx` | Bei `binary` → Hinweis-Box „Binärdatei – keine Inline-Vorschau". |
+| `components/export/ExportDialog.tsx` | Vierte Checkbox „Documents" (default an). |
+
+### Sicherheit
+
+- `sanitizeFilename`: `/`, `\`, `..` entfernen; leer/null → `"document"`; max 255 Zeichen.
+- Path-Traversal-Schutz im `FileController` ist bereits vorhanden (`startsWith(dir.normalize())`).
+- ZIP-Export nutzt nur Dateien aus dem festen `uploads/`-Ordner — kein User-kontrollierter Pfad.
+
+### Tests (Erweiterung)
+
+| Klasse | Inhalt |
+|---|---|
+| `UploadStorageTest` (neu) | Save/Delete-Roundtrip, Auto-Rename `(2)/(3)` bei Konflikt, Index-Konsistenz, Sanitize. |
+| `DocumentServiceTest` (erweitert) | Upload schreibt zusätzlich lokal; Delete entfernt lokal; lokaler Schreib-Fehler bricht Upload nicht ab. |
+| `FileControllerTest` (neu, falls nicht vorhanden) | PDF-Read liefert `binary=true` ohne Crash. |
+| `ExportServiceTest` (erweitert) | `includeDocuments=true` → Files in ZIP unter `uploads/`, `.index.json` ausgeschlossen; `false` → kein `uploads/`-Ordner. |
+
+### Frontend-Smoke-Test (Erweiterung)
+
+- Upload PDF → Refresh-Klick im Explorer → `uploads/spec.pdf` sichtbar.
+- Klick auf PDF im Explorer → Viewer-Modal mit Hinweis „Binärdatei".
+- Doppelter Upload gleichen Titels → zweite Datei `<name> (2).<ext>` im Explorer.
+- Delete im Documents-Panel → Datei aus Explorer entfernt (nach Refresh).
+- ZIP-Export mit aktivierter „Documents"-Checkbox → entpacktes ZIP enthält `<prefix>/uploads/...`.
+
+### Abwärtskompatibilität
+
+- Bestehende Projekte ohne `uploads/`-Ordner funktionieren unverändert (List liefert leere Datei-Liste, Export packt nichts).
+- Bestehende Dokumente, die nur in GraphMesh existieren, bekommen **keine** retroaktive lokale Kopie. Nur neue Uploads werden lokal gespiegelt.
+
+### Aufwand (Erweiterung)
+
+**S (Small)** — eine neue Storage-Klasse, drei kleine Service-/Controller-Erweiterungen, ein neues optionales Domain-Feld, eine neue Checkbox + ein neuer Viewer-Branch im Frontend.

@@ -38,7 +38,7 @@ Pro Projekt können Nutzer PDF-, Markdown- und Plain-Text-Dokumente hochladen. D
 - `infrastructure/graphmesh/GraphMeshClient.kt` — Spring `RestClient`-Wrapper, sendet GraphQL-Queries an `${graphmesh.url}`, mappt HTTP-/GraphQL-Errors auf `GraphMeshException`.
 - `infrastructure/graphmesh/GraphMeshConfig.kt` — `@ConfigurationProperties("graphmesh")` mit Feldern `url: String`, `requestTimeout: Duration` (Default `30s`).
 - `infrastructure/graphmesh/GraphMeshException.kt` — Sealed-Class oder einfache Exception mit Subtypen `Unavailable` / `GraphQlError`.
-- `domain/Document.kt` — `data class Document(id: String, title: String, mimeType: String, state: DocumentState, uploadedAt: String)` + Enum `DocumentState { UPLOADED, PROCESSING, EXTRACTED, FAILED }`.
+- `domain/Document.kt` — `data class Document(id: String, title: String, mimeType: String, state: DocumentState, createdAt: String)` + Enum `DocumentState { UPLOADED, PROCESSING, EXTRACTED, FAILED }`.
 - `service/DocumentService.kt` — Orchestriert: `ensureCollection(project)`, `upload(projectId, file)`, `list(projectId)`, `delete(projectId, docId)`.
 - `api/DocumentController.kt` — REST-Endpoints unter `/api/v1/projects/{projectId}/documents`.
 
@@ -54,8 +54,8 @@ Pro Projekt können Nutzer PDF-, Markdown- und Plain-Text-Dokumente hochladen. D
 | Methode | Pfad | Body | Response |
 |---|---|---|---|
 | `POST` | `/api/v1/projects/{id}/documents` | `multipart/form-data: file` | `201 { documentId, title, mimeType, state }` |
-| `GET`  | `/api/v1/projects/{id}/documents` | — | `200 [{ id, title, mimeType, state, uploadedAt }]` |
-| `GET`  | `/api/v1/projects/{id}/documents/{docId}` | — | `200 { id, title, mimeType, state, uploadedAt }` |
+| `GET`  | `/api/v1/projects/{id}/documents` | — | `200 [{ id, title, mimeType, state, createdAt }]` |
+| `GET`  | `/api/v1/projects/{id}/documents/{docId}` | — | `200 { id, title, mimeType, state, createdAt }` |
 | `DELETE` | `/api/v1/projects/{id}/documents/{docId}` | — | `204` |
 
 **GraphMesh-Calls (vom Backend)**
@@ -64,7 +64,7 @@ Pro Projekt können Nutzer PDF-, Markdown- und Plain-Text-Dokumente hochladen. D
 |---|---|
 | Erster Upload für Projekt | `mutation createCollection(input: { name })` (Beschreibung weggelassen — `Project` hat kein Description-Feld) |
 | Jeder Upload | `mutation uploadDocument(input: { collectionId, title, mimeType, content })` (`content` Base64) |
-| Liste | `query documents(collectionId: ID!) { id title mimeType state uploadedAt }` |
+| Liste | `query documents(collectionId: ID!) { id title mimeType state createdAt }` |
 | Löschen | `mutation deleteDocument(id: ID!)` *— Existenz vor Implementierung verifizieren, siehe Risiken* |
 
 **Lazy-Collection-Logik**
@@ -130,13 +130,17 @@ GraphMesh-Auth wird **bewusst nicht** vorbereitet (laut Integration-Doc gibt es 
 
 **Frontend**
 
-- Component-Test für `DocumentsPanel`: Drop-zone akzeptiert Drag+Drop, Liste rendert State-Badges, Polling stoppt bei terminalem State.
-- E2E wird **nicht** erweitert (kein laufender GraphMesh in CI). Manueller Smoke-Test wird im done-doc dokumentiert.
+- Frontend hat keinen Test-Runner (siehe `frontend/CLAUDE.md`) — verifiziert wird ausschließlich per **manuellem Browser-Smoke-Test**, dokumentiert im done-doc:
+  - Upload PDF < 10 MB → erscheint in Liste mit `UPLOADED`-Badge.
+  - Polling-Intervall sichtbar in Network-Tab; stoppt nach `EXTRACTED`/`FAILED`.
+  - Wechsel zu anderem Tab → kein Polling-Request mehr (Network-Tab).
+  - Datei > 10 MB → 413-Toast.
+  - GraphMesh stoppen → Upload schlägt mit 503-Toast fehl, Wizard läuft normal.
 
 ### Risiken & Verifikation vor Implementierung
 
 1. **`deleteDocument`-Mutation existiert?** Per Schema-Introspection (`{ __schema { mutationType { fields { name } } } }`) gegen lokales GraphMesh prüfen. Falls nicht: Delete-Endpoint im Plan auf "out of scope, GraphMesh muss erweitert werden" zurückstufen — Liste + Upload bleiben.
-2. **`documents(collectionId: ID!)`-Query-Shape** — gleiches Vorgehen, verifizieren ob `state` und `uploadedAt` direkt am Document hängen oder anders heißen.
+2. **`documents(collectionId: ID!)`-Query-Shape** — gleiches Vorgehen, verifizieren ob `state` und `createdAt` direkt am Document hängen oder anders heißen.
 3. **GraphMesh-CORS** — laut Doc nur `localhost:3002` erlaubt. Da **alle** Calls vom Backend gehen, irrelevant.
 
 ### Abwärtskompatibilität
@@ -152,3 +156,93 @@ GraphMesh-Auth wird **bewusst nicht** vorbereitet (laut Integration-Doc gibt es 
 ## Aufwand
 
 **M (Medium)** — neuer Backend-Modul (`infrastructure/graphmesh/`), neuer Service + Controller, kleinerer Frontend-Tab mit Polling-Hook, ein neues Feld in `Project`. Kein UI-Redesign, keine Datenmigration, keine Änderung am Wizard-Flow.
+
+---
+
+## Erweiterung 2026-04-26: Lokale Persistenz + Export
+
+### Motivation
+
+Hochgeladene Dokumente sind aktuell ausschließlich in GraphMesh sichtbar. Der User möchte sie auch im Frontend-Explorer-Tree (`data/projects/{id}/...`) sehen und beim ZIP-Export optional einbeziehen können. GraphMesh bleibt Source of Truth für die strukturierte Document-Liste/States; lokal entsteht eine zusätzliche, lesbare Kopie.
+
+### Zusätzliche User Stories
+
+5. Als PO möchte ich meine hochgeladenen Dokumente im Projekt-Explorer-Tree sehen, damit ich nicht zwischen Tabs wechseln muss.
+6. Als PO möchte ich beim ZIP-Export entscheiden können, ob meine Originaldateien mit ins Archiv kommen.
+
+### Zusätzliche Acceptance Criteria
+
+- [ ] Erfolgreicher Upload legt zusätzlich zur GraphMesh-Speicherung eine Kopie unter `data/projects/{id}/uploads/{filename}` ab.
+- [ ] Schreib-Fehler beim lokalen Speichern bricht den Upload **nicht** ab (GraphMesh ist authoritativ; Fehler wird geloggt).
+- [ ] Zweiter Upload mit identischem Titel → lokale Datei wird automatisch umbenannt: `spec.pdf`, `spec (2).pdf`, `spec (3).pdf` (wie macOS/Finder). Title in GraphMesh bleibt unverändert.
+- [ ] Delete eines Dokuments entfernt sowohl GraphMesh-Eintrag als auch lokale Datei + Index-Eintrag.
+- [ ] `uploads/` erscheint automatisch im Frontend-Explorer-Tree (kein Hidden-Folder).
+- [ ] Klick auf eine PDF im Explorer öffnet den `SpecFileViewer` mit Hinweis „Binärdatei – keine Inline-Vorschau" statt Crash/Müll.
+- [ ] `ExportDialog` hat eine vierte Checkbox „Documents" (Default **an**). Beim Export landen die Files unter `<prefix>/uploads/{filename}` im ZIP. `.index.json` wird ausgelassen.
+- [ ] Index-Datei `data/projects/{id}/uploads/.index.json` mappt `documentId → filename` und wird konsistent zu Upload/Delete fortgeschrieben.
+- [ ] Filename-Sanitize: `/`, `\`, `..` werden entfernt; leerer Title → fallback `"document"`; max 255 Zeichen.
+
+### Technische Details (Erweiterung)
+
+**Neue Dateien**
+
+- `storage/UploadStorage.kt` — `save(projectId, docId, title, bytes) → filename`, `delete(projectId, docId)`, `list(projectId): List<String>`. Verwaltet `uploads/.index.json` intern. Filename-Sanitize + Auto-Rename-Logik.
+
+**Modifizierte Dateien**
+
+- `service/DocumentService.kt` — Nach erfolgreichem GraphMesh-`uploadDocument` zusätzlich `UploadStorage.save(...)`. In `delete(...)` zusätzlich `UploadStorage.delete(...)`.
+- `api/FileController.kt` — In `readFile`: Binär-Extensions (`.pdf`, `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.zip`) erkennen und `FileContent` mit `binary: true` ohne `content`-Feld zurückgeben (kein `Files.readString` für Binärdaten).
+- `domain/FileContent.kt` — neues optionales Feld `binary: Boolean = false`.
+- `domain/ExportModels.kt` — `ExportRequest` erhält `val includeDocuments: Boolean = true`.
+- `export/ExportService.kt` — Wenn `includeDocuments`: alle Dateien aus `data/projects/{id}/uploads/` (außer `.index.json`) als ZIP-Entries unter `<prefix>/uploads/{filename}` packen.
+- `lib/api.ts` (Frontend) — `FileContent` um `binary?: boolean` erweitern; `exportProject(...)` um `includeDocuments` ergänzen.
+- `components/explorer/SpecFileViewer.tsx` — Bei `binary === true` Hinweis-Box rendern statt Code-Highlight.
+- `components/export/ExportDialog.tsx` — Vierte Checkbox „Documents" (default an), Beschreibung „Hochgeladene Dateien aus uploads/".
+
+**Auto-Rename-Algorithmus**
+
+```
+sanitized = sanitizeFilename(title)
+candidate = sanitized
+n = 2
+while uploads/{candidate} existiert:
+    base, ext = splitExt(sanitized)
+    candidate = "{base} ({n}){ext}"
+    n++
+write uploads/{candidate}
+index[docId] = candidate
+```
+
+**Reihenfolge beim Upload**
+
+```
+DocumentService.upload(projectId, file):
+    project = projectStorage.load(...)
+    [...lazy collection logic...]
+    document = graphMeshClient.uploadDocument(...)   // GraphMesh first (authoritativ)
+    try:
+        UploadStorage.save(projectId, document.id, title, content)
+    catch IOException:
+        log.warn(...) — Upload bleibt erfolgreich
+    return document
+```
+
+### Tests (Erweiterung)
+
+- `UploadStorageTest` (neu) — Save/Delete-Roundtrip, Auto-Rename `(2)/(3)` bei wiederholtem Title, Index-Konsistenz nach mehreren Uploads/Deletes, Sanitize von Path-Traversal-Zeichen.
+- `DocumentServiceTest` (erweitert) — Upload schreibt zusätzlich lokal; Delete entfernt lokale Datei; lokaler Schreib-Fehler bricht GraphMesh-Upload nicht ab.
+- `FileControllerTest` (neu, falls nicht vorhanden) — PDF-Read liefert `FileContent` mit `binary=true` ohne Crash.
+- `ExportServiceTest` (erweitert) — `includeDocuments=true` packt `uploads/`-Files in ZIP, `.index.json` ausgeschlossen; `includeDocuments=false` → kein `uploads/`-Ordner im ZIP.
+
+### Frontend-Smoke-Test (Erweiterung)
+
+- Upload PDF → Datei erscheint im Explorer unter `uploads/` (Refresh ggf. nötig).
+- Klick auf PDF im Explorer → Viewer-Modal mit Hinweis „Binärdatei".
+- Klick auf `.md`-Upload → Markdown-Vorschau wie gehabt.
+- Doppelter Upload mit gleichem Titel → zweite Datei heißt `<name> (2).<ext>` im Explorer.
+- Delete im Documents-Panel → Datei verschwindet auch aus Explorer (nach Refresh).
+- ZIP-Export mit aktivierter „Documents"-Checkbox → ZIP enthält `<prefix>/uploads/...`.
+
+### Aufwand (Erweiterung)
+
+**S (Small)** — eine neue Storage-Klasse, leichte Erweiterung von `DocumentService`/`ExportService`/`FileController`, eine neue Checkbox im ExportDialog, kleine Anpassung im SpecFileViewer.
