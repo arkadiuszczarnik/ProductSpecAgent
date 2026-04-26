@@ -3,11 +3,8 @@ package com.agentwork.productspecagent.export
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.*
 import com.agentwork.productspecagent.storage.UploadStorage
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -17,8 +14,7 @@ class ExportService(
     private val decisionService: DecisionService,
     private val clarificationService: ClarificationService,
     private val taskService: TaskService,
-    private val uploadStorage: UploadStorage,
-    @Value("\${app.data-path}") private val dataPath: String
+    private val uploadStorage: UploadStorage
 ) {
     fun exportProject(projectId: String, request: ExportRequest = ExportRequest()): ByteArray {
         val projectResponse = projectService.getProject(projectId)
@@ -79,12 +75,8 @@ class ExportService(
 
             // Documents (uploads)
             if (request.includeDocuments) {
-                val uploadsDir = Paths.get(dataPath, "projects", projectId, "uploads")
-                if (Files.exists(uploadsDir)) {
-                    for (filename in uploadStorage.list(projectId)) {
-                        val bytes = Files.readAllBytes(uploadsDir.resolve(filename))
-                        zip.addBinaryEntry("$prefix/uploads/$filename", bytes)
-                    }
+                for (filename in uploadStorage.list(projectId)) {
+                    zip.addBinaryEntry("$prefix/uploads/$filename", uploadStorage.read(projectId, filename))
                 }
             }
         }

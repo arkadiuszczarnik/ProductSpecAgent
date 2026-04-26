@@ -44,6 +44,10 @@ open class UploadStorage(
         writeIndex(projectId, index)
     }
 
+    open fun read(projectId: String, filename: String): ByteArray {
+        return Files.readAllBytes(uploadsDir(projectId).resolve(filename))
+    }
+
     fun list(projectId: String): List<String> {
         val dir = uploadsDir(projectId)
         if (!Files.exists(dir)) return emptyList()

@@ -101,4 +101,14 @@ class UploadStorageTest {
         val s = storage()
         assertEquals(emptyList<String>(), s.list("never-touched"))
     }
+
+    @Test
+    fun `read returns saved file bytes`() {
+        val s = storage()
+        s.save("p1", "doc-1", "spec.pdf", byteArrayOf(7, 8, 9))
+
+        val bytes = s.read("p1", "spec.pdf")
+
+        assertArrayEquals(byteArrayOf(7, 8, 9), bytes)
+    }
 }
