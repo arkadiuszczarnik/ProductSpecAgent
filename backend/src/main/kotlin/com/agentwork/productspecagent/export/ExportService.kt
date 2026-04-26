@@ -2,8 +2,12 @@ package com.agentwork.productspecagent.export
 
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.*
+import com.agentwork.productspecagent.storage.UploadStorage
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -12,7 +16,9 @@ class ExportService(
     private val projectService: ProjectService,
     private val decisionService: DecisionService,
     private val clarificationService: ClarificationService,
-    private val taskService: TaskService
+    private val taskService: TaskService,
+    private val uploadStorage: UploadStorage,
+    @Value("\${app.data-path}") private val dataPath: String
 ) {
     fun exportProject(projectId: String, request: ExportRequest = ExportRequest()): ByteArray {
         val projectResponse = projectService.getProject(projectId)
@@ -67,6 +73,17 @@ class ExportService(
                         val slug = t.title.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(50)
                         val typePrefix = t.type.name.lowercase()
                         zip.addEntry("$prefix/tasks/${String.format("%03d", i + 1)}-$typePrefix-$slug.md", generateTaskMd(t))
+                    }
+                }
+            }
+
+            // Documents (uploads)
+            if (request.includeDocuments) {
+                val uploadsDir = Paths.get(dataPath, "projects", projectId, "uploads")
+                if (Files.exists(uploadsDir)) {
+                    for (filename in uploadStorage.list(projectId)) {
+                        val bytes = Files.readAllBytes(uploadsDir.resolve(filename))
+                        zip.addBinaryEntry("$prefix/uploads/$filename", bytes)
                     }
                 }
             }
@@ -215,6 +232,12 @@ class ExportService(
     private fun ZipOutputStream.addEntry(name: String, content: String) {
         putNextEntry(ZipEntry(name))
         write(content.toByteArray())
+        closeEntry()
+    }
+
+    private fun ZipOutputStream.addBinaryEntry(name: String, content: ByteArray) {
+        putNextEntry(ZipEntry(name))
+        write(content)
         closeEntry()
     }
 }

@@ -103,4 +103,58 @@ class ExportControllerTest {
         )
     }
 
+    @Test
+    fun `POST export with includeDocuments=true bundles uploads folder`() {
+        val pid = createProject()
+        val uploadsDir = java.nio.file.Paths.get("build/test-data/projects/$pid/uploads")
+        java.nio.file.Files.createDirectories(uploadsDir)
+        val pdfFile = uploadsDir.resolve("a.pdf")
+        val indexFile = uploadsDir.resolve(".index.json")
+        java.nio.file.Files.write(pdfFile, byteArrayOf(1, 2, 3))
+        java.nio.file.Files.writeString(indexFile, """{"d1":"a.pdf"}""")
+
+        try {
+            val result = mockMvc.perform(
+                post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"includeDocuments":true}""")
+            ).andExpect(status().isOk()).andReturn()
+
+            val entries = mutableListOf<String>()
+            ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
+                var e = zis.nextEntry
+                while (e != null) { entries.add(e.name); e = zis.nextEntry }
+            }
+            assertTrue(entries.any { it.endsWith("uploads/a.pdf") }, "ZIP should contain uploads/a.pdf, got: $entries")
+            assertTrue(entries.none { it.endsWith(".index.json") }, "ZIP must not contain .index.json, got: $entries")
+        } finally {
+            java.nio.file.Files.deleteIfExists(pdfFile)
+            java.nio.file.Files.deleteIfExists(indexFile)
+        }
+    }
+
+    @Test
+    fun `POST export with includeDocuments=false skips uploads`() {
+        val pid = createProject()
+        val uploadsDir = java.nio.file.Paths.get("build/test-data/projects/$pid/uploads")
+        java.nio.file.Files.createDirectories(uploadsDir)
+        val pdfFile = uploadsDir.resolve("a.pdf")
+        java.nio.file.Files.write(pdfFile, byteArrayOf(1, 2, 3))
+
+        try {
+            val result = mockMvc.perform(
+                post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"includeDocuments":false}""")
+            ).andExpect(status().isOk()).andReturn()
+
+            val entries = mutableListOf<String>()
+            ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
+                var e = zis.nextEntry
+                while (e != null) { entries.add(e.name); e = zis.nextEntry }
+            }
+            assertTrue(entries.none { it.contains("uploads/") }, "ZIP must not contain uploads/, got: $entries")
+        } finally {
+            java.nio.file.Files.deleteIfExists(pdfFile)
+        }
+    }
+
 }
