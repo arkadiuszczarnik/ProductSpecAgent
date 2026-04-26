@@ -1,7 +1,9 @@
 package com.agentwork.productspecagent.service
 
 import com.agentwork.productspecagent.domain.Document
+import com.agentwork.productspecagent.domain.Project
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshClient
+import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshException
 import com.agentwork.productspecagent.storage.ProjectStorage
 import org.springframework.stereotype.Service
 import java.time.Instant
@@ -15,13 +17,22 @@ class DocumentService(
 
     fun upload(projectId: String, title: String, mimeType: String, content: ByteArray): Document {
         val project = projectStorage.loadProject(projectId) ?: throw ProjectNotFoundException(projectId)
-        val collectionId = project.collectionId ?: run {
-            val newId = graphMeshClient.createCollection(project.name)
-            projectStorage.saveProject(project.copy(collectionId = newId, updatedAt = Instant.now().toString()))
-            newId
-        }
         val base64 = Base64.getEncoder().encodeToString(content)
-        return graphMeshClient.uploadDocument(collectionId, title, mimeType, base64)
+        val existingId = project.collectionId
+        val collectionId = existingId ?: createCollection(project)
+        return try {
+            graphMeshClient.uploadDocument(collectionId, title, mimeType, base64)
+        } catch (e: GraphMeshException.GraphQlError) {
+            if (existingId != null && "COLLECTION_NOT_FOUND" in e.detail) {
+                graphMeshClient.uploadDocument(createCollection(project), title, mimeType, base64)
+            } else throw e
+        }
+    }
+
+    private fun createCollection(project: Project): String {
+        val newId = graphMeshClient.createCollection(project.name)
+        projectStorage.saveProject(project.copy(collectionId = newId, updatedAt = Instant.now().toString()))
+        return newId
     }
 
     fun list(projectId: String): List<Document> {

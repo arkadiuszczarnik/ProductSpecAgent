@@ -3,6 +3,7 @@ package com.agentwork.productspecagent.service
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshClient
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshConfig
+import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshException
 import com.agentwork.productspecagent.storage.ProjectStorage
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -31,12 +32,16 @@ class DocumentServiceTest {
         var lastUploadCollectionId: String? = null
         var nextCollectionId: String = "col-NEW"
         var simulateUploadFailure: Boolean = false
+        var failNextUploadWith: GraphMeshException.GraphQlError? = null
+        var uploadCalls = 0
         override fun createCollection(name: String): String {
             createdCollections++
             return nextCollectionId
         }
         override fun uploadDocument(collectionId: String, title: String, mimeType: String, contentBase64: String): Document {
+            uploadCalls++
             lastUploadCollectionId = collectionId
+            failNextUploadWith?.let { failNextUploadWith = null; throw it }
             if (simulateUploadFailure) throw RuntimeException("simulated upload failure")
             return Document("d1", title, mimeType, DocumentState.UPLOADED, "2026-04-24T10:00:00Z")
         }
@@ -73,6 +78,35 @@ class DocumentServiceTest {
         assertThrows(ProjectNotFoundException::class.java) {
             service.upload("nope", "a.pdf", "application/pdf", ByteArray(1))
         }
+    }
+
+    @Test
+    fun `upload recreates collection when GraphMesh reports COLLECTION_NOT_FOUND`() {
+        val (storage, client, service) = fixtures()
+        storage.saveProject(storage.loadProject("p1")!!.copy(collectionId = "col-STALE"))
+        client.nextCollectionId = "col-FRESH"
+        client.failNextUploadWith = GraphMeshException.GraphQlError(
+            "[{message=Collection not found: col-STALE, extensions={code=COLLECTION_NOT_FOUND}}]"
+        )
+
+        service.upload("p1", "spec.pdf", "application/pdf", ByteArray(2))
+
+        assertEquals(1, client.createdCollections)
+        assertEquals(2, client.uploadCalls)
+        assertEquals("col-FRESH", client.lastUploadCollectionId)
+        assertEquals("col-FRESH", storage.loadProject("p1")!!.collectionId)
+    }
+
+    @Test
+    fun `upload propagates non-collection GraphQlError without retry`() {
+        val (_, client, service) = fixtures()
+        service.upload("p1", "first.pdf", "application/pdf", ByteArray(2)) // creates col-NEW
+        client.failNextUploadWith = GraphMeshException.GraphQlError("[{message=boom}]")
+
+        assertThrows(GraphMeshException.GraphQlError::class.java) {
+            service.upload("p1", "second.pdf", "application/pdf", ByteArray(2))
+        }
+        assertEquals(1, client.createdCollections)
     }
 
     @Test
