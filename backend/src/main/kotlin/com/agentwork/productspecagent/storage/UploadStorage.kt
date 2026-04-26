@@ -9,7 +9,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 @Service
-class UploadStorage(
+open class UploadStorage(
     @Value("\${app.data-path}") private val dataPath: String
 ) {
 
@@ -21,7 +21,7 @@ class UploadStorage(
     private fun indexFile(projectId: String): Path =
         uploadsDir(projectId).resolve(".index.json")
 
-    fun save(projectId: String, docId: String, title: String, bytes: ByteArray): String {
+    open fun save(projectId: String, docId: String, title: String, bytes: ByteArray): String {
         val dir = uploadsDir(projectId)
         Files.createDirectories(dir)
 
@@ -36,7 +36,7 @@ class UploadStorage(
         return filename
     }
 
-    fun delete(projectId: String, docId: String) {
+    open fun delete(projectId: String, docId: String) {
         val index = readIndex(projectId).toMutableMap()
         val filename = index.remove(docId) ?: return
         val file = uploadsDir(projectId).resolve(filename)

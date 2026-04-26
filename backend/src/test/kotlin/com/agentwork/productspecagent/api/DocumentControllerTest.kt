@@ -41,6 +41,11 @@ class DocumentControllerTest {
     @TestConfiguration
     class TestConfig {
         @Bean @Primary fun fakeGraphMeshClient(): GraphMeshClient = FakeGraphMeshClient()
+        @Bean @Primary fun stubUploadStorage(): com.agentwork.productspecagent.storage.UploadStorage =
+            object : com.agentwork.productspecagent.storage.UploadStorage("build/test-uploads-stub") {
+                override fun save(projectId: String, docId: String, title: String, bytes: ByteArray) = title
+                override fun delete(projectId: String, docId: String) {}
+            }
     }
 
     @Autowired lateinit var mockMvc: MockMvc

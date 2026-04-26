@@ -5,6 +5,7 @@ import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshClient
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshConfig
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshException
 import com.agentwork.productspecagent.storage.ProjectStorage
+import com.agentwork.productspecagent.storage.UploadStorage
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -14,7 +15,7 @@ class DocumentServiceTest {
 
     @TempDir lateinit var tempDir: Path
 
-    private fun fixtures(): Triple<ProjectStorage, FakeClient, DocumentService> {
+    private fun fixtures(): Quad<ProjectStorage, FakeClient, FakeUploadStorage, DocumentService> {
         val storage = ProjectStorage(tempDir.toString())
         val project = Project(
             id = "p1", name = "Demo", ownerId = "u1",
@@ -23,8 +24,14 @@ class DocumentServiceTest {
         )
         storage.saveProject(project)
         val client = FakeClient()
-        val service = DocumentService(storage, client)
-        return Triple(storage, client, service)
+        val uploads = FakeUploadStorage()
+        val service = DocumentService(storage, client, uploads)
+        return Quad(storage, client, uploads, service)
+    }
+
+    private class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D) {
+        operator fun component1() = a; operator fun component2() = b
+        operator fun component3() = c; operator fun component4() = d
     }
 
     private class FakeClient : GraphMeshClient(GraphMeshConfig("http://unused", java.time.Duration.ofSeconds(1))) {
@@ -51,9 +58,23 @@ class DocumentServiceTest {
             Document(documentId, "x", "text/plain", DocumentState.EXTRACTED, "z")
     }
 
+    private class FakeUploadStorage : UploadStorage("unused-test-path") {
+        val saved = mutableMapOf<String, Triple<String, String, ByteArray>>()  // docId → (projectId, filename, bytes)
+        val deleted = mutableListOf<Pair<String, String>>()  // (projectId, docId)
+        var throwOnSave: Boolean = false
+        override fun save(projectId: String, docId: String, title: String, bytes: ByteArray): String {
+            if (throwOnSave) throw java.io.IOException("disk full")
+            saved[docId] = Triple(projectId, title, bytes)
+            return title
+        }
+        override fun delete(projectId: String, docId: String) {
+            deleted += projectId to docId
+        }
+    }
+
     @Test
     fun `first upload creates collection and persists collectionId`() {
-        val (storage, client, service) = fixtures()
+        val (storage, client, _, service) = fixtures()
         client.nextCollectionId = "col-FIRST"
 
         service.upload("p1", "spec.pdf", "application/pdf", ByteArray(4) { it.toByte() })
@@ -65,7 +86,7 @@ class DocumentServiceTest {
 
     @Test
     fun `second upload reuses existing collectionId`() {
-        val (_, client, service) = fixtures()
+        val (_, client, _, service) = fixtures()
         service.upload("p1", "a.pdf", "application/pdf", ByteArray(2))
         service.upload("p1", "b.pdf", "application/pdf", ByteArray(2))
 
@@ -74,7 +95,7 @@ class DocumentServiceTest {
 
     @Test
     fun `upload throws PROJECT_NOT_FOUND if project missing`() {
-        val (_, _, service) = fixtures()
+        val (_, _, _, service) = fixtures()
         assertThrows(ProjectNotFoundException::class.java) {
             service.upload("nope", "a.pdf", "application/pdf", ByteArray(1))
         }
@@ -82,7 +103,7 @@ class DocumentServiceTest {
 
     @Test
     fun `upload recreates collection when GraphMesh reports COLLECTION_NOT_FOUND`() {
-        val (storage, client, service) = fixtures()
+        val (storage, client, _, service) = fixtures()
         storage.saveProject(storage.loadProject("p1")!!.copy(collectionId = "col-STALE"))
         client.nextCollectionId = "col-FRESH"
         client.failNextUploadWith = GraphMeshException.GraphQlError(
@@ -99,7 +120,7 @@ class DocumentServiceTest {
 
     @Test
     fun `upload propagates non-collection GraphQlError without retry`() {
-        val (_, client, service) = fixtures()
+        val (_, client, _, service) = fixtures()
         service.upload("p1", "first.pdf", "application/pdf", ByteArray(2)) // creates col-NEW
         client.failNextUploadWith = GraphMeshException.GraphQlError("[{message=boom}]")
 
@@ -111,7 +132,7 @@ class DocumentServiceTest {
 
     @Test
     fun `collectionId is persisted even when uploadDocument fails`() {
-        val (storage, client, service) = fixtures()
+        val (storage, client, _, service) = fixtures()
         client.nextCollectionId = "col-PERSISTED"
         client.simulateUploadFailure = true
 
@@ -121,5 +142,40 @@ class DocumentServiceTest {
 
         assertEquals("col-PERSISTED", storage.loadProject("p1")!!.collectionId)
         assertEquals(1, client.createdCollections)
+    }
+
+    @Test
+    fun `upload mirrors document to local UploadStorage after GraphMesh success`() {
+        val (_, client, uploads, service) = fixtures()
+        client.nextCollectionId = "col-1"
+
+        service.upload("p1", "spec.pdf", "application/pdf", byteArrayOf(7, 8, 9))
+
+        val saved = uploads.saved["d1"]
+        assertNotNull(saved)
+        assertEquals("p1", saved!!.first)
+        assertEquals("spec.pdf", saved.second)
+        assertArrayEquals(byteArrayOf(7, 8, 9), saved.third)
+    }
+
+    @Test
+    fun `upload tolerates local storage failure (GraphMesh result still returned)`() {
+        val (_, _, uploads, service) = fixtures()
+        uploads.throwOnSave = true
+
+        val doc = service.upload("p1", "spec.pdf", "application/pdf", byteArrayOf(1))
+
+        assertEquals("d1", doc.id)  // Upload succeeded despite local failure
+        assertTrue(uploads.saved.isEmpty())
+    }
+
+    @Test
+    fun `delete removes both GraphMesh entry and local copy`() {
+        val (_, _, uploads, service) = fixtures()
+        service.upload("p1", "spec.pdf", "application/pdf", byteArrayOf(1))
+
+        service.delete("p1", "d1")
+
+        assertEquals(listOf("p1" to "d1"), uploads.deleted)
     }
 }
