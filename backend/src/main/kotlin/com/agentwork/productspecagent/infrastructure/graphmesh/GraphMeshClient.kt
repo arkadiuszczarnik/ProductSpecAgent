@@ -46,11 +46,15 @@ open class GraphMeshClient(private val config: GraphMeshConfig) {
     open fun listDocuments(collectionId: String): List<Document> {
         val resp = post("""
             query Docs(${'$'}id: ID!) {
-              documents(collectionId: ${'$'}id) { id title mimeType state createdAt }
+              documents(collectionId: ${'$'}id) {
+                items { id title mimeType state createdAt }
+              }
             }
         """.trimIndent(), mapOf("id" to collectionId))
         @Suppress("UNCHECKED_CAST")
-        val list = resp["documents"] as List<Map<*, *>>
+        val page = resp["documents"] as Map<String, Any>
+        @Suppress("UNCHECKED_CAST")
+        val list = page["items"] as List<Map<*, *>>
         return list.map(::toDocument)
     }
 

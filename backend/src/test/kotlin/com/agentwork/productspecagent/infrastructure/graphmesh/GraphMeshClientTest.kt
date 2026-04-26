@@ -60,10 +60,10 @@ class GraphMeshClientTest {
     fun `listDocuments returns parsed list`() {
         server.enqueue(MockResponse.Builder()
             .addHeader("Content-Type", "application/json")
-            .body("""{"data":{"documents":[
+            .body("""{"data":{"documents":{"items":[
             {"id":"d1","title":"a","mimeType":"text/plain","state":"EXTRACTED","createdAt":"2026-04-24T10:00:00Z"},
             {"id":"d2","title":"b","mimeType":"application/pdf","state":"PROCESSING","createdAt":"2026-04-24T11:00:00Z"}
-        ]}}""")
+        ]}}}""")
             .build())
 
         val docs = client.listDocuments("col-1")
