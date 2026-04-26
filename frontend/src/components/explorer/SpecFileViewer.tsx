@@ -46,7 +46,9 @@ export function SpecFileViewer({ projectId, initialPath, open, onClose }: SpecFi
 
     try {
       const content = await readProjectFile(projectId, path);
-      const html = await highlightCode(content.content, content.language);
+      const html = content.binary
+        ? `<div class="flex h-full flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground"><div class="text-sm font-medium">Binärdatei</div><div class="text-xs">Keine Inline-Vorschau für ${escapeHtml(content.name)}.</div></div>`
+        : await highlightCode(content.content, content.language);
       setTabs((prev) =>
         prev.map((t) => (t.path === path ? { ...t, content, html, loading: false } : t))
       );
@@ -123,15 +125,19 @@ export function SpecFileViewer({ projectId, initialPath, open, onClose }: SpecFi
         {/* Footer */}
         {currentTab?.content && (
           <div className="flex items-center gap-3 border-t px-4 py-1.5 text-[10px] text-muted-foreground shrink-0">
-            <Badge variant="ghost">{currentTab.content.language}</Badge>
-            <span>{currentTab.content.lineCount} lines</span>
-            <span>UTF-8</span>
+            <Badge variant="ghost">{currentTab.content.binary ? "binary" : currentTab.content.language}</Badge>
+            {!currentTab.content.binary && <span>{currentTab.content.lineCount} lines</span>}
+            {!currentTab.content.binary && <span>UTF-8</span>}
             <span className="ml-auto">{currentTab.content.path}</span>
           </div>
         )}
       </div>
     </div>
   );
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 async function highlightCode(code: string, language: string): Promise<string> {
