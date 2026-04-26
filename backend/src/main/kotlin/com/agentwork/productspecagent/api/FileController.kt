@@ -43,9 +43,15 @@ class FileController(
             throw ProjectNotFoundException("Invalid path: $cleanPath")
         }
 
-        val content = Files.readString(file)
         val name = file.fileName.toString()
+        if (isBinary(name)) {
+            return FileContent(
+                path = cleanPath, name = name, content = "",
+                language = "binary", lineCount = 0, binary = true
+            )
+        }
 
+        val content = Files.readString(file)
         return FileContent(
             path = cleanPath,
             name = name,
@@ -88,6 +94,11 @@ class FileController(
         return entries
     }
 
+    private fun isBinary(filename: String): Boolean {
+        val lower = filename.lowercase()
+        return BINARY_EXTENSIONS.any { lower.endsWith(it) }
+    }
+
     private fun detectLanguage(filename: String): String = when {
         filename.endsWith(".kt") -> "kotlin"
         filename.endsWith(".kts") -> "kotlin"
@@ -104,5 +115,11 @@ class FileController(
         filename == "Dockerfile" -> "dockerfile"
         filename == ".gitignore" -> "text"
         else -> "text"
+    }
+
+    companion object {
+        private val BINARY_EXTENSIONS = setOf(
+            ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".zip"
+        )
     }
 }

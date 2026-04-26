@@ -17,5 +17,6 @@ data class FileContent(
     val name: String,
     val content: String,
     val language: String,
-    val lineCount: Int
+    val lineCount: Int,
+    val binary: Boolean = false
 )

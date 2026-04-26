@@ -66,4 +66,19 @@ class FileControllerTest {
         mockMvc.perform(get("/api/v1/projects/$pid/files/nonexistent.txt"))
             .andExpect(status().isNotFound())
     }
+
+    @Test
+    fun `GET binary file returns binary=true with empty content`() {
+        val pid = createProject()
+        // Manually place a fake PDF under data/projects/{pid}/uploads/
+        val dataPath = java.nio.file.Paths.get("build/test-data/projects/$pid/uploads")
+        java.nio.file.Files.createDirectories(dataPath)
+        java.nio.file.Files.write(dataPath.resolve("doc.pdf"), byteArrayOf(0x25, 0x50, 0x44, 0x46))  // %PDF magic bytes
+
+        mockMvc.perform(get("/api/v1/projects/$pid/files/uploads/doc.pdf"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.binary").value(true))
+            .andExpect(jsonPath("$.content").value(""))
+            .andExpect(jsonPath("$.name").value("doc.pdf"))
+    }
 }
