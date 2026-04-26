@@ -17,6 +17,7 @@ export function ExportDialog({ projectId, projectName, open, onClose }: ExportDi
   const [includeDecisions, setIncludeDecisions] = useState(true);
   const [includeClarifications, setIncludeClarifications] = useState(true);
   const [includeTasks, setIncludeTasks] = useState(true);
+  const [includeDocuments, setIncludeDocuments] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   if (!open) return null;
@@ -28,6 +29,7 @@ export function ExportDialog({ projectId, projectName, open, onClose }: ExportDi
         includeDecisions,
         includeClarifications,
         includeTasks,
+        includeDocuments,
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -93,6 +95,13 @@ export function ExportDialog({ projectId, projectName, open, onClose }: ExportDi
             <div>
               <span className="text-sm font-medium">Tasks & Plan</span>
               <p className="text-xs text-muted-foreground">PLAN.md and individual task files</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 rounded-md border px-3 py-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+            <input type="checkbox" checked={includeDocuments} onChange={(e) => setIncludeDocuments(e.target.checked)} className="accent-primary" />
+            <div>
+              <span className="text-sm font-medium">Documents</span>
+              <p className="text-xs text-muted-foreground">Hochgeladene Dateien aus uploads/</p>
             </div>
           </label>
         </CardContent>
