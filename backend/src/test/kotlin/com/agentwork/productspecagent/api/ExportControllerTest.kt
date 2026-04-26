@@ -17,13 +17,32 @@ import kotlin.test.assertTrue
 class ExportControllerTest {
 
     @Autowired lateinit var mockMvc: MockMvc
+    @Autowired lateinit var uploadStorage: com.agentwork.productspecagent.storage.UploadStorage
+
+    private val createdProjectIds = mutableListOf<String>()
+
+    @org.junit.jupiter.api.AfterEach
+    fun cleanupProjects() {
+        val root = java.nio.file.Paths.get("build/test-data/projects")
+        for (pid in createdProjectIds) {
+            val dir = root.resolve(pid)
+            if (java.nio.file.Files.exists(dir)) {
+                java.nio.file.Files.walk(dir)
+                    .sorted(Comparator.reverseOrder())
+                    .forEach(java.nio.file.Files::delete)
+            }
+        }
+        createdProjectIds.clear()
+    }
 
     private fun createProject(): String {
         val result = mockMvc.perform(
             post("/api/v1/projects").contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name":"Export Test"}""")
         ).andExpect(status().isCreated()).andReturn()
-        return """"id"\s*:\s*"([^"]+)"""".toRegex().find(result.response.contentAsString)!!.groupValues[1]
+        val pid = """"id"\s*:\s*"([^"]+)"""".toRegex().find(result.response.contentAsString)!!.groupValues[1]
+        createdProjectIds.add(pid)
+        return pid
     }
 
     @Test
@@ -106,55 +125,38 @@ class ExportControllerTest {
     @Test
     fun `POST export with includeDocuments=true bundles uploads folder`() {
         val pid = createProject()
-        val uploadsDir = java.nio.file.Paths.get("build/test-data/projects/$pid/uploads")
-        java.nio.file.Files.createDirectories(uploadsDir)
-        val pdfFile = uploadsDir.resolve("a.pdf")
-        val indexFile = uploadsDir.resolve(".index.json")
-        java.nio.file.Files.write(pdfFile, byteArrayOf(1, 2, 3))
-        java.nio.file.Files.writeString(indexFile, """{"d1":"a.pdf"}""")
+        uploadStorage.save(pid, "d1", "a.pdf", byteArrayOf(1, 2, 3))
 
-        try {
-            val result = mockMvc.perform(
-                post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
-                    .content("""{"includeDocuments":true}""")
-            ).andExpect(status().isOk()).andReturn()
+        val result = mockMvc.perform(
+            post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
+                .content("""{"includeDocuments":true}""")
+        ).andExpect(status().isOk()).andReturn()
 
-            val entries = mutableListOf<String>()
-            ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
-                var e = zis.nextEntry
-                while (e != null) { entries.add(e.name); e = zis.nextEntry }
-            }
-            assertTrue(entries.any { it.endsWith("uploads/a.pdf") }, "ZIP should contain uploads/a.pdf, got: $entries")
-            assertTrue(entries.none { it.endsWith(".index.json") }, "ZIP must not contain .index.json, got: $entries")
-        } finally {
-            java.nio.file.Files.deleteIfExists(pdfFile)
-            java.nio.file.Files.deleteIfExists(indexFile)
+        val entries = mutableListOf<String>()
+        ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
+            var e = zis.nextEntry
+            while (e != null) { entries.add(e.name); e = zis.nextEntry }
         }
+        assertTrue(entries.any { it.endsWith("uploads/a.pdf") }, "ZIP should contain uploads/a.pdf, got: $entries")
+        assertTrue(entries.none { it.endsWith(".index.json") }, "ZIP must not contain .index.json, got: $entries")
     }
 
     @Test
     fun `POST export with includeDocuments=false skips uploads`() {
         val pid = createProject()
-        val uploadsDir = java.nio.file.Paths.get("build/test-data/projects/$pid/uploads")
-        java.nio.file.Files.createDirectories(uploadsDir)
-        val pdfFile = uploadsDir.resolve("a.pdf")
-        java.nio.file.Files.write(pdfFile, byteArrayOf(1, 2, 3))
+        uploadStorage.save(pid, "d1", "a.pdf", byteArrayOf(1, 2, 3))
 
-        try {
-            val result = mockMvc.perform(
-                post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
-                    .content("""{"includeDocuments":false}""")
-            ).andExpect(status().isOk()).andReturn()
+        val result = mockMvc.perform(
+            post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
+                .content("""{"includeDocuments":false}""")
+        ).andExpect(status().isOk()).andReturn()
 
-            val entries = mutableListOf<String>()
-            ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
-                var e = zis.nextEntry
-                while (e != null) { entries.add(e.name); e = zis.nextEntry }
-            }
-            assertTrue(entries.none { it.contains("uploads/") }, "ZIP must not contain uploads/, got: $entries")
-        } finally {
-            java.nio.file.Files.deleteIfExists(pdfFile)
+        val entries = mutableListOf<String>()
+        ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
+            var e = zis.nextEntry
+            while (e != null) { entries.add(e.name); e = zis.nextEntry }
         }
+        assertTrue(entries.none { it.contains("uploads/") }, "ZIP must not contain uploads/, got: $entries")
     }
 
 }
