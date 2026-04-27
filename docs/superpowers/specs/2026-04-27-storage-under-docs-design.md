@@ -87,9 +87,31 @@ Flag wird nirgendwo vom Frontend gesetzt (alle Defaults greifen). Da sie funktio
 
 **3d. Dependencies bereinigen:** `UploadStorage`-Injection in `ExportService` (Konstruktor-Parameter) entfernen, da nach Streichung des Blocks ungenutzt.
 
-### 4. `ExportRequest`-Flags `includeDecisions/Clarifications/Tasks` — Verhalten
+### 4. Kuratierte Markdown-Pfade ins ZIP nach `docs/` umziehen
 
-Bewusst **unverändert lassen**. Sie steuern weiterhin die kuratierte Markdown-Sicht (`{prefix}/decisions/001-slug.md`, ...). Die Roh-JSON unter `docs/decisions/` etc. landet zusätzlich automatisch im ZIP über `listDocsFiles()`. Das ist konsistent mit der „alles mitnehmen"-Intention: ein Opt-Out auf JSON-Ebene wäre zusätzliche Komplexität ohne aktuellen UI-Konsumenten.
+Die per `request.includeDecisions/Clarifications/Tasks` erzeugten kuratierten Markdown-Files ziehen ebenfalls unter `docs/`, damit das ZIP **eine konsistente `docs/`-Wurzel** für alle Spec-begleitenden Inhalte hat:
+
+| Datei | alt (ExportService.kt) | neu |
+|---|---|---|
+| Zeile 47 | `"$prefix/decisions/..."` | `"$prefix/docs/decisions/..."` |
+| Zeile 58 | `"$prefix/clarifications/..."` | `"$prefix/docs/clarifications/..."` |
+| Zeile 71 | `"$prefix/tasks/..."` | `"$prefix/docs/tasks/..."` |
+
+Konsequenz: in den Subordnern `docs/decisions/`, `docs/clarifications/`, `docs/tasks/` liegen dann **beide Sichten parallel** (Roh-JSON `{uuid}.json` aus `listDocsFiles` + kuratierte MD `001-slug.md`). Filenamen kollidieren nicht.
+
+**`PLAN.md` bleibt am ZIP-Root** (analog zu `README.md`, `SPEC.md` als Einstiegspunkte). PLAN ist eine Aggregat-Übersicht über alle Tasks, kein per-Task-Artefakt — daher nicht unter `docs/tasks/`.
+
+**README.md-Generator (`generateReadme`)** muss die Struktur-Sektion (Zeile 95–98) auf die neuen Pfade aktualisieren:
+
+```kotlin
+appendLine("- `docs/decisions/` — Key product decisions")
+appendLine("- `docs/clarifications/` — Clarified requirements")
+appendLine("- `docs/tasks/` — Individual task files")
+```
+
+### 5. `ExportRequest`-Flags `includeDecisions/Clarifications/Tasks` — Verhalten
+
+Bewusst **unverändert lassen**. Sie gaten weiterhin nur die kuratierte Markdown-Sicht. Die Roh-JSON unter `docs/decisions/` etc. landet zusätzlich automatisch im ZIP über `listDocsFiles()`. Das ist konsistent mit der „alles mitnehmen"-Intention: ein Opt-Out auf JSON-Ebene wäre zusätzliche Komplexität ohne aktuellen UI-Konsumenten.
 
 ## Resultierende ZIP-Struktur
 
@@ -99,18 +121,21 @@ Bewusst **unverändert lassen**. Sie steuern weiterhin die kuratierte Markdown-S
   ├── SPEC.md
   ├── PLAN.md
   ├── .gitignore
-  ├── docs/                       (via listDocsFiles)
-  │   ├── features/*.md           (auto-generiert)
-  │   ├── architecture/*.md
-  │   ├── backend/*.md
-  │   ├── frontend/*.md
-  │   ├── decisions/*.json        (NEU im ZIP)
-  │   ├── clarifications/*.json   (NEU)
-  │   ├── tasks/*.json            (NEU)
-  │   └── uploads/*               (NEU, binary)
-  ├── decisions/001-slug.md       (kuratierte MD-Sicht, unverändert)
-  ├── clarifications/001-slug.md  (unverändert)
-  └── tasks/001-typ-slug.md       (unverändert)
+  └── docs/
+      ├── features/*.md              (auto-generiert)
+      ├── architecture/*.md
+      ├── backend/*.md
+      ├── frontend/*.md
+      ├── decisions/
+      │   ├── {uuid}.json            (Roh, via listDocsFiles)
+      │   └── 001-slug.md            (kuratierte MD)
+      ├── clarifications/
+      │   ├── {uuid}.json
+      │   └── 001-slug.md
+      ├── tasks/
+      │   ├── {uuid}.json
+      │   └── 001-typ-slug.md
+      └── uploads/*                  (binary)
 ```
 
 ## Tests anzupassen
@@ -136,9 +161,11 @@ Keine Änderung. REST-API-Pfade (`/api/v1/projects/{id}/decisions`, `/uploads`, 
 - [ ] Neues Projekt anlegen → `decisions/`, `clarifications/`, `tasks/`, `uploads/` werden unter `data/projects/{id}/docs/` (nicht mehr im Projekt-Root) erzeugt.
 - [ ] User-Upload (Datei via REST) landet in `data/projects/{id}/docs/uploads/<filename>`.
 - [ ] Handoff-ZIP enthält
-  - `docs/decisions/{uuid}.json` (Roh-JSON)
+  - `docs/decisions/{uuid}.json` (Roh-JSON via listDocsFiles)
+  - `docs/decisions/001-slug.md` (kuratierte MD jetzt unter docs/)
+  - analog für `docs/clarifications/` und `docs/tasks/`
   - `docs/uploads/<filename>` (Binärinhalt korrekt)
-  - `decisions/001-slug.md` (kuratierte MD weiterhin)
-  - **kein** zweites `uploads/<filename>` außerhalb von `docs/`
+  - **keine** Top-Level-Ordner `decisions/`, `clarifications/`, `tasks/`, `uploads/` mehr im ZIP-Root
+  - `README.md`, `SPEC.md`, `PLAN.md` weiterhin am ZIP-Root
 - [ ] `ExportRequest`-Type (Backend + ggf. Frontend) hat kein `includeDocuments`-Feld mehr.
 - [ ] `ExportService` injiziert `UploadStorage` nicht mehr.
