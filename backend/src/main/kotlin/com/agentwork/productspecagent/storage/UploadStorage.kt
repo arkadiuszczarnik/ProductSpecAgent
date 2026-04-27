@@ -37,10 +37,6 @@ open class UploadStorage(
     private fun indexFile(projectId: String): Path =
         uploadsDir(projectId).resolve(".index.json")
 
-    /** Legacy 4-arg overload — kept for callers not yet migrated (Task 5). */
-    open fun save(projectId: String, docId: String, title: String, bytes: ByteArray): String =
-        save(projectId, docId, title, "application/octet-stream", bytes, Instant.now().toString())
-
     open fun save(
         projectId: String,
         docId: String,
