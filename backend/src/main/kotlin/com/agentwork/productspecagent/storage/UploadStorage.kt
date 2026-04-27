@@ -1,5 +1,8 @@
 package com.agentwork.productspecagent.storage
 
+import com.agentwork.productspecagent.domain.Document
+import com.agentwork.productspecagent.domain.DocumentState
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.beans.factory.annotation.Value
@@ -7,13 +10,26 @@ import org.springframework.stereotype.Service
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.time.Instant
 
 @Service
 open class UploadStorage(
     @Value("\${app.data-path}") private val dataPath: String
 ) {
 
-    private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
+    @Serializable
+    data class IndexEntry(
+        val id: String,
+        val filename: String,
+        val title: String,
+        val mimeType: String,
+        val createdAt: String
+    )
+
+    @Serializable
+    private data class IndexFile(val documents: List<IndexEntry> = emptyList())
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     private fun uploadsDir(projectId: String): Path =
         Paths.get(dataPath, "projects", projectId, "uploads")
@@ -21,7 +37,18 @@ open class UploadStorage(
     private fun indexFile(projectId: String): Path =
         uploadsDir(projectId).resolve(".index.json")
 
-    open fun save(projectId: String, docId: String, title: String, bytes: ByteArray): String {
+    /** Legacy 4-arg overload — kept for callers not yet migrated (Task 5). */
+    open fun save(projectId: String, docId: String, title: String, bytes: ByteArray): String =
+        save(projectId, docId, title, "application/octet-stream", bytes, Instant.now().toString())
+
+    open fun save(
+        projectId: String,
+        docId: String,
+        title: String,
+        mimeType: String,
+        bytes: ByteArray,
+        createdAt: String = Instant.now().toString()
+    ): String {
         val dir = uploadsDir(projectId)
         Files.createDirectories(dir)
 
@@ -29,26 +56,25 @@ open class UploadStorage(
         val filename = uniqueFilename(dir, sanitized)
         Files.write(dir.resolve(filename), bytes)
 
-        val index = readIndex(projectId).toMutableMap()
-        index[docId] = filename
-        writeIndex(projectId, index)
+        val entries = readEntries(projectId).filter { it.id != docId }.toMutableList()
+        entries += IndexEntry(docId, filename, title, mimeType, createdAt)
+        writeEntries(projectId, entries)
 
         return filename
     }
 
     open fun delete(projectId: String, docId: String) {
-        val index = readIndex(projectId).toMutableMap()
-        val filename = index.remove(docId) ?: return
-        val file = uploadsDir(projectId).resolve(filename)
-        Files.deleteIfExists(file)
-        writeIndex(projectId, index)
+        val entries = readEntries(projectId).toMutableList()
+        val entry = entries.firstOrNull { it.id == docId } ?: return
+        entries.remove(entry)
+        Files.deleteIfExists(uploadsDir(projectId).resolve(entry.filename))
+        writeEntries(projectId, entries)
     }
 
-    open fun read(projectId: String, filename: String): ByteArray {
-        return Files.readAllBytes(uploadsDir(projectId).resolve(filename))
-    }
+    open fun read(projectId: String, filename: String): ByteArray =
+        Files.readAllBytes(uploadsDir(projectId).resolve(filename))
 
-    fun list(projectId: String): List<String> {
+    open fun list(projectId: String): List<String> {
         val dir = uploadsDir(projectId)
         if (!Files.exists(dir)) return emptyList()
         return Files.list(dir).use { stream ->
@@ -61,16 +87,77 @@ open class UploadStorage(
         }
     }
 
-    private fun readIndex(projectId: String): Map<String, String> {
+    open fun listAsDocuments(projectId: String): List<Document> =
+        readEntries(projectId).map { it.toDocument() }
+
+    open fun getDocument(projectId: String, docId: String): Document? =
+        readEntries(projectId).firstOrNull { it.id == docId }?.toDocument()
+
+    private fun IndexEntry.toDocument() = Document(
+        id = id,
+        title = title,
+        mimeType = mimeType,
+        state = DocumentState.LOCAL,
+        createdAt = createdAt
+    )
+
+    private fun readEntries(projectId: String): List<IndexEntry> {
         val file = indexFile(projectId)
-        if (!Files.exists(file)) return emptyMap()
-        return json.decodeFromString(Files.readString(file))
+        if (!Files.exists(file)) return emptyList()
+        val raw = Files.readString(file)
+        if (raw.isBlank()) return emptyList()
+
+        // Detect new format by presence of "documents" key
+        if (raw.contains("\"documents\"")) {
+            return try {
+                json.decodeFromString<IndexFile>(raw).documents
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+
+        // Legacy format: { "docId": "filename" }
+        val legacy = try {
+            json.decodeFromString<Map<String, String>>(raw)
+        } catch (_: Exception) {
+            return emptyList()
+        }
+        val migrated = legacy.map { (id, filename) ->
+            IndexEntry(
+                id = id,
+                filename = filename,
+                title = filename,
+                mimeType = inferMimeType(filename),
+                createdAt = readMtime(projectId, filename)
+            )
+        }
+        writeEntries(projectId, migrated)
+        return migrated
     }
 
-    private fun writeIndex(projectId: String, index: Map<String, String>) {
+    private fun writeEntries(projectId: String, entries: List<IndexEntry>) {
         val file = indexFile(projectId)
         Files.createDirectories(file.parent)
-        Files.writeString(file, json.encodeToString(index))
+        Files.writeString(file, json.encodeToString(IndexFile(entries)))
+    }
+
+    private fun readMtime(projectId: String, filename: String): String {
+        val file = uploadsDir(projectId).resolve(filename)
+        return try {
+            Files.getLastModifiedTime(file).toInstant().toString()
+        } catch (_: Exception) {
+            Instant.now().toString()
+        }
+    }
+
+    private fun inferMimeType(filename: String): String {
+        val lower = filename.lowercase()
+        return when {
+            lower.endsWith(".pdf") -> "application/pdf"
+            lower.endsWith(".md") -> "text/markdown"
+            lower.endsWith(".txt") -> "text/plain"
+            else -> "application/octet-stream"
+        }
     }
 
     private fun sanitizeFilename(title: String): String {
