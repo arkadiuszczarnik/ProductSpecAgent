@@ -4,6 +4,7 @@ import com.agentwork.productspecagent.domain.CreateProjectRequest
 import com.agentwork.productspecagent.domain.FlowState
 import com.agentwork.productspecagent.domain.Project
 import com.agentwork.productspecagent.domain.ProjectResponse
+import com.agentwork.productspecagent.domain.SetGraphMeshEnabledRequest
 import com.agentwork.productspecagent.service.ProjectService
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
@@ -44,8 +45,6 @@ class ProjectController(private val projectService: ProjectService) {
     fun regenerateDocs(@PathVariable id: String) {
         projectService.regenerateDocsScaffold(id)
     }
-
-    data class SetGraphMeshEnabledRequest(val enabled: Boolean)
 
     @PatchMapping("/{id}/graphmesh-enabled")
     fun setGraphMeshEnabled(

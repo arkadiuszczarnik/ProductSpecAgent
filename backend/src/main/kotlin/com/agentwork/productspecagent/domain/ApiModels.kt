@@ -14,3 +14,5 @@ data class ErrorResponse(
     val message: String,
     val timestamp: String
 )
+
+data class SetGraphMeshEnabledRequest(val enabled: Boolean)

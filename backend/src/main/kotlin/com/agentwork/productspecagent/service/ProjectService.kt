@@ -127,6 +127,8 @@ class ProjectService(
     }
 
     fun setGraphMeshEnabled(projectId: String, enabled: Boolean): Project {
+        // Validate against backend config first; flipping ON while backend is OFF is rejected
+        // even for unknown projectIds (consistent 409 signal — client should not retry).
         if (enabled && !graphMeshConfig.enabled) {
             throw GraphMeshDisabledException()
         }

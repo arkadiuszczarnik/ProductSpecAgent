@@ -107,4 +107,14 @@ class ProjectControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.graphmeshEnabled").value(true))
     }
+
+    @Test
+    fun `PATCH graphmesh-enabled returns 404 for unknown projectId`() {
+        mockMvc.perform(
+            patch("/api/v1/projects/non-existent-id/graphmesh-enabled")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"enabled":false}""")
+        )
+            .andExpect(status().isNotFound)
+    }
 }
