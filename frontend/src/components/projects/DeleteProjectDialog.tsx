@@ -17,9 +17,10 @@ export function DeleteProjectDialog({ project, onClose, onDeleted }: DeleteProje
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
-  const [prevProjectId, setPrevProjectId] = useState<string | null>(project?.id ?? null);
-  if (project?.id !== prevProjectId) {
-    setPrevProjectId(project?.id ?? null);
+  const currentProjectId = project?.id ?? null;
+  const [prevProjectId, setPrevProjectId] = useState<string | null>(currentProjectId);
+  if (currentProjectId !== prevProjectId) {
+    setPrevProjectId(currentProjectId);
     setDeleting(false);
     setDeleteError(null);
   }
