@@ -6,6 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import java.io.ByteArrayInputStream
@@ -145,6 +146,28 @@ class HandoffControllerTest {
         assertTrue(
             claudeContent.contains("### 4. Goal-Driven Execution"),
             "CLAUDE.md should contain Behavioral Guidelines section 4"
+        )
+    }
+
+    @Test
+    fun `GET handoff zip returns ZIP and embeds the request URL into CLAUDE md`() {
+        val pid = createProject()
+
+        val result = mockMvc.perform(get("/api/v1/projects/$pid/handoff/handoff.zip"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("-handoff.zip")))
+            .andExpect(header().string("Content-Type", "application/zip"))
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+        assertTrue(zipBytes.isNotEmpty(), "GET should return non-empty ZIP")
+
+        val claudeContent = readZipEntry(zipBytes) { it.endsWith("CLAUDE.md") }
+            ?: error("CLAUDE.md not found in handoff ZIP")
+
+        assertTrue(
+            claudeContent.contains("/api/v1/projects/$pid/handoff/handoff.zip"),
+            "CLAUDE.md from GET response should embed the original request URL"
         )
     }
 
