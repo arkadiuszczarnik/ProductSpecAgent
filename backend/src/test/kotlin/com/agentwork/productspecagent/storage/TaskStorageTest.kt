@@ -5,6 +5,7 @@ import com.agentwork.productspecagent.service.TaskNotFoundException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 
 class TaskStorageTest {
@@ -66,5 +67,31 @@ class TaskStorageTest {
         s.saveTask(sample("t2"))
         s.deleteAllTasks("p1")
         assertEquals(0, s.listTasks("p1").size)
+    }
+
+    @Test
+    fun `saveTask writes to docs-tasks subdirectory`() {
+        val storage = TaskStorage(tempDir.toString())
+        val task = SpecTask(
+            id = "t1",
+            projectId = "p1",
+            type = TaskType.EPIC,
+            title = "Epic",
+            description = "...",
+            estimate = "1w",
+            priority = 1,
+            status = TaskStatus.TODO,
+            parentId = null,
+            specSection = null,
+            dependencies = emptyList(),
+            createdAt = "2026-04-27T00:00:00Z",
+            updatedAt = "2026-04-27T00:00:00Z"
+        )
+
+        storage.saveTask(task)
+
+        val expected = tempDir.resolve("projects/p1/docs/tasks/t1.json")
+        assertTrue(Files.exists(expected), "Task should land at docs/tasks/, got existing files: " +
+            Files.walk(tempDir).filter(Files::isRegularFile).toList())
     }
 }

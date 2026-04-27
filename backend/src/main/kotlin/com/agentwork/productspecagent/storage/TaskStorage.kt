@@ -17,7 +17,7 @@ class TaskStorage(
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
     private fun tasksDir(projectId: String): Path =
-        Path.of(dataPath, "projects", projectId, "tasks")
+        Path.of(dataPath, "projects", projectId, "docs", "tasks")
 
     private fun taskFile(projectId: String, taskId: String): Path =
         tasksDir(projectId).resolve("$taskId.json")
