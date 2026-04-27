@@ -248,6 +248,7 @@ export interface HandoffExportRequest {
   claudeMd?: string;
   agentsMd?: string;
   implementationOrder?: string;
+  syncUrl?: string;
 }
 
 // ─── API Endpoints ──────────────────────────────────────────────────────────
