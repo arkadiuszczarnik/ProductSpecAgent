@@ -23,6 +23,7 @@ class DocumentService(
 ) {
     private val log = LoggerFactory.getLogger(DocumentService::class.java)
 
+    /** Both backend and project must opt in for GraphMesh to be used. */
     private fun isGraphMeshActive(project: Project): Boolean =
         graphMeshConfig.enabled && project.graphmeshEnabled
 

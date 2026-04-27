@@ -60,6 +60,7 @@ class DocumentServiceTest {
             Document(documentId, "x", "text/plain", DocumentState.EXTRACTED, "z")
     }
 
+    // Fresh instance per test via fixtures(); mutable state is safe.
     private class FakeUploadStorage : UploadStorage("unused-test-path") {
         val saved = mutableMapOf<String, FakeSave>()
         val deleted = mutableListOf<Pair<String, String>>()
@@ -239,5 +240,25 @@ class DocumentServiceTest {
         service.delete("p1", "doc-x")
 
         assertEquals(listOf("p1" to "doc-x"), uploads.deleted)
+    }
+
+    @Test
+    fun `local-only get returns document from UploadStorage`() {
+        val (_, _, uploads, service) = fixtures(graphMeshConfigEnabled = false, projectGraphMeshEnabled = false)
+        uploads.localDocs += Document("dx", "x.md", "text/markdown", DocumentState.LOCAL, "2026-04-27T10:00:00Z")
+
+        val doc = service.get("p1", "dx")
+
+        assertEquals("dx", doc.id)
+        assertEquals(DocumentState.LOCAL, doc.state)
+    }
+
+    @Test
+    fun `local-only get throws when document missing`() {
+        val (_, _, _, service) = fixtures(graphMeshConfigEnabled = false, projectGraphMeshEnabled = false)
+
+        assertThrows(ProjectNotFoundException::class.java) {
+            service.get("p1", "missing-doc")
+        }
     }
 }

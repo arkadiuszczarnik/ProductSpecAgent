@@ -61,6 +61,9 @@ class DocumentControllerTest {
         ).andExpect(status().isCreated).andReturn()
         val pid = """"id"\s*:\s*"([^"]+)"""".toRegex()
             .find(result.response.contentAsString)!!.groupValues[1]
+        // Force GraphMesh-active mode for these legacy tests.
+        // New project default is graphmeshEnabled=false (Task GMT-3); flip it here so the
+        // existing GraphMesh-path assertions (state=UPLOADED etc.) still hold.
         val project = projectStorage.loadProject(pid)!!
         projectStorage.saveProject(project.copy(graphmeshEnabled = true))
         return pid
