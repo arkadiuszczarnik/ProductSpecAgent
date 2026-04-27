@@ -3,7 +3,7 @@ package com.agentwork.productspecagent.domain
 import kotlinx.serialization.Serializable
 
 enum class DocumentState {
-    UPLOADED, PROCESSING, EXTRACTED, FAILED
+    UPLOADED, PROCESSING, EXTRACTED, FAILED, LOCAL
 }
 
 @Serializable
