@@ -246,3 +246,73 @@ DocumentService.upload(projectId, file):
 ### Aufwand (Erweiterung)
 
 **S (Small)** — eine neue Storage-Klasse, leichte Erweiterung von `DocumentService`/`ExportService`/`FileController`, eine neue Checkbox im ExportDialog, kleine Anpassung im SpecFileViewer.
+
+---
+
+## Erweiterung 2026-04-27: GraphMesh-Toggle (Backend + Per-Projekt)
+
+### Motivation
+
+GraphMesh ist nicht in jedem Setup verfügbar (Demos, Offline, einfache Projekte ohne RAG-Bedarf). Aktuell scheitert das ganze Documents-Feature, wenn GraphMesh nicht erreichbar ist. Diese Erweiterung führt einen zwei-stufigen Schalter ein, mit dem GraphMesh deployment-weit (Backend) und pro Projekt (UI) deaktiviert werden kann. Im deaktivierten Zustand läuft das Documents-Feature im **Lokal-only-Modus**: Dateien landen nur in `data/projects/{id}/uploads/`, sind im Explorer und ZIP-Export sichtbar, aber ohne GraphMesh-Calls/States/Polling.
+
+### Zusätzliche User Stories
+
+7. Als Operations möchte ich GraphMesh über `application.yml` / ENV deployment-weit ausschalten können, damit Demos und Offline-Setups ohne GraphMesh-Container laufen.
+8. Als PO möchte ich pro Projekt entscheiden können, ob GraphMesh genutzt wird, damit ich für simple Projekte die RAG-Komplexität vermeide und für komplexe Projekte sie aktiviere.
+9. Als PO möchte ich auch im Lokal-only-Modus Dateien sammeln, im Explorer sehen und in den ZIP-Export einbeziehen — nur ohne RAG-Verarbeitung.
+
+### Zusätzliche Acceptance Criteria
+
+- [ ] `graphmesh.enabled: false` im `application.yml` (default) → kein GraphMesh-Call, egal welche Projekt-Einstellung.
+- [ ] `Project.graphmeshEnabled: Boolean = false` (default) → frische Projekte sind im Lokal-only-Modus.
+- [ ] Bestehende `project.json`-Dateien ohne `graphmeshEnabled` laden korrekt (Default `false`).
+- [ ] Neuer Endpoint `GET /api/v1/config/features` liefert `{ graphmeshEnabled: boolean }`.
+- [ ] Neuer Endpoint `PATCH /api/v1/projects/{id}/graphmesh-enabled` setzt das Projekt-Flag; lehnt mit 409 ab, wenn Backend `enabled=false`.
+- [ ] Im Workspace-Header gibt es einen Settings-Zahnrad-Button, der ein Popover mit GraphMesh-Toggle öffnet.
+- [ ] Toggle ist **disabled mit Tooltip**, wenn Backend `enabled=false`.
+- [ ] Upload bei `isGraphMeshActive=false` → kein GraphMesh-Call, lokale UUID, `state=LOCAL`, lokale Persistenz, 201 mit Document-Body.
+- [ ] Liste/Get/Delete im Lokal-only-Modus arbeiten ausschließlich auf `UploadStorage`.
+- [ ] DocumentState bekommt vierten Wert `LOCAL` (terminal, kein Polling).
+- [ ] Frontend-Polling pausiert, sobald alle Documents `state=LOCAL` haben.
+- [ ] DocumentsPanel zeigt für `LOCAL` ein neutrales graues Badge „Lokal".
+- [ ] `.index.json` enthält pro Document: `id`, `filename`, `title`, `mimeType`, `createdAt`. Alte Indizes werden beim ersten Lesen migriert.
+- [ ] Ein Projekt mit aktiver GraphMesh-Collection, das auf Lokal-only umgeschaltet wird, behält seine `collectionId`. Beim Zurückschalten wird sie weiterverwendet (kein erneutes `createCollection`).
+
+### Technische Details (Erweiterung)
+
+**Backend**
+
+- `infrastructure/graphmesh/GraphMeshConfig.kt` — Feld `enabled: Boolean = false`.
+- `domain/Project.kt` — Feld `graphmeshEnabled: Boolean = false`.
+- `domain/Document.kt` — `DocumentState` erweitert um `LOCAL`.
+- `storage/UploadStorage.kt` — Index-Format auf `{ documents: [{id, filename, title, mimeType, createdAt}] }` erweitert; `save(...)` nimmt `mimeType` und `createdAt`; neue Methoden `listAsDocuments(projectId)` und `getDocument(projectId, docId)`; `read(...)` und `delete(...)` unverändert in Signatur. Migration vom alten Format beim ersten Lesen.
+- `service/DocumentService.kt` — Konstruktor erhält `GraphMeshConfig`; private `isGraphMeshActive(project)`; jede Operation verzweigt am Eingang.
+- `service/ProjectService.kt` — neue `setGraphMeshEnabled(projectId, enabled)`-Methode mit Validation gegen Backend-Config (wirft `GraphMeshDisabledException`).
+- `api/ProjectController.kt` — neuer `PATCH /api/v1/projects/{id}/graphmesh-enabled`.
+- `api/ConfigController.kt` (neu) — `GET /api/v1/config/features`.
+- `api/GlobalExceptionHandler.kt` — Mapping `GraphMeshDisabledException` → 409.
+- `src/main/resources/application.yml` — `graphmesh.enabled: ${GRAPHMESH_ENABLED:false}`.
+- `src/test/resources/application.yml` — `graphmesh.enabled: true` (für bestehende Tests).
+
+**Frontend**
+
+- `lib/api.ts` — `Project.graphmeshEnabled`; neuer Type `FeatureFlags`; Funktionen `getFeatures()`, `setProjectGraphMeshEnabled(...)`.
+- `lib/stores/feature-store.ts` (neu) — globaler Store für Feature-Flags, lädt einmalig beim App-Start.
+- `lib/stores/project-store.ts` — `graphmeshEnabled` mitführen + Update-Action.
+- `lib/stores/document-store.ts` — Polling pausiert bei allen `LOCAL`-States.
+- `components/layout/WorkspaceHeader.tsx` — Settings-Zahnrad mit Popover (`base-ui/react`), Toggle „GraphMesh aktivieren", Disabled-State mit Tooltip wenn Backend off.
+- `components/documents/DocumentsPanel.tsx` — `LOCAL`-Badge-Style (grau).
+
+### Tests
+
+- `UploadStorageTest` — erweiterte Index-Roundtrips, Migration vom alten Format, `listAsDocuments`.
+- `DocumentServiceTest` — vier Modi-Kombinationen (Backend × Project) durchgespielt: korrekter Pfad pro Operation.
+- `ProjectServiceTest` — Validation-Pfad für `setGraphMeshEnabled`.
+- `ProjectControllerTest` — PATCH-Endpoint Happy-Path + 409.
+- `ConfigControllerTest` (neu) — Feature-Endpoint liefert korrekten Status.
+- `DocumentControllerTest` — Lokal-only-Pfad-Test.
+- Frontend-Smoke-Test: Toggle umschalten, Upload-Verhalten beobachten, Disabled-Tooltip prüfen, `LOCAL`-Badge sehen.
+
+### Aufwand (Erweiterung)
+
+**M (Medium)** — domänenseitig kleine Felder, service-seitig aber durchgehende Pfad-Verzweigung; neue Endpoints, neue Storage-Methoden, neuer UI-Toggle, kleine Migration der Index-Datei.
