@@ -171,6 +171,33 @@ class HandoffControllerTest {
         )
     }
 
+    @Test
+    fun `GET handoff zip serves a flat ZIP without slug prefix`() {
+        val pid = createProject()
+
+        val result = mockMvc.perform(get("/api/v1/projects/$pid/handoff/handoff.zip"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+        val entries = mutableListOf<String>()
+        ZipInputStream(ByteArrayInputStream(zipBytes)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                entries.add(entry.name)
+                entry = zis.nextEntry
+            }
+        }
+
+        assertTrue(entries.contains("CLAUDE.md"), "CLAUDE.md should be at root, got: $entries")
+        assertTrue(entries.contains("AGENTS.md"), "AGENTS.md should be at root, got: $entries")
+        assertTrue(entries.contains("implementation-order.md"), "implementation-order.md should be at root, got: $entries")
+        assertTrue(
+            entries.none { it.startsWith("handoff-test/") },
+            "No entry should be under the slug folder, got: $entries"
+        )
+    }
+
     private fun readZipEntry(zipBytes: ByteArray, predicate: (String) -> Boolean): String? {
         ZipInputStream(ByteArrayInputStream(zipBytes)).use { zis ->
             var entry = zis.nextEntry

@@ -35,7 +35,7 @@ class HandoffService(
         )
     }
 
-    fun exportHandoff(projectId: String, request: HandoffExportRequest, syncUrl: String): ByteArray {
+    fun exportHandoff(projectId: String, request: HandoffExportRequest, syncUrl: String, flat: Boolean = false): ByteArray {
         val projectResponse = projectService.getProject(projectId)
         val project = projectResponse.project
         val slug = project.name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
@@ -56,22 +56,26 @@ class HandoffService(
         }
 
         val baseZip = exportService.exportProject(projectId)
+        val entryPrefix = if (flat) "" else "$slug/"
 
         val baos = ByteArrayOutputStream()
         ZipOutputStream(baos).use { zip ->
             ZipInputStream(ByteArrayInputStream(baseZip)).use { zis ->
                 var entry = zis.nextEntry
                 while (entry != null) {
-                    zip.putNextEntry(ZipEntry(entry.name))
-                    zis.copyTo(zip)
-                    zip.closeEntry()
+                    val targetName = if (flat) entry.name.removePrefix("$slug/") else entry.name
+                    if (targetName.isNotEmpty()) {
+                        zip.putNextEntry(ZipEntry(targetName))
+                        zis.copyTo(zip)
+                        zip.closeEntry()
+                    }
                     entry = zis.nextEntry
                 }
             }
 
-            zip.addEntry("$slug/CLAUDE.md", preview.claudeMd)
-            zip.addEntry("$slug/AGENTS.md", preview.agentsMd)
-            zip.addEntry("$slug/implementation-order.md", preview.implementationOrder)
+            zip.addEntry("${entryPrefix}CLAUDE.md", preview.claudeMd)
+            zip.addEntry("${entryPrefix}AGENTS.md", preview.agentsMd)
+            zip.addEntry("${entryPrefix}implementation-order.md", preview.implementationOrder)
         }
 
         return baos.toByteArray()
