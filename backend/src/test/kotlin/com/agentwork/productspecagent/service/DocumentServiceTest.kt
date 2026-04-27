@@ -15,17 +15,19 @@ class DocumentServiceTest {
 
     @TempDir lateinit var tempDir: Path
 
-    private fun fixtures(): Quad<ProjectStorage, FakeClient, FakeUploadStorage, DocumentService> {
+    private fun fixtures(graphMeshConfigEnabled: Boolean = true, projectGraphMeshEnabled: Boolean = true): Quad<ProjectStorage, FakeClient, FakeUploadStorage, DocumentService> {
         val storage = ProjectStorage(tempDir.toString())
         val project = Project(
             id = "p1", name = "Demo", ownerId = "u1",
             status = ProjectStatus.DRAFT,
-            createdAt = "2026-04-24T10:00:00Z", updatedAt = "2026-04-24T10:00:00Z"
+            createdAt = "2026-04-24T10:00:00Z", updatedAt = "2026-04-24T10:00:00Z",
+            graphmeshEnabled = projectGraphMeshEnabled
         )
         storage.saveProject(project)
         val client = FakeClient()
         val uploads = FakeUploadStorage()
-        val service = DocumentService(storage, client, uploads)
+        val config = GraphMeshConfig(enabled = graphMeshConfigEnabled, url = "http://unused", requestTimeout = java.time.Duration.ofSeconds(1))
+        val service = DocumentService(storage, client, uploads, config)
         return Quad(storage, client, uploads, service)
     }
 
@@ -59,17 +61,23 @@ class DocumentServiceTest {
     }
 
     private class FakeUploadStorage : UploadStorage("unused-test-path") {
-        val saved = mutableMapOf<String, Triple<String, String, ByteArray>>()  // docId → (projectId, filename, bytes)
-        val deleted = mutableListOf<Pair<String, String>>()  // (projectId, docId)
+        val saved = mutableMapOf<String, FakeSave>()
+        val deleted = mutableListOf<Pair<String, String>>()
         var throwOnSave: Boolean = false
+        val localDocs = mutableListOf<Document>()
+
+        data class FakeSave(val projectId: String, val title: String, val mimeType: String, val bytes: ByteArray, val createdAt: String)
+
         override fun save(projectId: String, docId: String, title: String, mimeType: String, bytes: ByteArray, createdAt: String): String {
             if (throwOnSave) throw java.io.IOException("disk full")
-            saved[docId] = Triple(projectId, title, bytes)
+            saved[docId] = FakeSave(projectId, title, mimeType, bytes, createdAt)
             return title
         }
         override fun delete(projectId: String, docId: String) {
             deleted += projectId to docId
         }
+        override fun listAsDocuments(projectId: String): List<Document> = localDocs.toList()
+        override fun getDocument(projectId: String, docId: String): Document? = localDocs.firstOrNull { it.id == docId }
     }
 
     @Test
@@ -153,9 +161,9 @@ class DocumentServiceTest {
 
         val saved = uploads.saved["d1"]
         assertNotNull(saved)
-        assertEquals("p1", saved!!.first)
-        assertEquals("spec.pdf", saved.second)
-        assertArrayEquals(byteArrayOf(7, 8, 9), saved.third)
+        assertEquals("p1", saved!!.projectId)
+        assertEquals("spec.pdf", saved.title)
+        assertArrayEquals(byteArrayOf(7, 8, 9), saved.bytes)
     }
 
     @Test
@@ -177,5 +185,59 @@ class DocumentServiceTest {
         service.delete("p1", "d1")
 
         assertEquals(listOf("p1" to "d1"), uploads.deleted)
+    }
+
+    @Test
+    fun `local-only upload uses LOCAL state and skips GraphMesh`() {
+        val (_, client, uploads, service) = fixtures(graphMeshConfigEnabled = false, projectGraphMeshEnabled = false)
+
+        val doc = service.upload("p1", "spec.pdf", "application/pdf", byteArrayOf(1, 2, 3))
+
+        assertEquals(DocumentState.LOCAL, doc.state)
+        assertEquals(0, client.uploadCalls)
+        assertEquals(0, client.createdCollections)
+        assertNotNull(uploads.saved[doc.id])
+    }
+
+    @Test
+    fun `backend-disabled overrides project-enabled (local-only)`() {
+        val (_, client, _, service) = fixtures(graphMeshConfigEnabled = false, projectGraphMeshEnabled = true)
+
+        val doc = service.upload("p1", "spec.pdf", "application/pdf", byteArrayOf(1))
+
+        assertEquals(DocumentState.LOCAL, doc.state)
+        assertEquals(0, client.uploadCalls)
+    }
+
+    @Test
+    fun `project-disabled overrides backend-enabled (local-only)`() {
+        val (_, client, _, service) = fixtures(graphMeshConfigEnabled = true, projectGraphMeshEnabled = false)
+
+        val doc = service.upload("p1", "spec.pdf", "application/pdf", byteArrayOf(1))
+
+        assertEquals(DocumentState.LOCAL, doc.state)
+        assertEquals(0, client.uploadCalls)
+    }
+
+    @Test
+    fun `list returns local docs in local-only mode`() {
+        val (_, client, uploads, service) = fixtures(graphMeshConfigEnabled = false, projectGraphMeshEnabled = false)
+        uploads.localDocs += Document("dx", "x.md", "text/markdown", DocumentState.LOCAL, "2026-04-27T10:00:00Z")
+
+        val list = service.list("p1")
+
+        assertEquals(1, list.size)
+        assertEquals("dx", list[0].id)
+        assertEquals(DocumentState.LOCAL, list[0].state)
+        assertEquals(0, client.uploadCalls)
+    }
+
+    @Test
+    fun `delete in local-only mode skips GraphMesh`() {
+        val (_, client, uploads, service) = fixtures(graphMeshConfigEnabled = false, projectGraphMeshEnabled = false)
+
+        service.delete("p1", "doc-x")
+
+        assertEquals(listOf("p1" to "doc-x"), uploads.deleted)
     }
 }

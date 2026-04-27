@@ -5,6 +5,8 @@ import com.agentwork.productspecagent.domain.DocumentState
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshClient
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshConfig
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshException
+import com.agentwork.productspecagent.storage.ProjectStorage
+import com.agentwork.productspecagent.storage.UploadStorage
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -41,8 +43,8 @@ class DocumentControllerTest {
     @TestConfiguration
     class TestConfig {
         @Bean @Primary fun fakeGraphMeshClient(): GraphMeshClient = FakeGraphMeshClient()
-        @Bean @Primary fun stubUploadStorage(): com.agentwork.productspecagent.storage.UploadStorage =
-            object : com.agentwork.productspecagent.storage.UploadStorage("build/test-uploads-stub") {
+        @Bean @Primary fun stubUploadStorage(): UploadStorage =
+            object : UploadStorage("build/test-uploads-stub") {
                 override fun save(projectId: String, docId: String, title: String, mimeType: String, bytes: ByteArray, createdAt: String) = title
                 override fun delete(projectId: String, docId: String) {}
             }
@@ -50,14 +52,18 @@ class DocumentControllerTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var graphMeshClient: GraphMeshClient
+    @Autowired lateinit var projectStorage: ProjectStorage
 
     private fun createProject(): String {
         val result = mockMvc.perform(
             post("/api/v1/projects").contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name":"Doc Test"}""")
         ).andExpect(status().isCreated).andReturn()
-        return """"id"\s*:\s*"([^"]+)"""".toRegex()
+        val pid = """"id"\s*:\s*"([^"]+)"""".toRegex()
             .find(result.response.contentAsString)!!.groupValues[1]
+        val project = projectStorage.loadProject(pid)!!
+        projectStorage.saveProject(project.copy(graphmeshEnabled = true))
+        return pid
     }
 
     @Test
