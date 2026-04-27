@@ -99,18 +99,17 @@ Die per `request.includeDecisions/Clarifications/Tasks` erzeugten kuratierten Ma
 
 Konsequenz: in den Subordnern `docs/decisions/`, `docs/clarifications/`, `docs/tasks/` liegen dann **beide Sichten parallel** (Roh-JSON `{uuid}.json` aus `listDocsFiles` + kuratierte MD `001-slug.md`). Filenamen kollidieren nicht.
 
-**`PLAN.md` zieht ebenfalls nach `docs/`** (`ExportService.kt:67`):
+**`PLAN.md` und `SPEC.md` ziehen ebenfalls nach `docs/`:**
 
-```kotlin
-// alt
-zip.addEntry("$prefix/PLAN.md", generatePlanMd(tasks))
-// neu
-zip.addEntry("$prefix/docs/PLAN.md", generatePlanMd(tasks))
-```
+| Datei | alt (ExportService.kt) | neu |
+|---|---|---|
+| Zeile 31 | `"$prefix/SPEC.md"` | `"$prefix/docs/SPEC.md"` |
+| Zeile 67 | `"$prefix/PLAN.md"` | `"$prefix/docs/PLAN.md"` |
 
 **README.md-Generator (`generateReadme`)** muss die Struktur-Sektion (Zeile 94–98) auf die neuen Pfade aktualisieren:
 
 ```kotlin
+appendLine("- `docs/SPEC.md` — Full product specification")
 appendLine("- `docs/PLAN.md` — Implementation plan with tasks")
 appendLine("- `docs/decisions/` — Key product decisions")
 appendLine("- `docs/clarifications/` — Clarified requirements")
@@ -126,9 +125,9 @@ Bewusst **unverändert lassen**. Sie gaten weiterhin nur die kuratierte Markdown
 ```
 {prefix}/
   ├── README.md
-  ├── SPEC.md
   ├── .gitignore
   └── docs/
+      ├── SPEC.md                    (Full product specification)
       ├── PLAN.md                    (Implementation plan)
       ├── features/*.md              (auto-generiert)
       ├── architecture/*.md
@@ -174,7 +173,8 @@ Keine Änderung. REST-API-Pfade (`/api/v1/projects/{id}/decisions`, `/uploads`, 
   - analog für `docs/clarifications/` und `docs/tasks/`
   - `docs/uploads/<filename>` (Binärinhalt korrekt)
   - **keine** Top-Level-Ordner `decisions/`, `clarifications/`, `tasks/`, `uploads/` mehr im ZIP-Root
+  - `SPEC.md` unter `docs/SPEC.md` (nicht mehr am ZIP-Root)
   - `PLAN.md` unter `docs/PLAN.md` (nicht mehr am ZIP-Root)
-  - `README.md`, `SPEC.md` weiterhin am ZIP-Root
+  - `README.md` weiterhin am ZIP-Root (alleiniger Top-Level-Einstiegspunkt)
 - [ ] `ExportRequest`-Type (Backend + ggf. Frontend) hat kein `includeDocuments`-Feld mehr.
 - [ ] `ExportService` injiziert `UploadStorage` nicht mehr.
