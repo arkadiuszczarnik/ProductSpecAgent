@@ -125,7 +125,7 @@ class ExportControllerTest {
     @Test
     fun `POST export with includeDocuments=true bundles uploads folder`() {
         val pid = createProject()
-        uploadStorage.save(pid, "d1", "a.pdf", byteArrayOf(1, 2, 3))
+        uploadStorage.save(pid, "d1", "a.pdf", "application/pdf", byteArrayOf(1, 2, 3))
 
         val result = mockMvc.perform(
             post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
@@ -144,7 +144,7 @@ class ExportControllerTest {
     @Test
     fun `POST export with includeDocuments=false skips uploads`() {
         val pid = createProject()
-        uploadStorage.save(pid, "d1", "a.pdf", byteArrayOf(1, 2, 3))
+        uploadStorage.save(pid, "d1", "a.pdf", "application/pdf", byteArrayOf(1, 2, 3))
 
         val result = mockMvc.perform(
             post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)

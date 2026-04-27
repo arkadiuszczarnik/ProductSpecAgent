@@ -32,7 +32,7 @@ class DocumentService(
             } else throw e
         }
         try {
-            uploadStorage.save(projectId, document.id, title, content)
+            uploadStorage.save(projectId, document.id, title, mimeType, content)
         } catch (e: Exception) {
             log.warn("Local copy failed for project=$projectId doc=${document.id}: ${e.message}")
         }

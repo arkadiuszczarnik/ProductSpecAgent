@@ -62,7 +62,7 @@ class DocumentServiceTest {
         val saved = mutableMapOf<String, Triple<String, String, ByteArray>>()  // docId → (projectId, filename, bytes)
         val deleted = mutableListOf<Pair<String, String>>()  // (projectId, docId)
         var throwOnSave: Boolean = false
-        override fun save(projectId: String, docId: String, title: String, bytes: ByteArray): String {
+        override fun save(projectId: String, docId: String, title: String, mimeType: String, bytes: ByteArray, createdAt: String): String {
             if (throwOnSave) throw java.io.IOException("disk full")
             saved[docId] = Triple(projectId, title, bytes)
             return title

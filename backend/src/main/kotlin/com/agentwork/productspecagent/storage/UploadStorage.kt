@@ -29,7 +29,7 @@ open class UploadStorage(
     @Serializable
     private data class IndexFile(val documents: List<IndexEntry> = emptyList())
 
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
 
     private fun uploadsDir(projectId: String): Path =
         Paths.get(dataPath, "projects", projectId, "uploads")
@@ -103,20 +103,24 @@ open class UploadStorage(
         val raw = Files.readString(file)
         if (raw.isBlank()) return emptyList()
 
-        // Detect new format by presence of "documents" key
-        if (raw.contains("\"documents\"")) {
-            return try {
-                json.decodeFromString<IndexFile>(raw).documents
-            } catch (_: Exception) {
-                emptyList()
-            }
+        // Try new format first.
+        val newFormatAttempt = try {
+            json.decodeFromString<IndexFile>(raw).documents
+        } catch (_: Exception) {
+            null
         }
 
-        // Legacy format: { "docId": "filename" }
+        // If the decode succeeded AND the JSON actually carries a `documents` field,
+        // we trust the new-format result (even if the list is empty).
+        if (newFormatAttempt != null && raw.matches(Regex("(?s).*\"documents\"\\s*:.*"))) {
+            return newFormatAttempt
+        }
+
+        // Otherwise, attempt legacy decode + migrate.
         val legacy = try {
             json.decodeFromString<Map<String, String>>(raw)
         } catch (_: Exception) {
-            return emptyList()
+            return newFormatAttempt ?: emptyList()
         }
         val migrated = legacy.map { (id, filename) ->
             IndexEntry(

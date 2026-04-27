@@ -119,10 +119,11 @@ class UploadStorageTest {
         s.save("p1", "doc-1", "spec.pdf", "application/pdf", byteArrayOf(1), "2026-04-27T10:00:00Z")
 
         val raw = java.nio.file.Files.readString(tempDir.resolve("projects/p1/uploads/.index.json"))
-        assertTrue(raw.contains("\"id\":\"doc-1\""))
-        assertTrue(raw.contains("\"filename\":\"spec.pdf\""))
-        assertTrue(raw.contains("\"mimeType\":\"application/pdf\""))
-        assertTrue(raw.contains("\"createdAt\":\"2026-04-27T10:00:00Z\""))
+        assertTrue(raw.contains("\"id\""))
+        assertTrue(raw.contains("\"doc-1\""))
+        assertTrue(raw.contains("\"spec.pdf\""))
+        assertTrue(raw.contains("\"application/pdf\""))
+        assertTrue(raw.contains("\"2026-04-27T10:00:00Z\""))
     }
 
     @Test
