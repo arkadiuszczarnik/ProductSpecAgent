@@ -69,7 +69,7 @@ export function DeleteProjectDialog({ project, onClose, onDeleted }: DeleteProje
               onClick={onClose}
               disabled={deleting}
               className="text-muted-foreground hover:text-foreground disabled:opacity-50"
-              aria-label="Dialog schliessen"
+              aria-label="Dialog schließen"
             >
               <X size={16} />
             </button>
