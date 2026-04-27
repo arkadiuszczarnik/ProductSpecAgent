@@ -6,6 +6,7 @@ import java.time.Duration
 
 @ConfigurationProperties(prefix = "graphmesh")
 data class GraphMeshConfig(
+    @DefaultValue("false") val enabled: Boolean = false,
     @DefaultValue("http://localhost:8083/graphql") val url: String,
     @DefaultValue("30s") val requestTimeout: Duration
 )

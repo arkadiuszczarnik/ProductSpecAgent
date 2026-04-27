@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import java.time.Duration
 
-class FakeGraphMeshClient : GraphMeshClient(GraphMeshConfig("http://unused", Duration.ofSeconds(1))) {
+class FakeGraphMeshClient : GraphMeshClient(GraphMeshConfig(enabled = true, url = "http://unused", requestTimeout = Duration.ofSeconds(1))) {
     var simulateUnavailable = false
     override fun createCollection(name: String): String {
         if (simulateUnavailable) throw GraphMeshException.Unavailable(RuntimeException("down"))

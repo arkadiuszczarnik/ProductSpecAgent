@@ -38,5 +38,6 @@ app:
   data-path: build/test-data
 
 graphmesh:
+  enabled: true
   url: http://localhost:0/graphql
   request-timeout: 5s

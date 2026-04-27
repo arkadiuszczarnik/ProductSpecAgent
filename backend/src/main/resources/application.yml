@@ -66,5 +66,6 @@ app:
   data-path: ./data
 
 graphmesh:
+  enabled: ${GRAPHMESH_ENABLED:false}
   url: ${GRAPHMESH_URL:http://localhost:8083/graphql}
   request-timeout: 30s

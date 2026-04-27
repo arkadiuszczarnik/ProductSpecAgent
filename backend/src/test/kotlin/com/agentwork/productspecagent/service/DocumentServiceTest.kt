@@ -34,7 +34,7 @@ class DocumentServiceTest {
         operator fun component3() = c; operator fun component4() = d
     }
 
-    private class FakeClient : GraphMeshClient(GraphMeshConfig("http://unused", java.time.Duration.ofSeconds(1))) {
+    private class FakeClient : GraphMeshClient(GraphMeshConfig(enabled = true, url = "http://unused", requestTimeout = java.time.Duration.ofSeconds(1))) {
         var createdCollections = 0
         var lastUploadCollectionId: String? = null
         var nextCollectionId: String = "col-NEW"
