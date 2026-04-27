@@ -5,6 +5,7 @@ import com.agentwork.productspecagent.service.DecisionNotFoundException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 
 class DecisionStorageTest {
@@ -69,5 +70,11 @@ class DecisionStorageTest {
     @Test
     fun `deleteDecision on non-existent does not throw`() {
         assertDoesNotThrow { storage().deleteDecision("p1", "nope") }
+    }
+
+    @Test
+    fun `saveDecision writes to docs-decisions subdirectory`() {
+        storage().saveDecision(sampleDecision())
+        assertTrue(Files.exists(tempDir.resolve("projects/p1/docs/decisions/d1.json")))
     }
 }

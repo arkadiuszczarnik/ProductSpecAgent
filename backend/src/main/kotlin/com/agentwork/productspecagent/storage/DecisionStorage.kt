@@ -17,7 +17,7 @@ class DecisionStorage(
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
     private fun decisionsDir(projectId: String): Path =
-        Path.of(dataPath, "projects", projectId, "decisions")
+        Path.of(dataPath, "projects", projectId, "docs", "decisions")
 
     private fun decisionFile(projectId: String, decisionId: String): Path =
         decisionsDir(projectId).resolve("$decisionId.json")
