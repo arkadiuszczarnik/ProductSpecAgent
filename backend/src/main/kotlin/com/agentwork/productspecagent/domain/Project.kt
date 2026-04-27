@@ -14,5 +14,6 @@ data class Project(
     val status: ProjectStatus,
     val createdAt: String,
     val updatedAt: String,
-    val collectionId: String? = null
+    val collectionId: String? = null,
+    val graphmeshEnabled: Boolean = false
 )

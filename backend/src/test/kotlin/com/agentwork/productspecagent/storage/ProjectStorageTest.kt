@@ -134,4 +134,36 @@ class ProjectStorageTest {
         val loaded = storage.loadProject("p1")!!
         assertNull(loaded.collectionId)
     }
+
+    @Test
+    fun `loads project with graphmeshEnabled default false when missing in JSON`() {
+        val storage = ProjectStorage(tempDir.toString())
+        val pid = "p1"
+        val dir = tempDir.resolve("projects/$pid")
+        java.nio.file.Files.createDirectories(dir)
+        java.nio.file.Files.writeString(
+            dir.resolve("project.json"),
+            """{"id":"p1","name":"Demo","ownerId":"u1","status":"DRAFT","createdAt":"x","updatedAt":"x"}"""
+        )
+
+        val loaded = storage.loadProject(pid)!!
+
+        assertFalse(loaded.graphmeshEnabled)
+    }
+
+    @Test
+    fun `roundtrips project with graphmeshEnabled=true`() {
+        val storage = ProjectStorage(tempDir.toString())
+        val project = Project(
+            id = "p1", name = "Demo", ownerId = "u1",
+            status = ProjectStatus.DRAFT,
+            createdAt = "x", updatedAt = "x",
+            graphmeshEnabled = true
+        )
+        storage.saveProject(project)
+
+        val loaded = storage.loadProject("p1")!!
+
+        assertTrue(loaded.graphmeshEnabled)
+    }
 }
