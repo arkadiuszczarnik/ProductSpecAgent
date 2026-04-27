@@ -49,4 +49,15 @@ class ProjectControllerGraphMeshDisabledTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.graphmeshEnabled").value(false))
     }
+
+    @Test
+    fun `PATCH graphmesh-enabled returns 409 even for unknown projectId when backend off`() {
+        mockMvc.perform(
+            patch("/api/v1/projects/non-existent-id/graphmesh-enabled")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"enabled":true}""")
+        )
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.error").value("GRAPHMESH_DISABLED_BACKEND"))
+    }
 }

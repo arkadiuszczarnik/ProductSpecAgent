@@ -75,7 +75,7 @@ class DocumentService(
             graphMeshClient.getDocument(documentId)
         } else {
             uploadStorage.getDocument(projectId, documentId)
-                ?: throw ProjectNotFoundException(documentId)
+                ?: throw DocumentNotFoundException(documentId)
         }
     }
 

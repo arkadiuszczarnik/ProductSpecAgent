@@ -117,4 +117,15 @@ class ProjectControllerTest {
         )
             .andExpect(status().isNotFound)
     }
+
+    @Test
+    fun `PATCH graphmesh-enabled returns 400 for empty body`() {
+        val pid = createProject()
+        mockMvc.perform(
+            patch("/api/v1/projects/$pid/graphmesh-enabled")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{}""")
+        )
+            .andExpect(status().isBadRequest)
+    }
 }

@@ -4,6 +4,7 @@ import com.agentwork.productspecagent.domain.ErrorResponse
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshException
 import com.agentwork.productspecagent.service.ClarificationNotFoundException
 import com.agentwork.productspecagent.service.DecisionNotFoundException
+import com.agentwork.productspecagent.service.DocumentNotFoundException
 import com.agentwork.productspecagent.service.GraphMeshDisabledException
 import com.agentwork.productspecagent.service.ProjectNotFoundException
 import com.agentwork.productspecagent.service.TaskNotFoundException
@@ -44,6 +45,16 @@ class GlobalExceptionHandler {
         return ErrorResponse(
             error = "NOT_FOUND",
             message = ex.message ?: "Clarification not found",
+            timestamp = Instant.now().toString()
+        )
+    }
+
+    @ExceptionHandler(DocumentNotFoundException::class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    fun handleDocumentNotFound(ex: DocumentNotFoundException): ErrorResponse {
+        return ErrorResponse(
+            error = "NOT_FOUND",
+            message = ex.message ?: "Document not found",
             timestamp = Instant.now().toString()
         )
     }

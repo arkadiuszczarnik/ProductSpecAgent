@@ -257,7 +257,7 @@ class DocumentServiceTest {
     fun `local-only get throws when document missing`() {
         val (_, _, _, service) = fixtures(graphMeshConfigEnabled = false, projectGraphMeshEnabled = false)
 
-        assertThrows(ProjectNotFoundException::class.java) {
+        assertThrows(DocumentNotFoundException::class.java) {
             service.get("p1", "missing-doc")
         }
     }
