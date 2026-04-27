@@ -33,9 +33,9 @@ class ExportService(
             // .gitignore
             zip.addEntry("$prefix/.gitignore", ".DS_Store\nnode_modules/\n.env\n")
 
-            // Docs scaffold — always included (docs/features, docs/architecture, docs/backend, docs/frontend)
+            // Docs scaffold + alle Spec-begleitenden Inhalte (decisions/clarifications/tasks/uploads als JSON+Binär)
             for ((relativePath, content) in projectService.listDocsFiles(projectId)) {
-                zip.addEntry("$prefix/$relativePath", content)
+                zip.addBinaryEntry("$prefix/$relativePath", content)
             }
 
             // Decisions

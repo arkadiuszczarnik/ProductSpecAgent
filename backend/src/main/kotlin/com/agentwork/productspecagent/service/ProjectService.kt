@@ -121,7 +121,7 @@ class ProjectService(
         return storage.loadSpecStep(projectId, fileName)
     }
 
-    fun listDocsFiles(projectId: String): List<Pair<String, String>> {
+    fun listDocsFiles(projectId: String): List<Pair<String, ByteArray>> {
         storage.loadProject(projectId) ?: throw ProjectNotFoundException(projectId)
         return storage.listDocsFiles(projectId)
     }
