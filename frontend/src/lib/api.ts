@@ -71,6 +71,7 @@ export interface Project {
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
+  graphmeshEnabled?: boolean;
 }
 
 export interface ProjectResponse {
@@ -439,6 +440,23 @@ export async function exportProject(
   return res.blob();
 }
 
+// ─── Feature flags ───────────────────────────────────────────────────────────
+
+export interface FeatureFlags {
+  graphmeshEnabled: boolean;
+}
+
+export async function getFeatures(): Promise<FeatureFlags> {
+  return apiFetch<FeatureFlags>("/api/v1/config/features");
+}
+
+export async function setProjectGraphMeshEnabled(projectId: string, enabled: boolean): Promise<Project> {
+  return apiFetch<Project>(`/api/v1/projects/${projectId}/graphmesh-enabled`, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled }),
+  });
+}
+
 // ─── Wizard Chat Types ───────────────────────────────────────────────────────
 
 export interface WizardStepCompleteRequest {
@@ -467,7 +485,7 @@ export async function completeWizardStep(
 
 // ------- Documents -------
 
-export type DocumentState = "UPLOADED" | "PROCESSING" | "EXTRACTED" | "FAILED";
+export type DocumentState = "UPLOADED" | "PROCESSING" | "EXTRACTED" | "FAILED" | "LOCAL";
 
 export interface ProjectDocument {
   id: string;
