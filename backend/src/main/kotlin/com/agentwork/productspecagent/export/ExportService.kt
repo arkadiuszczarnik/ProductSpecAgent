@@ -28,7 +28,7 @@ class ExportService(
             zip.addEntry("$prefix/README.md", generateReadme(project, flowState))
 
             // SPEC.md — combine all spec steps
-            zip.addEntry("$prefix/SPEC.md", generateSpec(projectId, flowState))
+            zip.addEntry("$prefix/docs/SPEC.md", generateSpec(projectId, flowState))
 
             // .gitignore
             zip.addEntry("$prefix/.gitignore", ".DS_Store\nnode_modules/\n.env\n")
@@ -44,7 +44,7 @@ class ExportService(
                 if (decisions.isNotEmpty()) {
                     decisions.forEachIndexed { i, d ->
                         val slug = d.title.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(50)
-                        zip.addEntry("$prefix/decisions/${String.format("%03d", i + 1)}-$slug.md", generateDecisionMd(d))
+                        zip.addEntry("$prefix/docs/decisions/${String.format("%03d", i + 1)}-$slug.md", generateDecisionMd(d))
                     }
                 }
             }
@@ -55,7 +55,7 @@ class ExportService(
                 if (clarifications.isNotEmpty()) {
                     clarifications.forEachIndexed { i, c ->
                         val slug = c.question.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(50)
-                        zip.addEntry("$prefix/clarifications/${String.format("%03d", i + 1)}-$slug.md", generateClarificationMd(c))
+                        zip.addEntry("$prefix/docs/clarifications/${String.format("%03d", i + 1)}-$slug.md", generateClarificationMd(c))
                     }
                 }
             }
@@ -64,11 +64,11 @@ class ExportService(
             if (request.includeTasks) {
                 val tasks = taskService.listTasks(projectId)
                 if (tasks.isNotEmpty()) {
-                    zip.addEntry("$prefix/PLAN.md", generatePlanMd(tasks))
+                    zip.addEntry("$prefix/docs/PLAN.md", generatePlanMd(tasks))
                     tasks.forEachIndexed { i, t ->
                         val slug = t.title.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(50)
                         val typePrefix = t.type.name.lowercase()
-                        zip.addEntry("$prefix/tasks/${String.format("%03d", i + 1)}-$typePrefix-$slug.md", generateTaskMd(t))
+                        zip.addEntry("$prefix/docs/tasks/${String.format("%03d", i + 1)}-$typePrefix-$slug.md", generateTaskMd(t))
                     }
                 }
             }

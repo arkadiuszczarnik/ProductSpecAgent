@@ -46,7 +46,7 @@ class ExportControllerTest {
     }
 
     @Test
-    fun `POST export returns ZIP with README and SPEC`() {
+    fun `POST export returns ZIP with README at root and SPEC under docs`() {
         val pid = createProject()
 
         val result = mockMvc.perform(
@@ -70,9 +70,14 @@ class ExportControllerTest {
             }
         }
 
-        assertTrue(entries.any { it.endsWith("README.md") }, "ZIP should contain README.md, got: $entries")
-        assertTrue(entries.any { it.endsWith("SPEC.md") }, "ZIP should contain SPEC.md, got: $entries")
-        assertTrue(entries.any { it.endsWith(".gitignore") }, "ZIP should contain .gitignore, got: $entries")
+        assertTrue(entries.any { it.endsWith("/README.md") && !it.contains("/docs/") },
+            "ZIP should contain README.md at root, got: $entries")
+        assertTrue(entries.any { it.endsWith("/docs/SPEC.md") },
+            "ZIP should contain docs/SPEC.md, got: $entries")
+        assertTrue(entries.any { it.endsWith(".gitignore") },
+            "ZIP should contain .gitignore, got: $entries")
+        assertTrue(entries.none { it.matches(Regex(".*/[^/]+/SPEC\\.md$")) && !it.contains("/docs/") },
+            "ZIP should NOT contain top-level SPEC.md anymore, got: $entries")
     }
 
     @Test
