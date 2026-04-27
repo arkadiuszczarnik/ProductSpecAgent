@@ -240,6 +240,7 @@ export interface HandoffPreview {
   agentsMd: string;
   implementationOrder: string;
   format: string;
+  syncUrl: string;
 }
 
 export interface HandoffExportRequest {
