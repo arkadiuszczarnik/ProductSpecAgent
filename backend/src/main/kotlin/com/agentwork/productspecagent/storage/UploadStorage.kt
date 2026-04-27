@@ -32,7 +32,7 @@ open class UploadStorage(
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
 
     private fun uploadsDir(projectId: String): Path =
-        Paths.get(dataPath, "projects", projectId, "uploads")
+        Paths.get(dataPath, "projects", projectId, "docs", "uploads")
 
     private fun indexFile(projectId: String): Path =
         uploadsDir(projectId).resolve(".index.json")

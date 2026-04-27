@@ -88,13 +88,13 @@ class FileControllerTest {
     @Test
     fun `GET binary file returns binary=true with empty content`() {
         val pid = createProject()
-        val dataPath = java.nio.file.Paths.get("build/test-data/projects/$pid/uploads")
+        val dataPath = java.nio.file.Paths.get("build/test-data/projects/$pid/docs/uploads")
         java.nio.file.Files.createDirectories(dataPath)
         val testFile = dataPath.resolve("doc.pdf")
         // content is irrelevant — detection is by extension
         java.nio.file.Files.write(testFile, byteArrayOf(0x25, 0x50, 0x44, 0x46))
 
-        mockMvc.perform(get("/api/v1/projects/$pid/files/uploads/doc.pdf"))
+        mockMvc.perform(get("/api/v1/projects/$pid/files/docs/uploads/doc.pdf"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.binary").value(true))
             .andExpect(jsonPath("$.content").value(""))

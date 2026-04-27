@@ -18,7 +18,7 @@ class UploadStorageTest {
         val name = s.save("p1", "doc-1", "spec.pdf", "application/pdf", byteArrayOf(1, 2, 3), "2026-04-27T10:00:00Z")
 
         assertEquals("spec.pdf", name)
-        val file = tempDir.resolve("projects/p1/uploads/spec.pdf")
+        val file = tempDir.resolve("projects/p1/docs/uploads/spec.pdf")
         assertTrue(Files.exists(file))
         assertArrayEquals(byteArrayOf(1, 2, 3), Files.readAllBytes(file))
     }
@@ -28,7 +28,7 @@ class UploadStorageTest {
         val s = storage()
         s.save("p1", "doc-1", "spec.pdf", "application/pdf", byteArrayOf(1), "2026-04-27T10:00:00Z")
 
-        val index = tempDir.resolve("projects/p1/uploads/.index.json")
+        val index = tempDir.resolve("projects/p1/docs/uploads/.index.json")
         assertTrue(Files.exists(index))
         val raw = Files.readString(index)
         assertTrue(raw.contains("\"doc-1\""))
@@ -44,9 +44,9 @@ class UploadStorageTest {
 
         assertEquals("spec (2).pdf", second)
         assertEquals("spec (3).pdf", third)
-        assertTrue(Files.exists(tempDir.resolve("projects/p1/uploads/spec.pdf")))
-        assertTrue(Files.exists(tempDir.resolve("projects/p1/uploads/spec (2).pdf")))
-        assertTrue(Files.exists(tempDir.resolve("projects/p1/uploads/spec (3).pdf")))
+        assertTrue(Files.exists(tempDir.resolve("projects/p1/docs/uploads/spec.pdf")))
+        assertTrue(Files.exists(tempDir.resolve("projects/p1/docs/uploads/spec (2).pdf")))
+        assertTrue(Files.exists(tempDir.resolve("projects/p1/docs/uploads/spec (3).pdf")))
     }
 
     @Test
@@ -74,8 +74,8 @@ class UploadStorageTest {
 
         s.delete("p1", "doc-1")
 
-        assertFalse(Files.exists(tempDir.resolve("projects/p1/uploads/spec.pdf")))
-        val index = tempDir.resolve("projects/p1/uploads/.index.json")
+        assertFalse(Files.exists(tempDir.resolve("projects/p1/docs/uploads/spec.pdf")))
+        val index = tempDir.resolve("projects/p1/docs/uploads/.index.json")
         assertFalse(Files.readString(index).contains("\"doc-1\""))
     }
 
@@ -118,7 +118,7 @@ class UploadStorageTest {
         val s = storage()
         s.save("p1", "doc-1", "spec.pdf", "application/pdf", byteArrayOf(1), "2026-04-27T10:00:00Z")
 
-        val raw = java.nio.file.Files.readString(tempDir.resolve("projects/p1/uploads/.index.json"))
+        val raw = java.nio.file.Files.readString(tempDir.resolve("projects/p1/docs/uploads/.index.json"))
         assertTrue(raw.contains("\"id\""))
         assertTrue(raw.contains("\"doc-1\""))
         assertTrue(raw.contains("\"spec.pdf\""))
@@ -165,7 +165,7 @@ class UploadStorageTest {
     @Test
     fun `migrates legacy index format on first read`() {
         val s = storage()
-        val dir = tempDir.resolve("projects/p1/uploads")
+        val dir = tempDir.resolve("projects/p1/docs/uploads")
         java.nio.file.Files.createDirectories(dir)
         java.nio.file.Files.write(dir.resolve("legacy.pdf"), byteArrayOf(1, 2, 3))
         // Old-format index: flat docId -> filename map
@@ -187,7 +187,7 @@ class UploadStorageTest {
     @Test
     fun `migration infers mimeType for common extensions`() {
         val s = storage()
-        val dir = tempDir.resolve("projects/p1/uploads")
+        val dir = tempDir.resolve("projects/p1/docs/uploads")
         java.nio.file.Files.createDirectories(dir)
         java.nio.file.Files.write(dir.resolve("a.md"), byteArrayOf(1))
         java.nio.file.Files.write(dir.resolve("b.txt"), byteArrayOf(1))
