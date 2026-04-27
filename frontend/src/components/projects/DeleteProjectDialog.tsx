@@ -17,9 +17,15 @@ export function DeleteProjectDialog({ project, onClose, onDeleted }: DeleteProje
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
+  const [prevProjectId, setPrevProjectId] = useState<string | null>(project?.id ?? null);
+  if (project?.id !== prevProjectId) {
+    setPrevProjectId(project?.id ?? null);
+    setDeleting(false);
+    setDeleteError(null);
+  }
+
   useEffect(() => {
-    if (!project) return;
-    cancelButtonRef.current?.focus();
+    if (project) cancelButtonRef.current?.focus();
   }, [project]);
 
   useEffect(() => {
