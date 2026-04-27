@@ -16,6 +16,7 @@ import { useTaskStore } from "@/lib/stores/task-store";
 import { TaskTree } from "@/components/tasks/TaskTree";
 import { CheckResultsPanel } from "@/components/checks/CheckResultsPanel";
 import { DocumentsPanel } from "@/components/documents/DocumentsPanel";
+import { GraphMeshToggle } from "@/components/workspace/GraphMeshToggle";
 import { ExplorerPanel } from "@/components/explorer/ExplorerPanel";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { WizardForm } from "@/components/wizard/WizardForm";
@@ -93,6 +94,7 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
         <ChevronRight size={14} className="text-muted-foreground" />
         <span className="text-sm font-medium truncate max-w-xs">{project?.name ?? "..."}</span>
         <div className="ml-auto flex items-center gap-2">
+          {project && <GraphMeshToggle project={project} onProjectUpdate={(p) => useProjectStore.setState({ project: p })} />}
           <Button variant="ghost" size="sm" onClick={() => setShowExplorer(!showExplorer)} className="gap-1.5" title="Toggle Explorer">
             <FolderTree size={14} />
           </Button>
