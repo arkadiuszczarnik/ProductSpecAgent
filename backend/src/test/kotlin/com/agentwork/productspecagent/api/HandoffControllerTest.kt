@@ -112,4 +112,50 @@ class HandoffControllerTest {
         val orderEntry = fileContents.entries.find { it.key.endsWith("implementation-order.md") }
         assertTrue(orderEntry != null && orderEntry.value.contains("# Custom Order"), "implementation-order.md should have custom content")
     }
+
+    @Test
+    fun `POST export embeds project name sync URL and behavioral guidelines into CLAUDE md`() {
+        val pid = createProject()
+
+        val result = mockMvc.perform(
+            post("/api/v1/projects/$pid/handoff/export")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"format":"claude-code"}""")
+        )
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+        val claudeContent = readZipEntry(zipBytes) { it.endsWith("CLAUDE.md") }
+            ?: error("CLAUDE.md not found in handoff ZIP")
+
+        assertTrue(claudeContent.startsWith("# Handoff Test"), "CLAUDE.md should start with project H1, got: ${claudeContent.take(80)}")
+        assertTrue(
+            claudeContent.contains("## How to Sync This Project"),
+            "CLAUDE.md should contain 'How to Sync This Project' section"
+        )
+        assertTrue(
+            claudeContent.contains("/handoff/handoff.zip"),
+            "CLAUDE.md should embed sync URL pointing at the GET endpoint"
+        )
+        assertTrue(
+            claudeContent.contains("### 1. Think Before Coding"),
+            "CLAUDE.md should contain Behavioral Guidelines section 1"
+        )
+        assertTrue(
+            claudeContent.contains("### 4. Goal-Driven Execution"),
+            "CLAUDE.md should contain Behavioral Guidelines section 4"
+        )
+    }
+
+    private fun readZipEntry(zipBytes: ByteArray, predicate: (String) -> Boolean): String? {
+        ZipInputStream(ByteArrayInputStream(zipBytes)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (predicate(entry.name)) return zis.readBytes().toString(Charsets.UTF_8)
+                entry = zis.nextEntry
+            }
+        }
+        return null
+    }
 }

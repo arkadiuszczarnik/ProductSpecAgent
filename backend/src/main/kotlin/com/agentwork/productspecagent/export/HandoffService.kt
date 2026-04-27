@@ -2,9 +2,12 @@ package com.agentwork.productspecagent.export
 
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.*
+import com.github.mustachejava.DefaultMustacheFactory
+import com.github.mustachejava.MustacheFactory
 import org.springframework.stereotype.Service
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.StringWriter
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -12,51 +15,50 @@ import java.util.zip.ZipOutputStream
 @Service
 class HandoffService(
     private val projectService: ProjectService,
-    private val decisionService: DecisionService,
     private val taskService: TaskService,
     private val exportService: ExportService
 ) {
 
-    fun generatePreview(projectId: String, format: String = "claude-code"): HandoffPreview {
+    private val mf: MustacheFactory = DefaultMustacheFactory("templates/handoff")
+
+    fun generatePreview(projectId: String, format: String, syncUrl: String): HandoffPreview {
         val projectResponse = projectService.getProject(projectId)
         val project = projectResponse.project
-        val flowState = projectResponse.flowState
-        val decisions = decisionService.listDecisions(projectId)
         val tasks = taskService.listTasks(projectId)
 
         return HandoffPreview(
-            claudeMd = generateClaudeMd(project, flowState, projectId, decisions, tasks),
+            claudeMd = generateClaudeMd(project.name, syncUrl),
             agentsMd = generateAgentsMd(project, format),
             implementationOrder = generateImplementationOrder(tasks),
-            format = format
+            format = format,
+            syncUrl = syncUrl
         )
     }
 
-    fun exportHandoff(projectId: String, request: HandoffExportRequest = HandoffExportRequest()): ByteArray {
+    fun exportHandoff(projectId: String, request: HandoffExportRequest, syncUrl: String): ByteArray {
         val projectResponse = projectService.getProject(projectId)
         val project = projectResponse.project
         val slug = project.name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
 
+        val effectiveSyncUrl = request.syncUrl ?: syncUrl
+
         val preview = if (request.claudeMd != null || request.agentsMd != null || request.implementationOrder != null) {
-            // Use custom overrides where provided, generate defaults for the rest
-            val defaults = generatePreview(projectId, request.format)
+            val defaults = generatePreview(projectId, request.format, effectiveSyncUrl)
             HandoffPreview(
                 claudeMd = request.claudeMd ?: defaults.claudeMd,
                 agentsMd = request.agentsMd ?: defaults.agentsMd,
                 implementationOrder = request.implementationOrder ?: defaults.implementationOrder,
-                format = request.format
+                format = request.format,
+                syncUrl = effectiveSyncUrl
             )
         } else {
-            generatePreview(projectId, request.format)
+            generatePreview(projectId, request.format, effectiveSyncUrl)
         }
 
-        // Get base export ZIP
         val baseZip = exportService.exportProject(projectId)
 
-        // Combine base export with handoff files
         val baos = ByteArrayOutputStream()
         ZipOutputStream(baos).use { zip ->
-            // Copy all entries from the base export
             ZipInputStream(ByteArrayInputStream(baseZip)).use { zis ->
                 var entry = zis.nextEntry
                 while (entry != null) {
@@ -67,7 +69,6 @@ class HandoffService(
                 }
             }
 
-            // Add handoff files
             zip.addEntry("$slug/CLAUDE.md", preview.claudeMd)
             zip.addEntry("$slug/AGENTS.md", preview.agentsMd)
             zip.addEntry("$slug/implementation-order.md", preview.implementationOrder)
@@ -76,63 +77,11 @@ class HandoffService(
         return baos.toByteArray()
     }
 
-    private fun generateClaudeMd(
-        project: Project,
-        flowState: FlowState,
-        projectId: String,
-        decisions: List<Decision>,
-        tasks: List<SpecTask>
-    ): String = buildString {
-        appendLine("# ${project.name}")
-        appendLine()
-        appendLine("## Project Overview")
-        appendLine()
-
-        // Completed spec steps
-        val completedSteps = flowState.steps.filter { it.status == FlowStepStatus.COMPLETED }
-        if (completedSteps.isNotEmpty()) {
-            appendLine("## Specification")
-            appendLine()
-            for (step in completedSteps) {
-                val fileName = step.stepType.name.lowercase() + ".md"
-                val content = projectService.readSpecFile(projectId, fileName)
-                if (content != null) {
-                    appendLine("### ${step.stepType.name}")
-                    appendLine()
-                    appendLine(content)
-                    appendLine()
-                }
-            }
-        }
-
-        // Resolved decisions
-        val resolved = decisions.filter { it.status == DecisionStatus.RESOLVED }
-        if (resolved.isNotEmpty()) {
-            appendLine("## Decisions")
-            appendLine()
-            for (d in resolved) {
-                val chosen = d.options.find { it.id == d.chosenOptionId }
-                appendLine("- **${d.title}**: ${chosen?.label ?: "N/A"} — ${d.rationale ?: ""}")
-            }
-            appendLine()
-        }
-
-        // Task summary
-        if (tasks.isNotEmpty()) {
-            appendLine("## Tasks")
-            appendLine()
-            val byStatus = tasks.groupBy { it.status }
-            for ((status, group) in byStatus) {
-                appendLine("- ${status.name}: ${group.size}")
-            }
-            appendLine()
-        }
-
-        appendLine("## Implementation Notes")
-        appendLine()
-        appendLine("- Follow the implementation order in `implementation-order.md`")
-        appendLine("- See `AGENTS.md` for agent-specific instructions")
-        appendLine("- Refer to `SPEC.md` for full specification details")
+    private fun generateClaudeMd(projectName: String, syncUrl: String): String {
+        val mustache = mf.compile("claude.md.mustache")
+        val writer = StringWriter()
+        mustache.execute(writer, mapOf("projectName" to projectName, "syncUrl" to syncUrl)).flush()
+        return writer.toString()
     }
 
     private fun generateAgentsMd(project: Project, format: String): String = buildString {
