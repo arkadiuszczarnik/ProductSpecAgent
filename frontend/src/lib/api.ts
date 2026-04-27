@@ -271,7 +271,11 @@ export async function getProject(id: string): Promise<ProjectResponse> {
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  await fetch(`${API_BASE}/api/v1/projects/${id}`, { method: "DELETE" });
+  const res = await fetch(`${API_BASE}/api/v1/projects/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(error.message || `API error: ${res.status}`);
+  }
 }
 
 export async function getFlowState(projectId: string): Promise<FlowState> {
