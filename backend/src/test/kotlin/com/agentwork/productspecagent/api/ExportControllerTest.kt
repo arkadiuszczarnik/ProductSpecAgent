@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import java.io.ByteArrayInputStream
 import java.util.zip.ZipInputStream
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @SpringBootTest
@@ -162,6 +163,34 @@ class ExportControllerTest {
             while (e != null) { entries.add(e.name); e = zis.nextEntry }
         }
         assertTrue(entries.none { it.contains("uploads/") }, "ZIP must not contain uploads/, got: $entries")
+    }
+
+    @Test
+    fun `README references new docs paths`() {
+        val pid = createProject()
+
+        val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))
+            .andExpect(status().isOk()).andReturn()
+
+        val readme = ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
+            var entry = zis.nextEntry
+            var content: String? = null
+            while (entry != null) {
+                if (entry.name.endsWith("/README.md")) {
+                    content = String(zis.readAllBytes())
+                    break
+                }
+                entry = zis.nextEntry
+            }
+            content
+        }
+
+        assertNotNull(readme, "README.md should exist in ZIP")
+        assertTrue(readme!!.contains("`docs/SPEC.md`"), "README should reference docs/SPEC.md, got: $readme")
+        assertTrue(readme.contains("`docs/PLAN.md`"), "README should reference docs/PLAN.md")
+        assertTrue(readme.contains("`docs/decisions/`"), "README should reference docs/decisions/")
+        assertTrue(readme.contains("`docs/clarifications/`"), "README should reference docs/clarifications/")
+        assertTrue(readme.contains("`docs/tasks/`"), "README should reference docs/tasks/")
     }
 
 }
