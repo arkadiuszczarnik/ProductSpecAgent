@@ -34,7 +34,7 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
   const {
     project, projectLoading, projectError,
     flowState,
-    loadProject, reset,
+    loadProject, reset, setProject,
   } = useProjectStore();
 
   const [showExplorer, setShowExplorer] = useState(true);
@@ -94,7 +94,7 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
         <ChevronRight size={14} className="text-muted-foreground" />
         <span className="text-sm font-medium truncate max-w-xs">{project?.name ?? "..."}</span>
         <div className="ml-auto flex items-center gap-2">
-          {project && <GraphMeshToggle project={project} onProjectUpdate={(p) => useProjectStore.setState({ project: p })} />}
+          {project && <GraphMeshToggle project={project} onProjectUpdate={setProject} />}
           <Button variant="ghost" size="sm" onClick={() => setShowExplorer(!showExplorer)} className="gap-1.5" title="Toggle Explorer">
             <FolderTree size={14} />
           </Button>

@@ -27,6 +27,7 @@ interface ProjectState {
   chatSending: boolean;
 
   loadProject: (id: string) => Promise<void>;
+  setProject: (project: Project) => void;
   loadFlowState: (projectId: string) => Promise<void>;
   selectStep: (key: StepType | null) => void;
   sendMessage: (projectId: string, message: string) => Promise<void>;
@@ -57,6 +58,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       set({ projectError: err instanceof Error ? err.message : "Failed to load", projectLoading: false });
     }
   },
+
+  setProject: (project) => set({ project }),
 
   loadFlowState: async (projectId: string) => {
     set({ flowLoading: true });

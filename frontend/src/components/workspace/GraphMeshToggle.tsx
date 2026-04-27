@@ -58,12 +58,14 @@ export function GraphMeshToggle({ project, onProjectUpdate }: Props) {
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        title="Project settings"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label="Projekt-Einstellungen"
       >
         <Settings size={14} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-72 rounded-md border bg-card shadow-md p-3">
+        <div role="dialog" aria-label="Projekt-Einstellungen" className="absolute right-0 top-full mt-1 z-50 w-72 rounded-md border bg-card shadow-md p-3">
           <div className="text-xs font-medium mb-2">Projekt-Einstellungen</div>
           <label className={cn("flex items-start gap-2 text-xs", disabled && "opacity-60")}>
             <input
@@ -76,7 +78,9 @@ export function GraphMeshToggle({ project, onProjectUpdate }: Props) {
             <div>
               <div className="font-medium">GraphMesh aktivieren</div>
               <div className="text-[10px] text-muted-foreground mt-0.5">
-                {backendEnabled
+                {!backendEnabled && checked
+                  ? "Im Backend gerade deaktiviert. Die Projekt-Einstellung greift wieder, sobald das Backend GraphMesh aktiviert."
+                  : backendEnabled
                   ? "Dokumente werden zusätzlich an GraphMesh gesendet (RAG)."
                   : "Im Backend deaktiviert (application.yml). GraphMesh kann nicht aktiviert werden."}
               </div>
