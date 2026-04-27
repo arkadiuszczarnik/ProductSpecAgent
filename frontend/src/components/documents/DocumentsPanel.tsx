@@ -13,6 +13,7 @@ const STATE_STYLES: Record<DocumentState, string> = {
   PROCESSING: "bg-blue-500/20 text-blue-300",
   EXTRACTED: "bg-emerald-500/20 text-emerald-300",
   FAILED: "bg-red-500/20 text-red-300",
+  LOCAL: "bg-muted text-muted-foreground",
 };
 
 export function DocumentsPanel({ projectId }: Props) {
@@ -66,7 +67,7 @@ export function DocumentsPanel({ projectId }: Props) {
               <div className="text-[10px] text-muted-foreground">{new Date(doc.createdAt).toLocaleString("de-DE")}</div>
             </div>
             <span className={cn("rounded-full px-2 py-0.5 text-[10px]", STATE_STYLES[doc.state])}>
-              {doc.state}
+              {doc.state === "LOCAL" ? "Lokal" : doc.state}
             </span>
             <button
               onClick={() => deleteDocument(projectId, doc.id)}

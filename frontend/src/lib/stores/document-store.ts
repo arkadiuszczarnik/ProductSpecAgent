@@ -6,7 +6,7 @@ import {
   type ProjectDocument,
 } from "@/lib/api";
 
-const TERMINAL_STATES: ProjectDocument["state"][] = ["EXTRACTED", "FAILED"];
+const TERMINAL_STATES: ProjectDocument["state"][] = ["EXTRACTED", "FAILED", "LOCAL"];
 const POLL_INTERVAL_MS = 3000;
 
 interface DocumentState {
