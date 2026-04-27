@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { X, Loader2, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { readProjectFile, type FileContent } from "@/lib/api";
@@ -81,7 +82,7 @@ export function SpecFileViewer({ projectId, initialPath, open, onClose }: SpecFi
 
   const currentTab = tabs.find((t) => t.path === activeTab);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col rounded-xl border bg-card overflow-hidden">
@@ -132,7 +133,8 @@ export function SpecFileViewer({ projectId, initialPath, open, onClose }: SpecFi
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
