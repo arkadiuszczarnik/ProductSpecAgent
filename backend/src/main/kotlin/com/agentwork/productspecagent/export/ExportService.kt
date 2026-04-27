@@ -2,7 +2,6 @@ package com.agentwork.productspecagent.export
 
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.*
-import com.agentwork.productspecagent.storage.UploadStorage
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.util.zip.ZipEntry
@@ -13,8 +12,7 @@ class ExportService(
     private val projectService: ProjectService,
     private val decisionService: DecisionService,
     private val clarificationService: ClarificationService,
-    private val taskService: TaskService,
-    private val uploadStorage: UploadStorage
+    private val taskService: TaskService
 ) {
     fun exportProject(projectId: String, request: ExportRequest = ExportRequest()): ByteArray {
         val projectResponse = projectService.getProject(projectId)
@@ -73,12 +71,6 @@ class ExportService(
                 }
             }
 
-            // Documents (uploads)
-            if (request.includeDocuments) {
-                for (filename in uploadStorage.list(projectId)) {
-                    zip.addBinaryEntry("$prefix/uploads/$filename", uploadStorage.read(projectId, filename))
-                }
-            }
         }
 
         return baos.toByteArray()

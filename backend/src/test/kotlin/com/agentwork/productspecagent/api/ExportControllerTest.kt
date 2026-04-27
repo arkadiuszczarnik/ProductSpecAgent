@@ -129,40 +129,24 @@ class ExportControllerTest {
     }
 
     @Test
-    fun `POST export with includeDocuments=true bundles uploads folder`() {
+    fun `POST export bundles uploads under docs-uploads`() {
         val pid = createProject()
         uploadStorage.save(pid, "d1", "a.pdf", "application/pdf", byteArrayOf(1, 2, 3), "2026-04-27T10:00:00Z")
 
-        val result = mockMvc.perform(
-            post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
-                .content("""{"includeDocuments":true}""")
-        ).andExpect(status().isOk()).andReturn()
+        val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))
+            .andExpect(status().isOk()).andReturn()
 
         val entries = mutableListOf<String>()
         ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
             var e = zis.nextEntry
             while (e != null) { entries.add(e.name); e = zis.nextEntry }
         }
-        assertTrue(entries.any { it.endsWith("uploads/a.pdf") }, "ZIP should contain uploads/a.pdf, got: $entries")
-        assertTrue(entries.none { it.endsWith(".index.json") }, "ZIP must not contain .index.json, got: $entries")
-    }
-
-    @Test
-    fun `POST export with includeDocuments=false skips uploads`() {
-        val pid = createProject()
-        uploadStorage.save(pid, "d1", "a.pdf", "application/pdf", byteArrayOf(1, 2, 3), "2026-04-27T10:00:00Z")
-
-        val result = mockMvc.perform(
-            post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
-                .content("""{"includeDocuments":false}""")
-        ).andExpect(status().isOk()).andReturn()
-
-        val entries = mutableListOf<String>()
-        ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
-            var e = zis.nextEntry
-            while (e != null) { entries.add(e.name); e = zis.nextEntry }
-        }
-        assertTrue(entries.none { it.contains("uploads/") }, "ZIP must not contain uploads/, got: $entries")
+        assertTrue(entries.any { it.endsWith("/docs/uploads/a.pdf") },
+            "ZIP should contain docs/uploads/a.pdf, got: $entries")
+        assertTrue(entries.none { it.endsWith(".index.json") },
+            "ZIP must not contain .index.json, got: $entries")
+        assertTrue(entries.none { it.matches(Regex(".*/[^/]*/uploads/a\\.pdf$")) && !it.contains("/docs/") },
+            "ZIP must not contain top-level uploads/a.pdf, got: $entries")
     }
 
     @Test

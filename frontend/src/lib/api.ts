@@ -429,7 +429,6 @@ export async function exportProject(
     includeDecisions?: boolean;
     includeClarifications?: boolean;
     includeTasks?: boolean;
-    includeDocuments?: boolean;
   } = {}
 ): Promise<Blob> {
   const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/export`, {
@@ -439,7 +438,6 @@ export async function exportProject(
       includeDecisions: options.includeDecisions ?? true,
       includeClarifications: options.includeClarifications ?? true,
       includeTasks: options.includeTasks ?? true,
-      includeDocuments: options.includeDocuments ?? true,
     }),
   });
   if (!res.ok) throw new Error("Export failed");

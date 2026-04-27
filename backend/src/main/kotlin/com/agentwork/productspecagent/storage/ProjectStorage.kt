@@ -98,7 +98,9 @@ class ProjectStorage(
         if (!Files.exists(docs)) return emptyList()
         val projectRoot = projectDir(projectId)
         return Files.walk(docs).use { stream ->
-            stream.filter { Files.isRegularFile(it) }.toList()
+            stream.filter { Files.isRegularFile(it) }
+                .filter { it.fileName.toString() != ".index.json" }
+                .toList()
         }.map { file ->
             val rel = projectRoot.relativize(file).toString().replace('\\', '/')
             rel to Files.readAllBytes(file)
