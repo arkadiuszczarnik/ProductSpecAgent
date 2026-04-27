@@ -17,7 +17,7 @@ class ClarificationStorage(
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
     private fun clarificationsDir(projectId: String): Path =
-        Path.of(dataPath, "projects", projectId, "clarifications")
+        Path.of(dataPath, "projects", projectId, "docs", "clarifications")
 
     private fun clarificationFile(projectId: String, clarificationId: String): Path =
         clarificationsDir(projectId).resolve("$clarificationId.json")

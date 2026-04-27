@@ -5,6 +5,7 @@ import com.agentwork.productspecagent.service.ClarificationNotFoundException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 
 class ClarificationStorageTest {
@@ -61,5 +62,11 @@ class ClarificationStorageTest {
     @Test
     fun `delete on non-existent does not throw`() {
         assertDoesNotThrow { storage().deleteClarification("p1", "nope") }
+    }
+
+    @Test
+    fun `saveClarification writes to docs-clarifications subdirectory`() {
+        storage().saveClarification(sample())
+        assertTrue(Files.exists(tempDir.resolve("projects/p1/docs/clarifications/c1.json")))
     }
 }
