@@ -4,6 +4,7 @@ import com.agentwork.productspecagent.domain.ErrorResponse
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshException
 import com.agentwork.productspecagent.service.ClarificationNotFoundException
 import com.agentwork.productspecagent.service.DecisionNotFoundException
+import com.agentwork.productspecagent.service.GraphMeshDisabledException
 import com.agentwork.productspecagent.service.ProjectNotFoundException
 import com.agentwork.productspecagent.service.TaskNotFoundException
 import com.agentwork.productspecagent.service.UnsupportedMediaTypeException
@@ -76,4 +77,9 @@ class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
     fun handleUnsupportedMime(ex: UnsupportedMediaTypeException): ErrorResponse =
         ErrorResponse("UNSUPPORTED_TYPE", ex.message ?: "Unsupported MIME type", Instant.now().toString())
+
+    @ExceptionHandler(GraphMeshDisabledException::class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    fun handleGraphMeshDisabled(ex: GraphMeshDisabledException): ErrorResponse =
+        ErrorResponse("GRAPHMESH_DISABLED_BACKEND", ex.message ?: "GraphMesh is disabled in backend config", Instant.now().toString())
 }

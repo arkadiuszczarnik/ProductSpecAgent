@@ -16,6 +16,14 @@ class ProjectControllerTest {
     @Autowired
     lateinit var mockMvc: MockMvc
 
+    private fun createProject(): String {
+        val result = mockMvc.perform(
+            post("/api/v1/projects").contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Project Patch Test"}""")
+        ).andExpect(status().isCreated()).andReturn()
+        return """"id"\s*:\s*"([^"]+)"""".toRegex().find(result.response.contentAsString)!!.groupValues[1]
+    }
+
     @Test
     fun `POST creates project and returns 201`() {
         mockMvc.perform(
@@ -86,5 +94,17 @@ class ProjectControllerTest {
         // Verify deleted
         mockMvc.perform(get("/api/v1/projects/$projectId"))
             .andExpect(status().isNotFound())
+    }
+
+    @Test
+    fun `PATCH graphmesh-enabled succeeds when backend enabled`() {
+        val pid = createProject()
+        mockMvc.perform(
+            patch("/api/v1/projects/$pid/graphmesh-enabled")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"enabled":true}""")
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.graphmeshEnabled").value(true))
     }
 }

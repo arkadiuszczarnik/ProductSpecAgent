@@ -8,6 +8,7 @@ import com.agentwork.productspecagent.export.ScaffoldContext
 import com.agentwork.productspecagent.export.ScaffoldContextBuilder
 import com.agentwork.productspecagent.export.FeatureContext
 import com.agentwork.productspecagent.export.DecisionContext
+import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshConfig
 import com.agentwork.productspecagent.storage.ProjectStorage
 import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.context.annotation.Lazy
@@ -16,12 +17,14 @@ import java.time.Instant
 import java.util.UUID
 
 class ProjectNotFoundException(id: String) : RuntimeException("Project not found: $id")
+class GraphMeshDisabledException : RuntimeException("GraphMesh is disabled in backend config")
 
 @Service
 class ProjectService(
     private val storage: ProjectStorage,
     private val scaffoldGenerator: DocsScaffoldGenerator? = null,
-    @Lazy private val scaffoldContextBuilder: ScaffoldContextBuilder? = null
+    @Lazy private val scaffoldContextBuilder: ScaffoldContextBuilder? = null,
+    private val graphMeshConfig: GraphMeshConfig = GraphMeshConfig(enabled = false, url = "", requestTimeout = java.time.Duration.ofSeconds(30))
 ) {
 
     fun createProject(name: String): ProjectResponse {
@@ -121,5 +124,15 @@ class ProjectService(
     fun listDocsFiles(projectId: String): List<Pair<String, String>> {
         storage.loadProject(projectId) ?: throw ProjectNotFoundException(projectId)
         return storage.listDocsFiles(projectId)
+    }
+
+    fun setGraphMeshEnabled(projectId: String, enabled: Boolean): Project {
+        if (enabled && !graphMeshConfig.enabled) {
+            throw GraphMeshDisabledException()
+        }
+        val project = storage.loadProject(projectId) ?: throw ProjectNotFoundException(projectId)
+        val updated = project.copy(graphmeshEnabled = enabled, updatedAt = Instant.now().toString())
+        storage.saveProject(updated)
+        return updated
     }
 }

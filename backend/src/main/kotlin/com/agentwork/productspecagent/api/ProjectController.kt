@@ -44,4 +44,12 @@ class ProjectController(private val projectService: ProjectService) {
     fun regenerateDocs(@PathVariable id: String) {
         projectService.regenerateDocsScaffold(id)
     }
+
+    data class SetGraphMeshEnabledRequest(val enabled: Boolean)
+
+    @PatchMapping("/{id}/graphmesh-enabled")
+    fun setGraphMeshEnabled(
+        @PathVariable id: String,
+        @RequestBody body: SetGraphMeshEnabledRequest
+    ): Project = projectService.setGraphMeshEnabled(id, body.enabled)
 }
