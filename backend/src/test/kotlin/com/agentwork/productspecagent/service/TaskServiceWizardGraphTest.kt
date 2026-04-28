@@ -3,6 +3,7 @@ package com.agentwork.productspecagent.service
 import com.agentwork.productspecagent.agent.PlanGeneratorAgent
 import com.agentwork.productspecagent.agent.SpecContextBuilder
 import com.agentwork.productspecagent.domain.*
+import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import com.agentwork.productspecagent.storage.TaskStorage
 import kotlinx.coroutines.runBlocking
@@ -19,7 +20,7 @@ class TaskServiceWizardGraphTest {
 
     // Builds a SpecContextBuilder without a real project (same pattern as PlanGeneratorAgentScopeTest)
     private fun buildSpecContextBuilder(): SpecContextBuilder {
-        val storage = ProjectStorage(tmp.toString())
+        val storage = ProjectStorage(InMemoryObjectStore())
         val projectService = ProjectService(storage)
         return SpecContextBuilder(projectService)
     }

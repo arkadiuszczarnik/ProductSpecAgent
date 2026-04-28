@@ -4,19 +4,16 @@ import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshClient
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshConfig
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshException
+import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import com.agentwork.productspecagent.storage.UploadStorage
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
 
 class DocumentServiceTest {
 
-    @TempDir lateinit var tempDir: Path
-
     private fun fixtures(graphMeshConfigEnabled: Boolean = true, projectGraphMeshEnabled: Boolean = true): Quad<ProjectStorage, FakeClient, FakeUploadStorage, DocumentService> {
-        val storage = ProjectStorage(tempDir.toString())
+        val storage = ProjectStorage(InMemoryObjectStore())
         val project = Project(
             id = "p1", name = "Demo", ownerId = "u1",
             status = ProjectStatus.DRAFT,

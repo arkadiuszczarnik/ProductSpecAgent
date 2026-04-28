@@ -2,23 +2,21 @@ package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
 import kotlin.test.*
 
 class PlanGeneratorAgentTest {
 
-    @TempDir lateinit var tempDir: Path
     private lateinit var contextBuilder: SpecContextBuilder
     private lateinit var projectId: String
 
     @BeforeEach
     fun setup() {
-        val storage = ProjectStorage(tempDir.toString())
+        val storage = ProjectStorage(InMemoryObjectStore())
         val projectService = ProjectService(storage)
         contextBuilder = SpecContextBuilder(projectService)
         val response = projectService.createProject("Test")

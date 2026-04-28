@@ -4,17 +4,13 @@ import com.agentwork.productspecagent.domain.FeatureScope
 import com.agentwork.productspecagent.domain.TaskType
 import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.service.WizardFeatureInput
+import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
 
 class PlanGeneratorAgentScopeTest {
-
-    @TempDir
-    lateinit var tempDir: Path
 
     private class CapturingAgent(
         builder: SpecContextBuilder,
@@ -28,7 +24,7 @@ class PlanGeneratorAgentScopeTest {
     }
 
     private fun buildSpecContextBuilder(): SpecContextBuilder {
-        val storage = ProjectStorage(tempDir.toString())
+        val storage = ProjectStorage(InMemoryObjectStore())
         val projectService = ProjectService(storage)
         return SpecContextBuilder(projectService)
     }

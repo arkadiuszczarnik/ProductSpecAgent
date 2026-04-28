@@ -36,6 +36,13 @@ agent:
 
 app:
   data-path: build/test-data
+  storage:
+    bucket: test-bucket
+    endpoint: ""
+    region: us-east-1
+    access-key: ""
+    secret-key: ""
+    path-style-access: false
 
 graphmesh:
   enabled: true

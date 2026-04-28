@@ -3,24 +3,22 @@ package com.agentwork.productspecagent.api
 import com.agentwork.productspecagent.domain.FileContent
 import com.agentwork.productspecagent.domain.FileEntry
 import com.agentwork.productspecagent.service.ProjectNotFoundException
-import org.springframework.beans.factory.annotation.Value
+import com.agentwork.productspecagent.storage.ObjectStore
 import org.springframework.web.bind.annotation.*
-import java.nio.file.Files
-import java.nio.file.Path
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/files")
-class FileController(
-    @Value("\${app.data-path}") private val dataPath: String
-) {
-    private fun projectDir(projectId: String): Path =
-        Path.of(dataPath, "projects", projectId)
+class FileController(private val objectStore: ObjectStore) {
+
+    private fun projectPrefix(projectId: String) = "projects/$projectId/"
+    private fun projectKey(projectId: String, relPath: String) = "projects/$projectId/$relPath"
 
     @GetMapping
     fun listFiles(@PathVariable projectId: String): List<FileEntry> {
-        val dir = projectDir(projectId)
-        if (!Files.exists(dir)) throw ProjectNotFoundException(projectId)
-        return buildTree(dir, "")
+        val prefix = projectPrefix(projectId)
+        val keys = objectStore.listKeys(prefix)
+        if (keys.isEmpty()) throw ProjectNotFoundException(projectId)
+        return buildTree(projectId, keys.map { it.removePrefix(prefix) })
     }
 
     @GetMapping("/**")
@@ -28,22 +26,16 @@ class FileController(
         @PathVariable projectId: String,
         request: jakarta.servlet.http.HttpServletRequest
     ): FileContent {
-        val dir = projectDir(projectId)
-        val prefix = "/api/v1/projects/$projectId/files/"
-        val cleanPath = request.requestURI.removePrefix(prefix).removePrefix("/")
+        val urlPrefix = "/api/v1/projects/$projectId/files/"
+        val cleanPath = request.requestURI.removePrefix(urlPrefix).removePrefix("/")
 
-        val file = dir.resolve(cleanPath)
+        // Security: no path traversal
+        if (cleanPath.contains("..")) throw ProjectNotFoundException("Invalid path: $cleanPath")
 
-        if (!Files.exists(file) || Files.isDirectory(file)) {
-            throw ProjectNotFoundException("File not found: $cleanPath")
-        }
+        val key = projectKey(projectId, cleanPath)
+        val bytes = objectStore.get(key) ?: throw ProjectNotFoundException("File not found: $cleanPath")
 
-        // Security: ensure path doesn't escape project dir
-        if (!file.normalize().startsWith(dir.normalize())) {
-            throw ProjectNotFoundException("Invalid path: $cleanPath")
-        }
-
-        val name = file.fileName.toString()
+        val name = cleanPath.substringAfterLast('/')
         if (isBinary(name)) {
             return FileContent(
                 path = cleanPath, name = name, content = "",
@@ -51,7 +43,7 @@ class FileController(
             )
         }
 
-        val content = Files.readString(file)
+        val content = bytes.toString(Charsets.UTF_8)
         return FileContent(
             path = cleanPath,
             name = name,
@@ -61,34 +53,44 @@ class FileController(
         )
     }
 
-    private fun buildTree(dir: Path, relativePath: String): List<FileEntry> {
-        if (!Files.exists(dir)) return emptyList()
-
+    private fun buildTree(projectId: String, relativePaths: List<String>): List<FileEntry> {
+        val prefix = projectPrefix(projectId)
         val entries = mutableListOf<FileEntry>()
+        val dirs = mutableSetOf<String>()
 
-        Files.list(dir).use { stream ->
-            stream.sorted(Comparator.comparing<Path, Boolean> { !Files.isDirectory(it) }
-                .thenComparing { it.fileName.toString() })
-                .forEach { path ->
-                    val name = path.fileName.toString()
-                    val relPath = if (relativePath.isEmpty()) name else "$relativePath/$name"
+        // Collect all intermediate directories
+        for (relPath in relativePaths) {
+            val parts = relPath.split("/")
+            for (depth in 1 until parts.size) {
+                dirs.add(parts.take(depth).joinToString("/"))
+            }
+        }
 
-                    if (Files.isDirectory(path)) {
-                        entries.add(FileEntry(
-                            name = name,
-                            path = relPath,
-                            isDirectory = true,
-                            children = buildTree(path, relPath)
-                        ))
-                    } else {
-                        entries.add(FileEntry(
-                            name = name,
-                            path = relPath,
-                            isDirectory = false,
-                            size = Files.size(path)
-                        ))
-                    }
+        // Top-level entries (depth 1)
+        val topLevelDirs = dirs.filter { !it.contains("/") }.sorted()
+        val topLevelFiles = relativePaths.filter { !it.contains("/") }.sorted()
+
+        for (dir in topLevelDirs) {
+            val subPaths = relativePaths
+                .filter { it.startsWith("$dir/") }
+                .map { it.removePrefix("$dir/") }
+            entries.add(FileEntry(
+                name = dir,
+                path = dir,
+                isDirectory = true,
+                children = buildTree(projectId, subPaths).map { child ->
+                    child.copy(path = "$dir/${child.path}")
                 }
+            ))
+        }
+        for (file in topLevelFiles) {
+            val bytes = objectStore.get("$prefix$file") ?: continue
+            entries.add(FileEntry(
+                name = file,
+                path = file,
+                isDirectory = false,
+                size = bytes.size.toLong()
+            ))
         }
 
         return entries

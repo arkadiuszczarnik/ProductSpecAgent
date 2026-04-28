@@ -1,18 +1,14 @@
 package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
 import kotlin.test.assertContains
 import kotlin.test.assertTrue
 
 class SpecContextBuilderTest {
-
-    @TempDir
-    lateinit var tempDir: Path
 
     private lateinit var storage: ProjectStorage
     private lateinit var projectService: ProjectService
@@ -20,7 +16,7 @@ class SpecContextBuilderTest {
 
     @BeforeEach
     fun setup() {
-        storage = ProjectStorage(tempDir.toString())
+        storage = ProjectStorage(InMemoryObjectStore())
         projectService = ProjectService(storage)
         builder = SpecContextBuilder(projectService)
     }

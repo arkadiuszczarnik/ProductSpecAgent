@@ -5,117 +5,92 @@ import com.agentwork.productspecagent.domain.Project
 import com.agentwork.productspecagent.domain.WizardData
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
 
 @Service
-class ProjectStorage(
-    @Value("\${app.data-path}") private val dataPath: String
-) {
+class ProjectStorage(private val objectStore: ObjectStore) {
 
     private val json = Json {
         prettyPrint = true
         ignoreUnknownKeys = true
     }
 
-    private fun projectDir(projectId: String): Path =
-        Paths.get(dataPath, "projects", projectId)
-
-    private fun projectFile(projectId: String): Path =
-        projectDir(projectId).resolve("project.json")
-
-    private fun flowStateFile(projectId: String): Path =
-        projectDir(projectId).resolve("flow-state.json")
-
-    private fun specDir(projectId: String): Path =
-        projectDir(projectId).resolve("spec")
+    private fun projectPrefix(id: String) = "projects/$id/"
+    private fun projectKey(id: String) = "projects/$id/project.json"
+    private fun flowStateKey(id: String) = "projects/$id/flow-state.json"
+    private fun wizardKey(id: String) = "projects/$id/wizard.json"
+    private fun specKey(id: String, fileName: String) = "projects/$id/spec/$fileName"
+    private fun docsKey(id: String, relativePath: String) = "projects/$id/$relativePath"
+    private fun docsPrefix(id: String) = "projects/$id/docs/"
 
     fun saveProject(project: Project) {
-        val dir = projectDir(project.id)
-        Files.createDirectories(dir)
-        Files.writeString(projectFile(project.id), json.encodeToString(project))
+        objectStore.put(
+            projectKey(project.id),
+            json.encodeToString(project).toByteArray(),
+            "application/json"
+        )
     }
 
-    fun loadProject(projectId: String): Project? {
-        val file = projectFile(projectId)
-        if (!Files.exists(file)) return null
-        return json.decodeFromString<Project>(Files.readString(file))
-    }
+    fun loadProject(projectId: String): Project? =
+        objectStore.get(projectKey(projectId))
+            ?.toString(Charsets.UTF_8)
+            ?.let { json.decodeFromString<Project>(it) }
 
     fun deleteProject(projectId: String) {
-        val dir = projectDir(projectId)
-        if (Files.exists(dir)) {
-            dir.toFile().deleteRecursively()
-        }
+        objectStore.deletePrefix(projectPrefix(projectId))
     }
 
-    fun listProjects(): List<Project> {
-        val projectsDir = Paths.get(dataPath, "projects")
-        if (!Files.exists(projectsDir)) return emptyList()
-        return Files.list(projectsDir).use { stream ->
-            stream.filter { Files.isDirectory(it) }
-                .toList()
-                .mapNotNull { loadProject(it.fileName.toString()) }
-        }
-    }
+    fun listProjects(): List<Project> =
+        objectStore.listCommonPrefixes("projects/", "/")
+            .mapNotNull { id -> loadProject(id) }
 
     fun saveFlowState(flowState: FlowState) {
-        val dir = projectDir(flowState.projectId)
-        Files.createDirectories(dir)
-        Files.writeString(flowStateFile(flowState.projectId), json.encodeToString(flowState))
+        objectStore.put(
+            flowStateKey(flowState.projectId),
+            json.encodeToString(flowState).toByteArray(),
+            "application/json"
+        )
     }
 
-    fun loadFlowState(projectId: String): FlowState? {
-        val file = flowStateFile(projectId)
-        if (!Files.exists(file)) return null
-        return json.decodeFromString<FlowState>(Files.readString(file))
-    }
+    fun loadFlowState(projectId: String): FlowState? =
+        objectStore.get(flowStateKey(projectId))
+            ?.toString(Charsets.UTF_8)
+            ?.let { json.decodeFromString<FlowState>(it) }
 
     fun saveSpecStep(projectId: String, fileName: String, content: String) {
-        val dir = specDir(projectId)
-        Files.createDirectories(dir)
-        Files.writeString(dir.resolve(fileName), content)
+        objectStore.put(specKey(projectId, fileName), content.toByteArray(), "text/markdown")
     }
 
-    fun loadSpecStep(projectId: String, fileName: String): String? {
-        val file = specDir(projectId).resolve(fileName)
-        if (!Files.exists(file)) return null
-        return Files.readString(file)
-    }
+    fun loadSpecStep(projectId: String, fileName: String): String? =
+        objectStore.get(specKey(projectId, fileName))?.toString(Charsets.UTF_8)
 
     fun saveDocsFile(projectId: String, relativePath: String, content: String) {
-        val file = projectDir(projectId).resolve(relativePath)
-        Files.createDirectories(file.parent)
-        Files.writeString(file, content)
+        objectStore.put(docsKey(projectId, relativePath), content.toByteArray())
     }
 
-    /** Returns every file under `data/projects/{id}/docs/` as `(relativePath, bytes)` pairs. */
+    /** Returns every doc file as `(relativePath, bytes)` pairs. Excludes `.index.json` (UploadStorage internals). */
     fun listDocsFiles(projectId: String): List<Pair<String, ByteArray>> {
-        val docs = projectDir(projectId).resolve("docs")
-        if (!Files.exists(docs)) return emptyList()
-        val projectRoot = projectDir(projectId)
-        return Files.walk(docs).use { stream ->
-            stream.filter { Files.isRegularFile(it) }
-                .filter { it.fileName.toString() != ".index.json" }
-                .toList()
-        }.map { file ->
-            val rel = projectRoot.relativize(file).toString().replace('\\', '/')
-            rel to Files.readAllBytes(file)
-        }
+        val docsPrefix = docsPrefix(projectId)
+        val projectPrefix = projectPrefix(projectId)
+        return objectStore.listKeys(docsPrefix)
+            .filter { !it.endsWith(".index.json") }
+            .map { key ->
+                val rel = key.removePrefix(projectPrefix)
+                val bytes = objectStore.get(key) ?: ByteArray(0)
+                rel to bytes
+            }
     }
 
     fun saveWizardData(projectId: String, data: WizardData) {
-        val dir = projectDir(projectId)
-        Files.createDirectories(dir)
-        Files.writeString(dir.resolve("wizard.json"), json.encodeToString(data))
+        objectStore.put(
+            wizardKey(projectId),
+            json.encodeToString(data).toByteArray(),
+            "application/json"
+        )
     }
 
-    fun loadWizardData(projectId: String): WizardData? {
-        val file = projectDir(projectId).resolve("wizard.json")
-        if (!Files.exists(file)) return null
-        return json.decodeFromString<WizardData>(Files.readString(file))
-    }
+    fun loadWizardData(projectId: String): WizardData? =
+        objectStore.get(wizardKey(projectId))
+            ?.toString(Charsets.UTF_8)
+            ?.let { json.decodeFromString<WizardData>(it) }
 }

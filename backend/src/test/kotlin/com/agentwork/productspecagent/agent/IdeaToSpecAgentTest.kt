@@ -9,6 +9,7 @@ import com.agentwork.productspecagent.service.WizardFeatureInput
 import com.agentwork.productspecagent.service.WizardService
 import com.agentwork.productspecagent.storage.ClarificationStorage
 import com.agentwork.productspecagent.storage.DecisionStorage
+import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import com.agentwork.productspecagent.storage.TaskStorage
 import kotlinx.coroutines.runBlocking
@@ -37,7 +38,7 @@ class IdeaToSpecAgentTest {
 
     @BeforeEach
     fun setup() {
-        storage = ProjectStorage(tempDir.toString())
+        storage = ProjectStorage(InMemoryObjectStore())
         projectService = ProjectService(storage)
         contextBuilder = SpecContextBuilder(projectService)
         decisionStorage = DecisionStorage(tempDir.toString())

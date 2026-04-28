@@ -4,20 +4,15 @@ import com.agentwork.productspecagent.domain.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
 import java.time.Instant
 
-class ProjectStorageTest {
-
-    @TempDir
-    lateinit var tempDir: Path
+class ProjectStorageTest : S3TestSupport() {
 
     private lateinit var storage: ProjectStorage
 
     @BeforeEach
-    fun setUp() {
-        storage = ProjectStorage(tempDir.toString())
+    fun setUpStorage() {
+        storage = ProjectStorage(objectStore())
     }
 
     private fun makeProject(id: String = "proj-1") = Project(
@@ -48,7 +43,7 @@ class ProjectStorageTest {
     }
 
     @Test
-    fun `deleteProject removes project directory`() {
+    fun `deleteProject removes all project keys`() {
         val project = makeProject()
         storage.saveProject(project)
         assertNotNull(storage.loadProject(project.id))
@@ -98,14 +93,14 @@ class ProjectStorageTest {
     }
 
     @Test
-    fun `saveSpecStep writes file to spec directory`() {
+    fun `saveSpecStep writes file under spec prefix`() {
         val project = makeProject()
         storage.saveProject(project)
         storage.saveSpecStep(project.id, "idea.md", "# My Idea\nThis is a great idea.")
 
-        val specFile = tempDir.resolve("projects/${project.id}/spec/idea.md")
-        assertTrue(specFile.toFile().exists())
-        assertEquals("# My Idea\nThis is a great idea.", specFile.toFile().readText())
+        val raw = objectStore().get("projects/${project.id}/spec/idea.md")
+        assertNotNull(raw)
+        assertEquals("# My Idea\nThis is a great idea.", String(raw!!))
     }
 
     @Test
@@ -126,34 +121,25 @@ class ProjectStorageTest {
 
     @Test
     fun `project loads correctly when collectionId is missing in JSON`() {
-        val storage = ProjectStorage(tempDir.toString())
-        val dir = tempDir.resolve("projects/p1")
-        java.nio.file.Files.createDirectories(dir)
         val legacyJson = """{"id":"p1","name":"Old","ownerId":"u1","status":"DRAFT","createdAt":"x","updatedAt":"y"}"""
-        java.nio.file.Files.writeString(dir.resolve("project.json"), legacyJson)
+        objectStore().put("projects/p1/project.json", legacyJson.toByteArray())
+
         val loaded = storage.loadProject("p1")!!
         assertNull(loaded.collectionId)
     }
 
     @Test
     fun `loads project with graphmeshEnabled default false when missing in JSON`() {
-        val storage = ProjectStorage(tempDir.toString())
-        val pid = "p1"
-        val dir = tempDir.resolve("projects/$pid")
-        java.nio.file.Files.createDirectories(dir)
-        java.nio.file.Files.writeString(
-            dir.resolve("project.json"),
-            """{"id":"p1","name":"Demo","ownerId":"u1","status":"DRAFT","createdAt":"x","updatedAt":"x"}"""
-        )
+        val legacy = """{"id":"p1","name":"Demo","ownerId":"u1","status":"DRAFT","createdAt":"x","updatedAt":"x"}"""
+        objectStore().put("projects/p1/project.json", legacy.toByteArray())
 
-        val loaded = storage.loadProject(pid)!!
+        val loaded = storage.loadProject("p1")!!
 
         assertFalse(loaded.graphmeshEnabled)
     }
 
     @Test
     fun `roundtrips project with graphmeshEnabled=true`() {
-        val storage = ProjectStorage(tempDir.toString())
         val project = Project(
             id = "p1", name = "Demo", ownerId = "u1",
             status = ProjectStatus.DRAFT,

@@ -1,5 +1,8 @@
 package com.agentwork.productspecagent.config
 
+import com.agentwork.productspecagent.storage.ObjectStore
+import com.agentwork.productspecagent.storage.S3ObjectStore
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -31,4 +34,9 @@ class S3Config {
         }
         return builder.build()
     }
+
+    @Bean
+    @ConditionalOnMissingBean(ObjectStore::class)
+    fun objectStore(s3Client: S3Client, props: S3StorageProperties): ObjectStore =
+        S3ObjectStore(s3Client, props)
 }

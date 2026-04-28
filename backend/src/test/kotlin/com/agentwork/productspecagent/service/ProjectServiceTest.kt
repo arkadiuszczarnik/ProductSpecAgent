@@ -1,18 +1,14 @@
 package com.agentwork.productspecagent.service
 
 import com.agentwork.productspecagent.domain.*
+import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
 
 class ProjectServiceTest {
-
-    @TempDir
-    lateinit var tempDir: Path
 
     private lateinit var storage: ProjectStorage
     private lateinit var service: ProjectService
@@ -20,7 +16,7 @@ class ProjectServiceTest {
 
     @BeforeEach
     fun setUp() {
-        storage = ProjectStorage(tempDir.toString())
+        storage = ProjectStorage(InMemoryObjectStore())
         service = ProjectService(storage)
         wizardService = WizardService(storage)
     }

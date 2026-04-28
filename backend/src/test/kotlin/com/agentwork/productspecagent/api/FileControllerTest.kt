@@ -1,5 +1,6 @@
 package com.agentwork.productspecagent.api
 
+import com.agentwork.productspecagent.storage.ObjectStore
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -14,19 +15,14 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 class FileControllerTest {
 
     @Autowired lateinit var mockMvc: MockMvc
+    @Autowired lateinit var objectStore: ObjectStore
 
     private val createdProjectIds = mutableListOf<String>()
 
     @org.junit.jupiter.api.AfterEach
     fun cleanupProjects() {
-        val root = java.nio.file.Paths.get("build/test-data/projects")
         for (pid in createdProjectIds) {
-            val dir = root.resolve(pid)
-            if (java.nio.file.Files.exists(dir)) {
-                java.nio.file.Files.walk(dir)
-                    .sorted(Comparator.reverseOrder())
-                    .forEach(java.nio.file.Files::delete)
-            }
+            objectStore.deletePrefix("projects/$pid/")
         }
         createdProjectIds.clear()
     }
@@ -88,11 +84,8 @@ class FileControllerTest {
     @Test
     fun `GET binary file returns binary=true with empty content`() {
         val pid = createProject()
-        val dataPath = java.nio.file.Paths.get("build/test-data/projects/$pid/docs/uploads")
-        java.nio.file.Files.createDirectories(dataPath)
-        val testFile = dataPath.resolve("doc.pdf")
         // content is irrelevant — detection is by extension
-        java.nio.file.Files.write(testFile, byteArrayOf(0x25, 0x50, 0x44, 0x46))
+        objectStore.put("projects/$pid/docs/uploads/doc.pdf", byteArrayOf(0x25, 0x50, 0x44, 0x46))
 
         mockMvc.perform(get("/api/v1/projects/$pid/files/docs/uploads/doc.pdf"))
             .andExpect(status().isOk())

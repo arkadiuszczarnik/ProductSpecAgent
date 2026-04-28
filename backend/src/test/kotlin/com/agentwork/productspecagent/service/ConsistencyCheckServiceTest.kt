@@ -20,7 +20,7 @@ class ConsistencyCheckServiceTest {
 
     @BeforeEach
     fun setup() {
-        val projectStorage = ProjectStorage(tempDir.toString())
+        val projectStorage = ProjectStorage(InMemoryObjectStore())
         val taskStorage = TaskStorage(tempDir.toString())
         val decisionStorage = DecisionStorage(tempDir.toString())
         val clarificationStorage = ClarificationStorage(tempDir.toString())

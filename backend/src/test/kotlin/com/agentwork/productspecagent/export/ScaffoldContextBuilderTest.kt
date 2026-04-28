@@ -34,7 +34,7 @@ class ScaffoldContextBuilderTest {
     @BeforeEach
     fun setUp() {
         val dataPath = tempDir.toString()
-        projectStorage = ProjectStorage(dataPath)
+        projectStorage = ProjectStorage(InMemoryObjectStore())
         taskStorage = TaskStorage(dataPath)
         val decisionStorage = DecisionStorage(dataPath)
 

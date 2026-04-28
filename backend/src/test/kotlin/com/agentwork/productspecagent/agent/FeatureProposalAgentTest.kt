@@ -2,6 +2,7 @@ package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
@@ -53,7 +54,7 @@ class FeatureProposalAgentTest {
      * buildProposalContext is overridden so ProjectService is never actually called.
      */
     private fun contextBuilderStub(category: String): SpecContextBuilder {
-        val dummyStorage = ProjectStorage("/tmp/proposal-agent-test-stub")
+        val dummyStorage = ProjectStorage(InMemoryObjectStore())
         val dummyProjectService = ProjectService(dummyStorage)
         return object : SpecContextBuilder(dummyProjectService) {
             override fun buildProposalContext(projectId: String): String =
