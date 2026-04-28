@@ -48,7 +48,7 @@ class IdeaToSpecAgentTest {
             }
         }
         decisionService = DecisionService(decisionStorage, fakeDecisionAgent)
-        clarificationStorage = ClarificationStorage(tempDir.toString())
+        clarificationStorage = ClarificationStorage(InMemoryObjectStore())
         clarificationService = ClarificationService(clarificationStorage)
         wizardService = WizardService(storage)
         taskStorage = TaskStorage(tempDir.toString())

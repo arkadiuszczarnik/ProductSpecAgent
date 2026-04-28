@@ -4,15 +4,10 @@ import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.ClarificationNotFoundException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
-class ClarificationStorageTest {
+class ClarificationStorageTest : S3TestSupport() {
 
-    @TempDir lateinit var tempDir: Path
-
-    private fun storage() = ClarificationStorage(tempDir.toString())
+    private fun storage() = ClarificationStorage(objectStore())
 
     private fun sample(id: String = "c1", projectId: String = "p1") = Clarification(
         id = id, projectId = projectId, stepType = FlowStepType.FEATURES,
@@ -50,7 +45,7 @@ class ClarificationStorageTest {
     }
 
     @Test
-    fun `delete removes file`() {
+    fun `delete removes object`() {
         val s = storage()
         s.saveClarification(sample())
         s.deleteClarification("p1", "c1")
@@ -65,8 +60,8 @@ class ClarificationStorageTest {
     }
 
     @Test
-    fun `saveClarification writes to docs-clarifications subdirectory`() {
+    fun `saveClarification writes to docs-clarifications key prefix`() {
         storage().saveClarification(sample())
-        assertTrue(Files.exists(tempDir.resolve("projects/p1/docs/clarifications/c1.json")))
+        assertTrue(objectStore().exists("projects/p1/docs/clarifications/c1.json"))
     }
 }

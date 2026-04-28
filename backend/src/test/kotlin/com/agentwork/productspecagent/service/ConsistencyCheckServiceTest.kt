@@ -16,6 +16,7 @@ class ConsistencyCheckServiceTest {
     private lateinit var taskService: TaskService
     private lateinit var decisionService: DecisionService
     private lateinit var decisionStorage: DecisionStorage
+    private lateinit var clarificationStorage: ClarificationStorage
     private lateinit var clarificationService: ClarificationService
     private lateinit var checkService: ConsistencyCheckService
 
@@ -24,7 +25,7 @@ class ConsistencyCheckServiceTest {
         val projectStorage = ProjectStorage(InMemoryObjectStore())
         val taskStorage = TaskStorage(tempDir.toString())
         decisionStorage = DecisionStorage(InMemoryObjectStore())
-        val clarificationStorage = ClarificationStorage(tempDir.toString())
+        clarificationStorage = ClarificationStorage(InMemoryObjectStore())
 
         projectService = ProjectService(projectStorage)
 
@@ -82,7 +83,7 @@ class ConsistencyCheckServiceTest {
             question = "How handle offline?", reason = "Contradiction",
             createdAt = "2026-03-30T00:00:00Z"
         )
-        ClarificationStorage(tempDir.toString()).saveClarification(clarification)
+        clarificationStorage.saveClarification(clarification)
 
         val report = checkService.runChecks(pid)
         assertTrue(report.results.any { it.category == "open-clarification" })
