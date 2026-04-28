@@ -1,0 +1,6 @@
+config:
+  aws:region: eu-central-1
+  productspec-base:nodeInstanceType: t3.large
+  productspec-base:nodeMinSize: "2"
+  productspec-base:nodeDesiredSize: "2"
+  productspec-base:nodeMaxSize: "6"
