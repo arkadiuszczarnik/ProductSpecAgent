@@ -1,0 +1,4 @@
+.gradle/
+build/
+*.class
+Pulumi.*.yaml.bak

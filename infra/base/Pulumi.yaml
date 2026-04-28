@@ -1,0 +1,6 @@
+name: productspec-base
+runtime:
+  name: java
+  options:
+    use-executor: gradle
+description: Productspec base infrastructure (VPC, EKS, ECR, S3, IRSA)
