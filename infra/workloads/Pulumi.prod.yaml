@@ -1,0 +1,6 @@
+config:
+  aws:region: eu-central-1
+  productspec-workloads:baseStackName: prod
+  productspec-workloads:imageTag: placeholder
+  productspec-workloads:backendReplicas: "2"
+  productspec-workloads:frontendReplicas: "2"
