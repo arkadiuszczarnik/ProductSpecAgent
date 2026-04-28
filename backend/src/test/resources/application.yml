@@ -35,7 +35,6 @@ agent:
     Do not emit [STEP_COMPLETE] until you are confident the step is truly done.
 
 app:
-  data-path: build/test-data
   storage:
     bucket: test-bucket
     endpoint: ""

@@ -63,7 +63,6 @@ agent:
     [CLARIFICATION_NEEDED]: Welches konkrete Problem loest dein Produkt fuer die Nutzer? | Ohne ein klar definiertes Problem kann keine zielgerichtete Produktrichtung entwickelt werden.
 
 app:
-  data-path: ./data
   storage:
     bucket: ${S3_BUCKET:productspec-data}
     endpoint: ${S3_ENDPOINT:}
