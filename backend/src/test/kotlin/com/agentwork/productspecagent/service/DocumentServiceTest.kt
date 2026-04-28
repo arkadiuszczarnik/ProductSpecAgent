@@ -58,7 +58,7 @@ class DocumentServiceTest {
     }
 
     // Fresh instance per test via fixtures(); mutable state is safe.
-    private class FakeUploadStorage : UploadStorage("unused-test-path") {
+    private class FakeUploadStorage : UploadStorage(InMemoryObjectStore()) {
         val saved = mutableMapOf<String, FakeSave>()
         val deleted = mutableListOf<Pair<String, String>>()
         var throwOnSave: Boolean = false

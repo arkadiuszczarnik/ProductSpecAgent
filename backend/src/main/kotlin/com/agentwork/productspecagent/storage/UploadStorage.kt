@@ -5,17 +5,11 @@ import com.agentwork.productspecagent.domain.DocumentState
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
 import java.time.Instant
 
 @Service
-open class UploadStorage(
-    @Value("\${app.data-path}") private val dataPath: String
-) {
+open class UploadStorage(private val objectStore: ObjectStore) {
 
     @Serializable
     data class IndexEntry(
@@ -31,11 +25,11 @@ open class UploadStorage(
 
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
 
-    private fun uploadsDir(projectId: String): Path =
-        Paths.get(dataPath, "projects", projectId, "docs", "uploads")
-
-    private fun indexFile(projectId: String): Path =
-        uploadsDir(projectId).resolve(".index.json")
+    private fun uploadsPrefix(projectId: String) = "projects/$projectId/docs/uploads/"
+    private fun fileKey(projectId: String, filename: String) =
+        "${uploadsPrefix(projectId)}$filename"
+    private fun indexKey(projectId: String) =
+        "${uploadsPrefix(projectId)}.index.json"
 
     open fun save(
         projectId: String,
@@ -45,12 +39,9 @@ open class UploadStorage(
         bytes: ByteArray,
         createdAt: String = Instant.now().toString()
     ): String {
-        val dir = uploadsDir(projectId)
-        Files.createDirectories(dir)
-
         val sanitized = sanitizeFilename(title)
-        val filename = uniqueFilename(dir, sanitized)
-        Files.write(dir.resolve(filename), bytes)
+        val filename = uniqueFilename(projectId, sanitized)
+        objectStore.put(fileKey(projectId, filename), bytes, mimeType)
 
         val entries = readEntries(projectId).filter { it.id != docId }.toMutableList()
         entries += IndexEntry(docId, filename, title, mimeType, createdAt)
@@ -63,25 +54,19 @@ open class UploadStorage(
         val entries = readEntries(projectId).toMutableList()
         val entry = entries.firstOrNull { it.id == docId } ?: return
         entries.remove(entry)
-        Files.deleteIfExists(uploadsDir(projectId).resolve(entry.filename))
+        objectStore.delete(fileKey(projectId, entry.filename))
         writeEntries(projectId, entries)
     }
 
     open fun read(projectId: String, filename: String): ByteArray =
-        Files.readAllBytes(uploadsDir(projectId).resolve(filename))
+        objectStore.get(fileKey(projectId, filename))
+            ?: throw NoSuchElementException("Upload not found: $filename")
 
-    open fun list(projectId: String): List<String> {
-        val dir = uploadsDir(projectId)
-        if (!Files.exists(dir)) return emptyList()
-        return Files.list(dir).use { stream ->
-            stream
-                .filter { !Files.isDirectory(it) }
-                .map { it.fileName.toString() }
-                .filter { it != ".index.json" }
-                .sorted()
-                .toList()
-        }
-    }
+    open fun list(projectId: String): List<String> =
+        objectStore.listKeys(uploadsPrefix(projectId))
+            .map { it.removePrefix(uploadsPrefix(projectId)) }
+            .filter { it != ".index.json" }
+            .sorted()
 
     open fun listAsDocuments(projectId: String): List<Document> =
         readEntries(projectId).map { it.toDocument() }
@@ -98,25 +83,19 @@ open class UploadStorage(
     )
 
     private fun readEntries(projectId: String): List<IndexEntry> {
-        val file = indexFile(projectId)
-        if (!Files.exists(file)) return emptyList()
-        val raw = Files.readString(file)
+        val raw = objectStore.get(indexKey(projectId))?.toString(Charsets.UTF_8) ?: return emptyList()
         if (raw.isBlank()) return emptyList()
 
-        // Try new format first.
         val newFormatAttempt = try {
             json.decodeFromString<IndexFile>(raw).documents
         } catch (_: Exception) {
             null
         }
 
-        // If the decode succeeded AND the JSON actually carries a `documents` field,
-        // we trust the new-format result (even if the list is empty).
         if (newFormatAttempt != null && raw.matches(Regex("(?s).*\"documents\"\\s*:.*"))) {
             return newFormatAttempt
         }
 
-        // Otherwise, attempt legacy decode + migrate.
         val legacy = try {
             json.decodeFromString<Map<String, String>>(raw)
         } catch (_: Exception) {
@@ -136,18 +115,20 @@ open class UploadStorage(
     }
 
     private fun writeEntries(projectId: String, entries: List<IndexEntry>) {
-        val file = indexFile(projectId)
-        Files.createDirectories(file.parent)
-        Files.writeString(file, json.encodeToString(IndexFile(entries)))
+        objectStore.put(
+            indexKey(projectId),
+            json.encodeToString(IndexFile(entries)).toByteArray(),
+            "application/json"
+        )
     }
 
     private fun readMtime(projectId: String, filename: String): String {
-        val file = uploadsDir(projectId).resolve(filename)
-        return try {
-            Files.getLastModifiedTime(file).toInstant().toString()
-        } catch (_: Exception) {
-            Instant.now().toString()
-        }
+        val targetKey = fileKey(projectId, filename)
+        return objectStore.listEntries(uploadsPrefix(projectId))
+            .firstOrNull { it.key == targetKey }
+            ?.lastModified
+            ?.toString()
+            ?: Instant.now().toString()
     }
 
     private fun inferMimeType(filename: String): String {
@@ -170,15 +151,18 @@ open class UploadStorage(
         return cleaned.take(255)
     }
 
-    private fun uniqueFilename(dir: Path, sanitized: String): String {
-        if (!Files.exists(dir.resolve(sanitized))) return sanitized
+    private fun uniqueFilename(projectId: String, sanitized: String): String {
+        if (!objectStore.exists(fileKey(projectId, sanitized))) return sanitized
         val dotIdx = sanitized.lastIndexOf('.')
-        val (base, ext) = if (dotIdx > 0) sanitized.substring(0, dotIdx) to sanitized.substring(dotIdx)
-        else sanitized to ""
+        val (base, ext) = if (dotIdx > 0) {
+            sanitized.substring(0, dotIdx) to sanitized.substring(dotIdx)
+        } else {
+            sanitized to ""
+        }
         var n = 2
         while (true) {
             val candidate = "$base ($n)$ext"
-            if (!Files.exists(dir.resolve(candidate))) return candidate
+            if (!objectStore.exists(fileKey(projectId, candidate))) return candidate
             n++
         }
     }

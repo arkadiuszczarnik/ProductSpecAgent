@@ -2,15 +2,10 @@ package com.agentwork.productspecagent.storage
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
-class UploadStorageTest {
+class UploadStorageTest : S3TestSupport() {
 
-    @TempDir lateinit var tempDir: Path
-
-    private fun storage() = UploadStorage(tempDir.toString())
+    private fun storage() = UploadStorage(objectStore())
 
     @Test
     fun `save writes file under uploads and returns sanitized filename`() {
@@ -18,9 +13,9 @@ class UploadStorageTest {
         val name = s.save("p1", "doc-1", "spec.pdf", "application/pdf", byteArrayOf(1, 2, 3), "2026-04-27T10:00:00Z")
 
         assertEquals("spec.pdf", name)
-        val file = tempDir.resolve("projects/p1/docs/uploads/spec.pdf")
-        assertTrue(Files.exists(file))
-        assertArrayEquals(byteArrayOf(1, 2, 3), Files.readAllBytes(file))
+        val bytes = objectStore().get("projects/p1/docs/uploads/spec.pdf")
+        assertNotNull(bytes)
+        assertArrayEquals(byteArrayOf(1, 2, 3), bytes)
     }
 
     @Test
@@ -28,11 +23,11 @@ class UploadStorageTest {
         val s = storage()
         s.save("p1", "doc-1", "spec.pdf", "application/pdf", byteArrayOf(1), "2026-04-27T10:00:00Z")
 
-        val index = tempDir.resolve("projects/p1/docs/uploads/.index.json")
-        assertTrue(Files.exists(index))
-        val raw = Files.readString(index)
-        assertTrue(raw.contains("\"doc-1\""))
-        assertTrue(raw.contains("\"spec.pdf\""))
+        val raw = objectStore().get("projects/p1/docs/uploads/.index.json")
+        assertNotNull(raw)
+        val str = String(raw!!)
+        assertTrue(str.contains("\"doc-1\""))
+        assertTrue(str.contains("\"spec.pdf\""))
     }
 
     @Test
@@ -44,9 +39,9 @@ class UploadStorageTest {
 
         assertEquals("spec (2).pdf", second)
         assertEquals("spec (3).pdf", third)
-        assertTrue(Files.exists(tempDir.resolve("projects/p1/docs/uploads/spec.pdf")))
-        assertTrue(Files.exists(tempDir.resolve("projects/p1/docs/uploads/spec (2).pdf")))
-        assertTrue(Files.exists(tempDir.resolve("projects/p1/docs/uploads/spec (3).pdf")))
+        assertTrue(objectStore().exists("projects/p1/docs/uploads/spec.pdf"))
+        assertTrue(objectStore().exists("projects/p1/docs/uploads/spec (2).pdf"))
+        assertTrue(objectStore().exists("projects/p1/docs/uploads/spec (3).pdf"))
     }
 
     @Test
@@ -68,22 +63,22 @@ class UploadStorageTest {
     }
 
     @Test
-    fun `delete removes file and index entry`() {
+    fun `delete removes object and index entry`() {
         val s = storage()
         s.save("p1", "doc-1", "spec.pdf", "application/pdf", byteArrayOf(1), "2026-04-27T10:00:00Z")
 
         s.delete("p1", "doc-1")
 
-        assertFalse(Files.exists(tempDir.resolve("projects/p1/docs/uploads/spec.pdf")))
-        val index = tempDir.resolve("projects/p1/docs/uploads/.index.json")
-        assertFalse(Files.readString(index).contains("\"doc-1\""))
+        assertFalse(objectStore().exists("projects/p1/docs/uploads/spec.pdf"))
+        val raw = objectStore().get("projects/p1/docs/uploads/.index.json")
+        assertNotNull(raw)
+        assertFalse(String(raw!!).contains("\"doc-1\""))
     }
 
     @Test
     fun `delete is idempotent for missing docId`() {
         val s = storage()
-        // No save first — index does not exist
-        s.delete("p1", "missing")  // must not throw
+        s.delete("p1", "missing")
     }
 
     @Test
@@ -98,7 +93,7 @@ class UploadStorageTest {
     }
 
     @Test
-    fun `list returns empty list when no uploads directory exists`() {
+    fun `list returns empty list when no uploads exist`() {
         val s = storage()
         assertEquals(emptyList<String>(), s.list("never-touched"))
     }
@@ -118,7 +113,7 @@ class UploadStorageTest {
         val s = storage()
         s.save("p1", "doc-1", "spec.pdf", "application/pdf", byteArrayOf(1), "2026-04-27T10:00:00Z")
 
-        val raw = java.nio.file.Files.readString(tempDir.resolve("projects/p1/docs/uploads/.index.json"))
+        val raw = String(objectStore().get("projects/p1/docs/uploads/.index.json")!!)
         assertTrue(raw.contains("\"id\""))
         assertTrue(raw.contains("\"doc-1\""))
         assertTrue(raw.contains("\"spec.pdf\""))
@@ -165,11 +160,11 @@ class UploadStorageTest {
     @Test
     fun `migrates legacy index format on first read`() {
         val s = storage()
-        val dir = tempDir.resolve("projects/p1/docs/uploads")
-        java.nio.file.Files.createDirectories(dir)
-        java.nio.file.Files.write(dir.resolve("legacy.pdf"), byteArrayOf(1, 2, 3))
-        // Old-format index: flat docId -> filename map
-        java.nio.file.Files.writeString(dir.resolve(".index.json"), """{"old-doc-1":"legacy.pdf"}""")
+        objectStore().put("projects/p1/docs/uploads/legacy.pdf", byteArrayOf(1, 2, 3))
+        objectStore().put(
+            "projects/p1/docs/uploads/.index.json",
+            """{"old-doc-1":"legacy.pdf"}""".toByteArray()
+        )
 
         val docs = s.listAsDocuments("p1")
 
@@ -177,9 +172,9 @@ class UploadStorageTest {
         val d = docs[0]
         assertEquals("old-doc-1", d.id)
         assertEquals("legacy.pdf", d.title)
-        assertEquals("application/pdf", d.mimeType)  // inferred from extension
-        // After migration, index should be in new format
-        val rawAfter = java.nio.file.Files.readString(dir.resolve(".index.json"))
+        assertEquals("application/pdf", d.mimeType)
+
+        val rawAfter = String(objectStore().get("projects/p1/docs/uploads/.index.json")!!)
         assertTrue(rawAfter.contains("\"documents\""))
         assertTrue(rawAfter.contains("\"old-doc-1\""))
     }
@@ -187,13 +182,13 @@ class UploadStorageTest {
     @Test
     fun `migration infers mimeType for common extensions`() {
         val s = storage()
-        val dir = tempDir.resolve("projects/p1/docs/uploads")
-        java.nio.file.Files.createDirectories(dir)
-        java.nio.file.Files.write(dir.resolve("a.md"), byteArrayOf(1))
-        java.nio.file.Files.write(dir.resolve("b.txt"), byteArrayOf(1))
-        java.nio.file.Files.write(dir.resolve("c.unknown"), byteArrayOf(1))
-        java.nio.file.Files.writeString(dir.resolve(".index.json"),
-            """{"d1":"a.md","d2":"b.txt","d3":"c.unknown"}""")
+        objectStore().put("projects/p1/docs/uploads/a.md", byteArrayOf(1))
+        objectStore().put("projects/p1/docs/uploads/b.txt", byteArrayOf(1))
+        objectStore().put("projects/p1/docs/uploads/c.unknown", byteArrayOf(1))
+        objectStore().put(
+            "projects/p1/docs/uploads/.index.json",
+            """{"d1":"a.md","d2":"b.txt","d3":"c.unknown"}""".toByteArray()
+        )
 
         val docs = s.listAsDocuments("p1").associateBy { it.id }
 
