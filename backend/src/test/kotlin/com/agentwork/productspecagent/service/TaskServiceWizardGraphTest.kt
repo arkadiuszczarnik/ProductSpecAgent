@@ -9,14 +9,10 @@ import com.agentwork.productspecagent.storage.TaskStorage
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
+
 import java.time.Instant
 
 class TaskServiceWizardGraphTest {
-
-    @TempDir
-    lateinit var tmp: Path
 
     // Builds a SpecContextBuilder without a real project (same pattern as PlanGeneratorAgentScopeTest)
     private fun buildSpecContextBuilder(): SpecContextBuilder {
@@ -57,7 +53,7 @@ class TaskServiceWizardGraphTest {
 
     @Test
     fun `phase 2 maps wizard-feature dependsOn ids to generated epic ids`() {
-        val storage = TaskStorage(tmp.toString())
+        val storage = TaskStorage(InMemoryObjectStore())
         val agent = fakeAgentReturningOneEpicPerInput()
         val svc = TaskService(storage, agent)
 
@@ -90,7 +86,7 @@ class TaskServiceWizardGraphTest {
 
     @Test
     fun `existing non-wizard tasks remain untouched`() {
-        val storage = TaskStorage(tmp.toString())
+        val storage = TaskStorage(InMemoryObjectStore())
         val now = Instant.now().toString()
         // A manually created task (no specSection = FEATURES) must survive replacement
         storage.saveTask(
@@ -120,7 +116,7 @@ class TaskServiceWizardGraphTest {
 
     @Test
     fun `chain dependency A → B → C resolves both edges`() {
-        val storage = TaskStorage(tmp.toString())
+        val storage = TaskStorage(InMemoryObjectStore())
         val agent = makeFakeAgent()
         val svc = TaskService(storage, agent)
         val inputs = listOf(
@@ -139,7 +135,7 @@ class TaskServiceWizardGraphTest {
 
     @Test
     fun `multi-source dependency A,B → C is fully resolved`() {
-        val storage = TaskStorage(tmp.toString())
+        val storage = TaskStorage(InMemoryObjectStore())
         val agent = makeFakeAgent()
         val svc = TaskService(storage, agent)
         val inputs = listOf(
@@ -157,7 +153,7 @@ class TaskServiceWizardGraphTest {
 
     @Test
     fun `unknown dependsOn id is silently ignored`() {
-        val storage = TaskStorage(tmp.toString())
+        val storage = TaskStorage(InMemoryObjectStore())
         val agent = makeFakeAgent()
         val svc = TaskService(storage, agent)
         val inputs = listOf(

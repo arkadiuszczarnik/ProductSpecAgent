@@ -4,13 +4,10 @@ import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.storage.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
+
 import kotlin.test.*
 
 class ConsistencyCheckServiceTest {
-
-    @TempDir lateinit var tempDir: Path
 
     private lateinit var projectService: ProjectService
     private lateinit var taskService: TaskService
@@ -23,7 +20,7 @@ class ConsistencyCheckServiceTest {
     @BeforeEach
     fun setup() {
         val projectStorage = ProjectStorage(InMemoryObjectStore())
-        val taskStorage = TaskStorage(tempDir.toString())
+        val taskStorage = TaskStorage(InMemoryObjectStore())
         decisionStorage = DecisionStorage(InMemoryObjectStore())
         clarificationStorage = ClarificationStorage(InMemoryObjectStore())
 

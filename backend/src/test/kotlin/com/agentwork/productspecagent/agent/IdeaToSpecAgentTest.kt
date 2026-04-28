@@ -16,14 +16,10 @@ import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
+
 import kotlin.test.*
 
 class IdeaToSpecAgentTest {
-
-    @TempDir
-    lateinit var tempDir: Path
 
     private lateinit var storage: ProjectStorage
     private lateinit var projectService: ProjectService
@@ -51,7 +47,7 @@ class IdeaToSpecAgentTest {
         clarificationStorage = ClarificationStorage(InMemoryObjectStore())
         clarificationService = ClarificationService(clarificationStorage)
         wizardService = WizardService(storage)
-        taskStorage = TaskStorage(tempDir.toString())
+        taskStorage = TaskStorage(InMemoryObjectStore())
         val fakePlanAgent = object : PlanGeneratorAgent(contextBuilder) {
             override suspend fun generatePlanForFeature(
                 projectId: String,
@@ -358,7 +354,7 @@ class IdeaToSpecAgentTest {
                 )
             }
         }
-        val spyStorage = TaskStorage(tempDir.toString())
+        val spyStorage = TaskStorage(InMemoryObjectStore())
         val spyTaskService = SpyTaskService(spyStorage, fakePlanAgentForSpy)
 
         val agent = object : IdeaToSpecAgent(

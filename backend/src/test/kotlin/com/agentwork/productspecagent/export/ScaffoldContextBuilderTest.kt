@@ -11,14 +11,10 @@ import kotlinx.serialization.json.encodeToJsonElement
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
+
 import java.time.Instant
 
 class ScaffoldContextBuilderTest {
-
-    @TempDir
-    lateinit var tempDir: Path
 
     private lateinit var taskStorage: TaskStorage
     private lateinit var projectStorage: ProjectStorage
@@ -33,9 +29,8 @@ class ScaffoldContextBuilderTest {
 
     @BeforeEach
     fun setUp() {
-        val dataPath = tempDir.toString()
         projectStorage = ProjectStorage(InMemoryObjectStore())
-        taskStorage = TaskStorage(dataPath)
+        taskStorage = TaskStorage(InMemoryObjectStore())
         val decisionStorage = DecisionStorage(InMemoryObjectStore())
 
         projectService = ProjectService(projectStorage)
