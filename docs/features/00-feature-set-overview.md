@@ -27,6 +27,7 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 | 18 | Step Blocker Gate | [18-step-blocker-gate.md](18-step-blocker-gate.md) | Feature 2, 3, 11 | M |
 | 19 | Explorer Debug Toggle | [19-explorer-debug-toggle.md](19-explorer-debug-toggle.md) | Feature 9, 15 | S |
 | 20 | Spec-to-Docs Sync | [20-spec-to-docs-sync.md](20-spec-to-docs-sync.md) | Feature 1, 4, 10, 11 | M |
+| 31 | Project Storage auf S3 | [31-project-storage-s3.md](31-project-storage-s3.md) | Feature 0 | L |
 
 ## Architecture Docs
 
