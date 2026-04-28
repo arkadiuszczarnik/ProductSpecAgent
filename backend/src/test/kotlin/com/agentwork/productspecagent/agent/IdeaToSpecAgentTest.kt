@@ -41,7 +41,7 @@ class IdeaToSpecAgentTest {
         storage = ProjectStorage(InMemoryObjectStore())
         projectService = ProjectService(storage)
         contextBuilder = SpecContextBuilder(projectService)
-        decisionStorage = DecisionStorage(tempDir.toString())
+        decisionStorage = DecisionStorage(InMemoryObjectStore())
         val fakeDecisionAgent = object : DecisionAgent(contextBuilder) {
             override suspend fun runAgent(prompt: String): String {
                 return """{"options":[{"label":"Yes","pros":["pro1"],"cons":[],"recommended":true},{"label":"No","pros":[],"cons":["con1"],"recommended":false}],"recommendation":"Go with Yes"}"""

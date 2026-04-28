@@ -4,45 +4,42 @@ import com.agentwork.productspecagent.domain.Decision
 import com.agentwork.productspecagent.service.DecisionNotFoundException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlin.io.path.*
 
 @Service
-class DecisionStorage(
-    @Value("\${app.data-path}") private val dataPath: String
-) {
+class DecisionStorage(private val objectStore: ObjectStore) {
+
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
-    private fun decisionsDir(projectId: String): Path =
-        Path.of(dataPath, "projects", projectId, "docs", "decisions")
-
-    private fun decisionFile(projectId: String, decisionId: String): Path =
-        decisionsDir(projectId).resolve("$decisionId.json")
+    private fun decisionsPrefix(projectId: String) = "projects/$projectId/docs/decisions/"
+    private fun decisionKey(projectId: String, decisionId: String) =
+        "${decisionsPrefix(projectId)}$decisionId.json"
 
     fun saveDecision(decision: Decision) {
-        val dir = decisionsDir(decision.projectId)
-        Files.createDirectories(dir)
-        decisionFile(decision.projectId, decision.id).writeText(json.encodeToString(decision))
+        objectStore.put(
+            decisionKey(decision.projectId, decision.id),
+            json.encodeToString(decision).toByteArray(),
+            "application/json"
+        )
     }
 
     fun loadDecision(projectId: String, decisionId: String): Decision {
-        val file = decisionFile(projectId, decisionId)
-        if (!file.exists()) throw DecisionNotFoundException(decisionId)
-        return json.decodeFromString(file.readText())
+        val bytes = objectStore.get(decisionKey(projectId, decisionId))
+            ?: throw DecisionNotFoundException(decisionId)
+        return json.decodeFromString(bytes.toString(Charsets.UTF_8))
     }
 
-    fun listDecisions(projectId: String): List<Decision> {
-        val dir = decisionsDir(projectId)
-        if (!dir.exists()) return emptyList()
-        return dir.listDirectoryEntries("*.json")
-            .map { json.decodeFromString<Decision>(it.readText()) }
+    fun listDecisions(projectId: String): List<Decision> =
+        objectStore.listKeys(decisionsPrefix(projectId))
+            .filter { it.endsWith(".json") }
+            .mapNotNull { key ->
+                objectStore.get(key)
+                    ?.toString(Charsets.UTF_8)
+                    ?.let { json.decodeFromString<Decision>(it) }
+            }
             .sortedBy { it.createdAt }
-    }
 
     fun deleteDecision(projectId: String, decisionId: String) {
-        decisionFile(projectId, decisionId).deleteIfExists()
+        objectStore.delete(decisionKey(projectId, decisionId))
     }
 }

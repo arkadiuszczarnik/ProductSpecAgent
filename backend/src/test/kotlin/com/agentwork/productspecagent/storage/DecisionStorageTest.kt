@@ -4,16 +4,10 @@ import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.DecisionNotFoundException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
-class DecisionStorageTest {
+class DecisionStorageTest : S3TestSupport() {
 
-    @TempDir
-    lateinit var tempDir: Path
-
-    private fun storage() = DecisionStorage(tempDir.toString())
+    private fun storage() = DecisionStorage(objectStore())
 
     private fun sampleDecision(id: String = "d1", projectId: String = "p1") = Decision(
         id = id, projectId = projectId, stepType = FlowStepType.FEATURES,
@@ -58,7 +52,7 @@ class DecisionStorageTest {
     }
 
     @Test
-    fun `deleteDecision removes the file`() {
+    fun `deleteDecision removes the object`() {
         val s = storage()
         s.saveDecision(sampleDecision())
         s.deleteDecision("p1", "d1")
@@ -73,8 +67,8 @@ class DecisionStorageTest {
     }
 
     @Test
-    fun `saveDecision writes to docs-decisions subdirectory`() {
+    fun `saveDecision writes to docs-decisions key prefix`() {
         storage().saveDecision(sampleDecision())
-        assertTrue(Files.exists(tempDir.resolve("projects/p1/docs/decisions/d1.json")))
+        assertTrue(objectStore().exists("projects/p1/docs/decisions/d1.json"))
     }
 }

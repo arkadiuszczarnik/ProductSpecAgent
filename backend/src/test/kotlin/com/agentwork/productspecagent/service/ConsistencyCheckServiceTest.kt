@@ -15,6 +15,7 @@ class ConsistencyCheckServiceTest {
     private lateinit var projectService: ProjectService
     private lateinit var taskService: TaskService
     private lateinit var decisionService: DecisionService
+    private lateinit var decisionStorage: DecisionStorage
     private lateinit var clarificationService: ClarificationService
     private lateinit var checkService: ConsistencyCheckService
 
@@ -22,7 +23,7 @@ class ConsistencyCheckServiceTest {
     fun setup() {
         val projectStorage = ProjectStorage(InMemoryObjectStore())
         val taskStorage = TaskStorage(tempDir.toString())
-        val decisionStorage = DecisionStorage(tempDir.toString())
+        decisionStorage = DecisionStorage(InMemoryObjectStore())
         val clarificationStorage = ClarificationStorage(tempDir.toString())
 
         projectService = ProjectService(projectStorage)
@@ -65,7 +66,7 @@ class ConsistencyCheckServiceTest {
             title = "MVP scope?", options = emptyList(), recommendation = "TBD",
             createdAt = "2026-03-30T00:00:00Z"
         )
-        DecisionStorage(tempDir.toString()).saveDecision(decision)
+        decisionStorage.saveDecision(decision)
 
         val report = checkService.runChecks(pid)
         assertTrue(report.results.any { it.category == "unresolved-decision" })

@@ -36,7 +36,7 @@ class ScaffoldContextBuilderTest {
         val dataPath = tempDir.toString()
         projectStorage = ProjectStorage(InMemoryObjectStore())
         taskStorage = TaskStorage(dataPath)
-        val decisionStorage = DecisionStorage(dataPath)
+        val decisionStorage = DecisionStorage(InMemoryObjectStore())
 
         projectService = ProjectService(projectStorage)
 
@@ -87,7 +87,7 @@ class ScaffoldContextBuilderTest {
                 error("should not be called in scaffold tests")
         }
         val ts = TaskService(taskStorage, planAgent)
-        val ds = DecisionService(DecisionStorage(tempDir.toString()), decisionAgent)
+        val ds = DecisionService(DecisionStorage(InMemoryObjectStore()), decisionAgent)
         builder = ScaffoldContextBuilder(projectService, ts, ds, wizardService)
     }
 
