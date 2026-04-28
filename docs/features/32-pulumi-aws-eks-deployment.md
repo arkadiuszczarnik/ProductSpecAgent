@@ -3,7 +3,9 @@
 **Phase:** Infrastruktur / DevOps
 **Abhängig von:** Feature 0 (Project Setup), Feature 31 (Project Storage auf S3)
 **Aufwand:** L
-**Status:** Spec in Arbeit (Brainstorming offen)
+**Status:** Spec approved, Implementierung läuft
+**Spec:** [../superpowers/specs/2026-04-28-pulumi-aws-eks-deployment-design.md](../superpowers/specs/2026-04-28-pulumi-aws-eks-deployment-design.md)
+**Plan:** [../superpowers/plans/2026-04-28-pulumi-aws-eks-deployment.md](../superpowers/plans/2026-04-28-pulumi-aws-eks-deployment.md)
 
 ## Problem & Ziel
 
