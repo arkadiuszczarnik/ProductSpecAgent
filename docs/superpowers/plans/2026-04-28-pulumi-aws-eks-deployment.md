@@ -6,16 +6,69 @@
 
 **Architecture:** Zwei eigenständige Gradle-Projekte unter `infra/`, die nicht ins Root-`settings.gradle.kts` eingebunden werden. Der `productspec-base`-Stack erzeugt langlebige AWS-Infra (Cluster, ECR, S3) und exportiert Outputs; der `productspec-workloads`-Stack liest sie via `StackReference`, definiert die K8s-Workloads als typed Kotlin und nutzt IRSA, sodass der Backend-Pod ohne statische Credentials auf S3 zugreift. State liegt in einem dedizierten S3-Bucket (kein Pulumi Cloud).
 
-**Tech Stack:**
-- Pulumi Java SDK `com.pulumi:pulumi:1.16.0` (oder neueste 1.x)
-- Pulumi Provider: `com.pulumi:aws:6.83.0`, `com.pulumi:awsx:2.21.1`, `com.pulumi:eks:3.10.0`, `com.pulumi:kubernetes:4.21.1`
+**Tech Stack (Maven-Central-verifiziert):**
+- Pulumi Java SDK `com.pulumi:pulumi:1.13.2`
+- Pulumi Provider: `com.pulumi:aws:6.83.0`, `com.pulumi:awsx:2.22.0`, `com.pulumi:eks:3.9.1`, `com.pulumi:kubernetes:4.23.0`
 - Kotlin 2.3.10, Java 21, Gradle Wrapper (kopiert aus `backend/`)
-- AWS Load Balancer Controller Helm-Chart `1.8.4` (Repo `https://aws.github.io/eks-charts`)
+- AWS Load Balancer Controller Helm-Chart `1.8.3` (Repo `https://aws.github.io/eks-charts`) — passend zu Controller v2.8.3 (v2.8.4 existiert noch nicht)
 - Backend: Spring Boot 4 / Kotlin 2.3 / Java 21 (bestehend, eine Test-Datei kommt dazu)
 
 **Approved Spec:** [docs/superpowers/specs/2026-04-28-pulumi-aws-eks-deployment-design.md](../specs/2026-04-28-pulumi-aws-eks-deployment-design.md)
 
 **Sprache der Commit-Messages:** Englisch (matched bestehenden Repo-Stil — siehe `git log`).
+
+---
+
+## Phase 1 Implementation Notes (2026-04-28, T01–T11 fertig)
+
+Diese Findings stammen aus echten Subagent-Implementierungen von T01–T11 und sind verifiziert. Der Plan ab T12 hat sie bereits eingearbeitet; bei Re-Lauf von T01–T11 oder bei Fehlerdiagnose sollte man sie kennen.
+
+### Pulumi-Versions-Korrekturen
+Die ursprünglich geplanten Versionen (`pulumi:1.16.0`, `eks:3.10.0`, `awsx:2.21.1`, `kubernetes:4.21.1`) existieren teilweise nicht in Maven Central. Verwendet wurden die in „Tech Stack" oben genannten verifizierten Versionen.
+
+### Pulumi-Java-Test-API (für T02, T06, T15)
+- Klassen heißen **`Mocks.ResourceArgs`**, **`Mocks.ResourceResult`**, **`Mocks.CallArgs`** (innere Klassen von `com.pulumi.test.Mocks`), nicht `MockResourceArgs` etc.
+- `Mocks.callAsync(args)` returns `CompletableFuture<Map<String, Any>>` (kein `CallResult`-Wrapper).
+- `PulumiTest.withMocks(...).runTest(...)` returns `TestResult` **synchron** (kein `.join()`/`.get()`).
+- **`TestResult.resources()`** liefert `List<Resource>` ohne `inputs()`-Methode → **Recorder-Pattern** in `PulumiMocks` nutzen:
+  ```kotlin
+  class PulumiMocks(private val recorded: MutableList<Mocks.ResourceArgs> = mutableListOf()) : Mocks {
+      val resources: List<Mocks.ResourceArgs> get() = recorded.toList()
+      override fun newResourceAsync(args: Mocks.ResourceArgs): CompletableFuture<Mocks.ResourceResult> {
+          recorded.add(args)
+          // ... outputs-Aufbau wie geplant
+      }
+  }
+  ```
+  Tests inspizieren `mocks.resources` (statt `result.resources()`), z. B.:
+  ```kotlin
+  val mocks = PulumiMocks()
+  PulumiTest.withMocks(mocks).runTest { ctx -> ... }
+  val pab = mocks.resources.firstOrNull { it.type == "aws:s3/bucketPublicAccessBlock:BucketPublicAccessBlock" }
+  val inputs = pab?.inputs ?: error("PAB nicht erzeugt")
+  ```
+- `Resource.pulumiResourceType()` und `Resource.pulumiResourceName()` sind die Method-Namen auf `Resource` (falls man sie doch braucht).
+
+### EKS-Cluster-API (für T06, T07, T09, T10)
+- Wrapper-Class heißt **`EksCluster`** (NICHT `Cluster`, weil das mit `com.pulumi.eks.Cluster` kollidiert).
+- `EksCluster.cluster.oidcProviderArn()` → `Output<String>` direkt, **ohne Optional-Wrapper**, ohne `core().oidcProvider().get()`.
+- `EksCluster.cluster.oidcProviderUrl()` → `Output<String>` direkt.
+- `EksCluster.cluster.kubeconfigJson()` → `Output<String>` direkt (NICHT `kubeconfig()`).
+- `EksCluster.cluster.eksCluster().applyValue { it.name() }` → `Output<String>` für den AWS-Cluster-Namen.
+- `EksCluster.cluster.core().applyValue { it.vpcId() }` → `Output<String>` für VPC-ID (vpcId ist nicht-optional auf CoreData).
+
+### Andere API-Findings
+- **`com.pulumi.kotlin.applyValue`-Import existiert nicht** — `applyValue` ist Default-Method auf `com.pulumi.core.Output<T>` und braucht keinen Import.
+- **`ManagedNodeGroupArgs.scalingConfig`** erwartet `com.pulumi.aws.eks.inputs.NodeGroupScalingConfigArgs` (aus AWS-Provider, nicht EKS-Provider). Im T04-Code wurde der Setter `instanceTypes(String)` als Vararg/Single direkt verwendet.
+- **`AuthenticationMode.Api`** existiert in `com.pulumi.eks.enums.AuthenticationMode` — OK wie geplant.
+- **`Output.tuple(a, b).applyValue { tup -> tup.t1; tup.t2 }`** — Tupel-Properties heißen `t1`/`t2` (Property, kein Getter).
+- **Class-Rename `Namespace` → `K8sNamespace`** in T07 ist Pflicht (Konflikt mit `com.pulumi.kubernetes.core.v1.Namespace`).
+
+### Realisierter Repo-State nach Phase 1
+
+11 Commits auf `main`: `4b1f0dd`, `e05b6cb`, `f14003e`, `c80762c`, `641563d`, `0ba4299`, `29473f7`, `6047636`, `9a61268`, `a55c14f`, `14f2425`. `cd infra/base && ./gradlew test` ist grün (3 Tests, 2 davon sicherheits-kritisch).
+
+Phase 2 (T12–T19) startet mit `infra/workloads/` von Null. Die `BaseRefs.kt`-Outputs werden gegen die bereits exportierten 12 Outputs in `infra/base/App.kt` aufgelöst.
 
 ---
 
@@ -1190,9 +1243,9 @@ repositories {
 }
 
 dependencies {
-    implementation("com.pulumi:pulumi:1.16.0")
+    implementation("com.pulumi:pulumi:1.13.2")
     implementation("com.pulumi:aws:6.83.0")
-    implementation("com.pulumi:kubernetes:4.21.1")
+    implementation("com.pulumi:kubernetes:4.23.0")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -1257,14 +1310,13 @@ Datei: `infra/workloads/src/test/kotlin/com/agentwork/infra/workloads/PulumiMock
 package com.agentwork.infra.workloads
 
 import com.pulumi.test.Mocks
-import com.pulumi.test.MockCallArgs
-import com.pulumi.test.MockResourceArgs
-import com.pulumi.test.NewResourceResult
-import com.pulumi.test.CallResult
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
 
-class PulumiMocks : Mocks {
+class PulumiMocks(
+    private val recorded: MutableList<Mocks.ResourceArgs> = mutableListOf()
+) : Mocks {
+    val resources: List<Mocks.ResourceArgs> get() = recorded.toList()
 
     private val baseOutputs: Map<String, Any> = mapOf(
         "kubeconfig" to "{}",
@@ -1276,26 +1328,31 @@ class PulumiMocks : Mocks {
         "region" to "eu-central-1"
     )
 
-    override fun newResourceAsync(args: MockResourceArgs): CompletableFuture<NewResourceResult> {
+    override fun newResourceAsync(args: Mocks.ResourceArgs): CompletableFuture<Mocks.ResourceResult> {
+        recorded.add(args)
         // Stack-References sind Resources vom Typ "pulumi:pulumi:StackReference"
         if (args.type == "pulumi:pulumi:StackReference") {
             val outputs = mapOf("outputs" to baseOutputs)
             return CompletableFuture.completedFuture(
-                NewResourceResult.of(Optional.of("${args.name}_id"), outputs)
+                Mocks.ResourceResult.of(Optional.of("${args.name}_id"), outputs)
             )
         }
         return CompletableFuture.completedFuture(
-            NewResourceResult.of(Optional.of("${args.name}_id"), args.inputs)
+            Mocks.ResourceResult.of(Optional.of("${args.name}_id"), args.inputs ?: emptyMap())
         )
     }
 
-    override fun callAsync(args: MockCallArgs): CompletableFuture<CallResult> {
-        return CompletableFuture.completedFuture(CallResult.of(emptyMap<String, Any>()))
+    override fun callAsync(args: Mocks.CallArgs): CompletableFuture<Map<String, Any>> {
+        return CompletableFuture.completedFuture(emptyMap())
     }
 }
 ```
 
-**Hinweis:** Pulumi-StackReferences werden in der Mock-API als „Resource" mit Type `pulumi:pulumi:StackReference` und `outputs`-Key behandelt. Die exakte Output-Form kann zwischen Pulumi-Versionen abweichen; falls Tests fehlschlagen mit "outputs not found", logge `args.inputs` und `args.type` und passe die Mock-Antwort an.
+**Hinweise (Phase-1-verifiziert):**
+- Pulumi 1.13.2 verwendet `Mocks.ResourceArgs` / `Mocks.ResourceResult` / `Mocks.CallArgs` als **innere Klassen** von `Mocks` (NICHT eigenständige `MockResourceArgs`-Klasse).
+- `callAsync` returns `CompletableFuture<Map<String, Any>>` direkt (kein `CallResult`-Wrapper).
+- Recorder-Pattern (`recorded`/`resources`) ist Pflicht, weil `TestResult.resources()` keine `inputs()`-Methode hat. T15 inspiziert `mocks.resources` direkt.
+- Pulumi-StackReferences werden in der Mock-API als „Resource" mit Type `pulumi:pulumi:StackReference` und `outputs`-Key behandelt.
 
 - [ ] **Step 8: Skeleton `WorkloadsStackTest.kt`**
 
@@ -1312,11 +1369,12 @@ class WorkloadsStackTest {
     fun `stack runs without errors with mocks`() {
         val result = PulumiTest.withMocks(PulumiMocks())
             .runTest { _ -> }
-            .join()
         assertNotNull(result)
     }
 }
 ```
+
+**Hinweis:** `runTest(...)` ist synchron — kein `.join()` nötig.
 
 - [ ] **Step 9: Build und Test verifizieren**
 
@@ -1478,37 +1536,37 @@ class WorkloadsStackTest {
     fun `stack runs without errors with mocks`() {
         val result = PulumiTest.withMocks(PulumiMocks())
             .runTest { _ -> }
-            .join()
         assertNotNull(result)
     }
 
     @Test
     fun `backend deployment env contains s3 bucket but no static credentials`() {
-        val result = PulumiTest.withMocks(PulumiMocks())
-            .runTest { ctx ->
-                val base = BaseRefs("dev")
-                val provider = Provider("k8s", ProviderArgs.builder().kubeconfig(base.kubeconfig).build())
-                val sa = ServiceAccounts.create(
-                    ctx,
-                    base,
-                    com.pulumi.core.Output.of("test-key"),
-                    provider
-                )
-                Backend.create(ctx, base, "abc1234", sa, provider)
-            }.join()
+        // Recorder-Pattern: TestResult.resources() hat keine inputs() in Pulumi 1.13.2.
+        val mocks = PulumiMocks()
+        PulumiTest.withMocks(mocks).runTest { ctx ->
+            val base = BaseRefs("dev")
+            val provider = Provider("k8s", ProviderArgs.builder().kubeconfig(base.kubeconfig).build())
+            val sa = ServiceAccounts.create(
+                ctx,
+                base,
+                com.pulumi.core.Output.of("test-key"),
+                provider
+            )
+            Backend.create(ctx, base, "abc1234", sa, provider)
+        }
 
-        val deployment = result.resources()
-            .firstOrNull { it.type == "kubernetes:apps/v1:Deployment" && it.name == "backend" }
-        assertNotNull(deployment, "backend Deployment not found")
+        val deployment = mocks.resources.firstOrNull {
+            it.type == "kubernetes:apps/v1:Deployment" && it.name == "backend"
+        } ?: error("backend Deployment not found in recorded resources")
 
-        // Inputs are nested: spec.template.spec.containers[0].env
-        // The exact path traversal depends on Pulumi-Test-Result-API; pseudo-code:
+        // args.inputs ist Map<String, Any>? — nested: spec.template.spec.containers[0].env
         @Suppress("UNCHECKED_CAST")
-        val spec = deployment.inputs["spec"] as Map<String, Any>
-        val template = spec["template"] as Map<String, Any>
-        val podSpec = template["spec"] as Map<String, Any>
-        val containers = podSpec["containers"] as List<Map<String, Any>>
-        val envList = containers[0]["env"] as List<Map<String, Any>>
+        val inputs = deployment.inputs ?: error("inputs missing")
+        @Suppress("UNCHECKED_CAST") val spec = inputs["spec"] as Map<String, Any>
+        @Suppress("UNCHECKED_CAST") val template = spec["template"] as Map<String, Any>
+        @Suppress("UNCHECKED_CAST") val podSpec = template["spec"] as Map<String, Any>
+        @Suppress("UNCHECKED_CAST") val containers = podSpec["containers"] as List<Map<String, Any>>
+        @Suppress("UNCHECKED_CAST") val envList = containers[0]["env"] as List<Map<String, Any>>
         val envNames = envList.map { it["name"] as String }
 
         assertTrue(envNames.contains("S3_BUCKET"), "S3_BUCKET missing; have: $envNames")
@@ -1521,6 +1579,16 @@ class WorkloadsStackTest {
     }
 }
 ```
+
+**Hinweise (Phase-1-verifiziert):**
+- Recorder-Pattern in `PulumiMocks` aus T12 ist Pflicht — `TestResult.resources()` hat in Pulumi 1.13.2 keine `inputs()`-Methode.
+- `runTest(...)` ist synchron (kein `.join()`).
+- `Mocks.ResourceArgs.inputs` ist `Map<String, Any>?` (nullable) → mit `?: error(...)` absichern.
+- Falls die nested-Map-Traversierung scheitert (Pulumi serialisiert evtl. anders): einfacherer Smoke-Test als Fallback:
+  ```kotlin
+  val raw = inputs.toString()
+  assertTrue(raw.contains("S3_BUCKET") && !raw.contains("S3_ACCESS_KEY"))
+  ```
 
 - [ ] **Step 2: Test laufen lassen — soll fehlschlagen**
 
