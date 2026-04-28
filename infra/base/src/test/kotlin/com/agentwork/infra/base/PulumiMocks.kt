@@ -4,8 +4,12 @@ import com.pulumi.test.Mocks
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
 
-class PulumiMocks : Mocks {
+class PulumiMocks(private val recorded: MutableList<Mocks.ResourceArgs> = mutableListOf()) : Mocks {
+
+    val resources: List<Mocks.ResourceArgs> get() = recorded.toList()
+
     override fun newResourceAsync(args: Mocks.ResourceArgs): CompletableFuture<Mocks.ResourceResult> {
+        recorded.add(args)
         // Synthetische ID: <name>_id; Inputs werden 1:1 als Outputs zurückgegeben.
         // Spezialfälle für Resources, die berechnete Ausgaben brauchen:
         val outputs = HashMap<String, Any>(args.inputs)
@@ -18,6 +22,8 @@ class PulumiMocks : Mocks {
             }
             "eks:index:Cluster" -> {
                 outputs["kubeconfig"] = "{}"
+                outputs["oidcProviderArn"] = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.eu-central-1.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE"
+                outputs["oidcProviderUrl"] = "oidc.eks.eu-central-1.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE"
             }
         }
         return CompletableFuture.completedFuture(
