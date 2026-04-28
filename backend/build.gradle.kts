@@ -36,11 +36,18 @@ dependencies {
     // Mustache templating
     implementation("com.github.spullara.mustache.java:compiler:0.9.14")
 
+    // AWS S3
+    implementation(platform("software.amazon.awssdk:bom:2.30.4"))
+    implementation("software.amazon.awssdk:s3")
+
     // Test
     testImplementation("com.squareup.okhttp3:mockwebserver3:5.3.2")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    // S3 Testcontainers
+    testImplementation("org.testcontainers:junit-jupiter:1.21.3")
+    testImplementation("org.testcontainers:minio:1.21.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
