@@ -1,0 +1,6 @@
+name: productspec-workloads
+runtime:
+  name: java
+  options:
+    use-executor: gradle
+description: Productspec workloads (deployments, services, ingress)
