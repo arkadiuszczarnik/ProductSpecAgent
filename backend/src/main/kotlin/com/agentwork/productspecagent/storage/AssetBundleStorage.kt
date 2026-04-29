@@ -19,13 +19,16 @@ class AssetBundleStorage(private val objectStore: ObjectStore) {
 
     fun listAll(): List<AssetBundleManifest> {
         val folders = objectStore.listCommonPrefixes(rootPrefix, "/")
-        return folders.mapNotNull { folder -> readManifest(folder) }
+        return folders.mapNotNull { folder ->
+            readManifest(folder)?.also { warnIfIdMismatch(folder, it) }
+        }
     }
 
     fun find(step: FlowStepType, field: String, value: String): AssetBundle? {
         val id = assetBundleId(step, field, value)
         val bundlePrefix = "$rootPrefix$id/"
         val manifest = readManifestByKey("${bundlePrefix}manifest.json") ?: return null
+        warnIfIdMismatch(id, manifest)
 
         val files = objectStore.listKeys(bundlePrefix)
             .filter { it != "${bundlePrefix}manifest.json" }
@@ -61,6 +64,15 @@ class AssetBundleStorage(private val objectStore: ObjectStore) {
     } catch (e: Exception) {
         log.warn("Asset bundle '{}' has invalid manifest.json: {} — skipping", key, e.message)
         null
+    }
+
+    private fun warnIfIdMismatch(expectedId: String, manifest: AssetBundleManifest) {
+        if (manifest.id != expectedId) {
+            log.warn(
+                "Asset bundle at folder '{}' has manifest id '{}' — id should match folder name (folder is source of truth for location, manifest is source of truth otherwise)",
+                expectedId, manifest.id
+            )
+        }
     }
 
     private fun contentTypeFor(relativePath: String): String =

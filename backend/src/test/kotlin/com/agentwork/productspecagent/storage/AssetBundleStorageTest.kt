@@ -181,4 +181,34 @@ class AssetBundleStorageTest {
         val result = newStorage(store).find(FlowStepType.BACKEND, "framework", "Kotlin+Spring")
         assertNull(result)
     }
+
+    @Test
+    fun `listAll still returns bundle when manifest id mismatches folder name`() {
+        val store = newStore()
+        // Folder is "backend.framework.kotlin-spring" but manifest claims a different id
+        store.put(
+            "asset-bundles/backend.framework.kotlin-spring/manifest.json",
+            json.encodeToString(manifest(id = "backend.framework.something-else")).toByteArray()
+        )
+
+        val result = newStorage(store).listAll()
+
+        assertEquals(1, result.size)
+        assertEquals("backend.framework.something-else", result[0].id)
+    }
+
+    @Test
+    fun `find still returns bundle when manifest id mismatches folder name`() {
+        val store = newStore()
+        // Bundle resolved by triple goes to folder kotlin-spring, but manifest claims a different id
+        store.put(
+            "asset-bundles/backend.framework.kotlin-spring/manifest.json",
+            json.encodeToString(manifest(id = "backend.framework.mismatched")).toByteArray()
+        )
+
+        val bundle = newStorage(store).find(FlowStepType.BACKEND, "framework", "Kotlin+Spring")
+
+        assertNotNull(bundle)
+        assertEquals("backend.framework.mismatched", bundle!!.manifest.id)
+    }
 }
