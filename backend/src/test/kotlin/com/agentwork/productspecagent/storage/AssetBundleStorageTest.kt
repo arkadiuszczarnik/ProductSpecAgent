@@ -92,4 +92,81 @@ class AssetBundleStorageTest {
         assertEquals(1, result.size)
         assertEquals("backend.framework.kotlin-spring", result[0].id)
     }
+
+    @Test
+    fun `find returns null for unknown bundle`() {
+        val storage = newStorage(newStore())
+        val result = storage.find(FlowStepType.BACKEND, "framework", "Kotlin+Spring")
+        assertNull(result)
+    }
+
+    @Test
+    fun `find returns bundle with files, manifest_json filtered out`() {
+        val store = newStore()
+        store.putBundle(
+            manifest(id = "backend.framework.kotlin-spring"),
+            files = mapOf(
+                "skills/spring-testing/SKILL.md" to "skill content".toByteArray(),
+                "commands/gradle-build.md" to "command content".toByteArray(),
+                "agents/spring-debug.md" to "agent content".toByteArray(),
+            )
+        )
+
+        val bundle = newStorage(store).find(FlowStepType.BACKEND, "framework", "Kotlin+Spring")
+
+        assertNotNull(bundle)
+        assertEquals("backend.framework.kotlin-spring", bundle!!.manifest.id)
+        assertEquals(3, bundle.files.size)
+        assertTrue(bundle.files.none { it.relativePath == "manifest.json" })
+        assertEquals(setOf("skills/spring-testing/SKILL.md", "commands/gradle-build.md", "agents/spring-debug.md"),
+                     bundle.files.map { it.relativePath }.toSet())
+    }
+
+    @Test
+    fun `find returns relative paths, not full S3 keys`() {
+        val store = newStore()
+        store.putBundle(
+            manifest(id = "frontend.framework.stitch", step = FlowStepType.FRONTEND, value = "Stitch"),
+            files = mapOf("skills/stitch-components/SKILL.md" to "x".toByteArray())
+        )
+
+        val bundle = newStorage(store).find(FlowStepType.FRONTEND, "framework", "Stitch")!!
+
+        assertEquals(1, bundle.files.size)
+        assertEquals("skills/stitch-components/SKILL.md", bundle.files[0].relativePath)
+    }
+
+    @Test
+    fun `find derives content type from file extension`() {
+        val store = newStore()
+        store.putBundle(
+            manifest(),
+            files = mapOf(
+                "skills/x/SKILL.md" to "md".toByteArray(),
+                "skills/x/example.py" to "py".toByteArray(),
+                "skills/x/screenshot.png" to "img".toByteArray(),
+                "skills/x/data.json" to "json".toByteArray(),
+                "skills/x/unknown.xyz" to "?".toByteArray(),
+            )
+        )
+
+        val bundle = newStorage(store).find(FlowStepType.BACKEND, "framework", "Kotlin+Spring")!!
+        val byPath = bundle.files.associateBy { it.relativePath }
+
+        assertEquals("text/markdown", byPath["skills/x/SKILL.md"]?.contentType)
+        assertEquals("text/x-python", byPath["skills/x/example.py"]?.contentType)
+        assertEquals("image/png", byPath["skills/x/screenshot.png"]?.contentType)
+        assertEquals("application/json", byPath["skills/x/data.json"]?.contentType)
+        assertEquals("application/octet-stream", byPath["skills/x/unknown.xyz"]?.contentType)
+    }
+
+    @Test
+    fun `assetBundleId computes deterministic id from triple`() {
+        assertEquals("backend.framework.kotlin-spring",
+                     com.agentwork.productspecagent.domain.assetBundleId(FlowStepType.BACKEND, "framework", "Kotlin+Spring"))
+        assertEquals("frontend.framework.stitch",
+                     com.agentwork.productspecagent.domain.assetBundleId(FlowStepType.FRONTEND, "framework", "Stitch"))
+        assertEquals("architecture.architecture.microservices",
+                     com.agentwork.productspecagent.domain.assetBundleId(FlowStepType.ARCHITECTURE, "architecture", "Microservices"))
+    }
 }
