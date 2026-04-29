@@ -39,4 +39,30 @@ class AssetBundleStorageIntegrationTest : S3TestSupport() {
         assertEquals(2, found!!.files.size)
         assertTrue(found.files.any { it.relativePath == "skills/spring-testing/SKILL.md" })
     }
+
+    @Test
+    fun `writeBundle and delete work against real MinIO`() {
+        val store = objectStore()
+        val storage = AssetBundleStorage(store)
+        val m = AssetBundleManifest(
+            id = "frontend.framework.stitch", step = FlowStepType.FRONTEND, field = "framework", value = "Stitch",
+            version = "1.0.0", title = "T", description = "D",
+            createdAt = "2026-04-29T12:00:00Z", updatedAt = "2026-04-29T12:00:00Z",
+        )
+
+        storage.writeBundle(m, mapOf(
+            "skills/stitch-components/SKILL.md" to "skill content".toByteArray(),
+            "commands/stitch-init.md" to "init".toByteArray(),
+        ))
+
+        val found = storage.find(FlowStepType.FRONTEND, "framework", "Stitch")
+        assertNotNull(found)
+        assertEquals(2, found!!.files.size)
+
+        val bytes = storage.loadFileBytes(FlowStepType.FRONTEND, "framework", "Stitch", "skills/stitch-components/SKILL.md")
+        assertEquals("skill content", bytes!!.toString(Charsets.UTF_8))
+
+        storage.delete(FlowStepType.FRONTEND, "framework", "Stitch")
+        assertNull(storage.find(FlowStepType.FRONTEND, "framework", "Stitch"))
+    }
 }
