@@ -15,14 +15,12 @@ data class AssetBundleManifest(
     val updatedAt: String,
 )
 
-@Serializable
 data class AssetBundleFile(
     val relativePath: String,
     val size: Long,
     val contentType: String,
 )
 
-@Serializable
 data class AssetBundle(
     val manifest: AssetBundleManifest,
     val files: List<AssetBundleFile>,
