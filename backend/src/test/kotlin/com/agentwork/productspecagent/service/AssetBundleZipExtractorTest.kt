@@ -1,68 +1,12 @@
 package com.agentwork.productspecagent.service
 
-import com.agentwork.productspecagent.domain.AssetBundleManifest
 import com.agentwork.productspecagent.domain.FlowStepType
-import com.agentwork.productspecagent.domain.assetBundleId
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import java.io.ByteArrayOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 class AssetBundleZipExtractorTest {
 
     private val extractor = AssetBundleZipExtractor()
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    private fun sampleManifest(
-        step: FlowStepType = FlowStepType.BACKEND,
-        field: String = "framework",
-        value: String = "kotlin-spring",
-        id: String = assetBundleId(step, field, value),
-        title: String = "Kotlin Spring",
-        description: String = "A sample bundle",
-        version: String = "1.0.0",
-    ) = AssetBundleManifest(
-        id = id,
-        step = step,
-        field = field,
-        value = value,
-        title = title,
-        description = description,
-        version = version,
-        createdAt = "2024-01-01T00:00:00Z",
-        updatedAt = "2024-01-01T00:00:00Z",
-    )
-
-    private fun buildZip(
-        manifest: AssetBundleManifest? = sampleManifest(),
-        files: Map<String, ByteArray> = emptyMap(),
-        rawExtras: Map<String, ByteArray> = emptyMap(),
-    ): ByteArray {
-        val baos = ByteArrayOutputStream()
-        ZipOutputStream(baos).use { zos ->
-            if (manifest != null) {
-                val json = kotlinx.serialization.json.Json.encodeToString(
-                    AssetBundleManifest.serializer(), manifest
-                )
-                zos.putNextEntry(ZipEntry("manifest.json"))
-                zos.write(json.toByteArray())
-                zos.closeEntry()
-            }
-            for ((path, bytes) in files) {
-                zos.putNextEntry(ZipEntry(path))
-                zos.write(bytes)
-                zos.closeEntry()
-            }
-            for ((path, bytes) in rawExtras) {
-                zos.putNextEntry(ZipEntry(path))
-                zos.write(bytes)
-                zos.closeEntry()
-            }
-        }
-        return baos.toByteArray()
-    }
 
     // ── Happy-path tests (Task 2) ─────────────────────────────────────────────
 
