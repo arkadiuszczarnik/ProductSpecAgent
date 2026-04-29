@@ -217,8 +217,15 @@ class AssetBundleControllerTest {
 
         mockMvc.perform(get("/api/v1/asset-bundles/BACKEND/framework/Kotlin+Spring/files/skills/x/SKILL.md"))
             .andExpect(status().isOk)
-            .andExpect(content().contentType("text/markdown"))
+            .andExpect(content().contentType("text/markdown;charset=UTF-8"))
             .andExpect(content().string("# Hello"))
+    }
+
+    @Test
+    fun `GET asset-bundle file 404 when bundle does not exist`() {
+        mockMvc.perform(get("/api/v1/asset-bundles/BACKEND/framework/Nonexistent/files/skills/x.md"))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error").value("NOT_FOUND"))
     }
 
     @Test

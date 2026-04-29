@@ -100,9 +100,16 @@ class AssetBundleController(
         @PathVariable value: String,
         request: HttpServletRequest,
     ): ResponseEntity<ByteArray> {
+        // Anchor to the bundle-specific prefix so `/files/` substrings inside `value`
+        // cannot mis-split the path. Path-variable `value` is URL-decoded by Spring;
+        // the URI we read is the encoded form, so we re-encode value for matching.
         val uri = request.requestURI
-        val filesPrefix = "/files/"
-        val rawSuffix = uri.substringAfter(filesPrefix, "")
+        val encodedValue = java.net.URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
+        val bundleBase = "/api/v1/asset-bundles/${step.name}/$field/$encodedValue/files/"
+        val rawSuffix = uri.substringAfter(bundleBase, "").ifEmpty {
+            // Fallback for clients that don't URL-encode `+` etc.
+            uri.substringAfter("/api/v1/asset-bundles/${step.name}/$field/$value/files/", "")
+        }
         val relativePath = URLDecoder.decode(rawSuffix, StandardCharsets.UTF_8)
         if (relativePath.contains("../") || relativePath.startsWith("/") || relativePath.isEmpty()) {
             throw IllegalBundleEntryException(relativePath, "path traversal blocked")
@@ -123,13 +130,13 @@ class AssetBundleController(
 
     private fun contentTypeForExt(relativePath: String): String =
         when (relativePath.substringAfterLast('.', "").lowercase()) {
-            "md", "markdown" -> "text/markdown"
-            "txt" -> "text/plain"
+            "md", "markdown" -> "text/markdown;charset=UTF-8"
+            "txt" -> "text/plain;charset=UTF-8"
             "json" -> "application/json"
-            "yaml", "yml" -> "application/yaml"
-            "py" -> "text/x-python"
-            "ts", "tsx" -> "application/typescript"
-            "js", "mjs" -> "application/javascript"
+            "yaml", "yml" -> "application/yaml;charset=UTF-8"
+            "py" -> "text/x-python;charset=UTF-8"
+            "ts", "tsx" -> "application/typescript;charset=UTF-8"
+            "js", "mjs" -> "application/javascript;charset=UTF-8"
             "png" -> "image/png"
             "jpg", "jpeg" -> "image/jpeg"
             "svg" -> "image/svg+xml"
