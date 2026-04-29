@@ -53,4 +53,43 @@ class AssetBundleStorageTest {
         assertEquals(setOf("backend.framework.kotlin-spring", "frontend.framework.stitch"),
                      result.map { it.id }.toSet())
     }
+
+    @Test
+    fun `listAll skips folders without manifest`() {
+        val store = newStore()
+        // Folder existiert (durch File), aber keine manifest.json
+        store.put("asset-bundles/orphan/skills/foo.md", "content".toByteArray())
+        store.putBundle(manifest(id = "backend.framework.kotlin-spring"))
+
+        val result = newStorage(store).listAll()
+
+        assertEquals(1, result.size)
+        assertEquals("backend.framework.kotlin-spring", result[0].id)
+    }
+
+    @Test
+    fun `listAll skips folders with invalid JSON manifest`() {
+        val store = newStore()
+        store.put("asset-bundles/broken/manifest.json", "not valid json {".toByteArray())
+        store.putBundle(manifest(id = "backend.framework.kotlin-spring"))
+
+        val result = newStorage(store).listAll()
+
+        assertEquals(1, result.size)
+        assertEquals("backend.framework.kotlin-spring", result[0].id)
+    }
+
+    @Test
+    fun `listAll skips manifest with unknown step enum value`() {
+        val store = newStore()
+        // Manifest mit step="UNKNOWN" — kotlinx.serialization wirft beim Decode
+        val invalidJson = """{"id":"x","step":"UNKNOWN","field":"f","value":"v","version":"1","title":"t","description":"d","createdAt":"2026","updatedAt":"2026"}"""
+        store.put("asset-bundles/bad-step/manifest.json", invalidJson.toByteArray())
+        store.putBundle(manifest(id = "backend.framework.kotlin-spring"))
+
+        val result = newStorage(store).listAll()
+
+        assertEquals(1, result.size)
+        assertEquals("backend.framework.kotlin-spring", result[0].id)
+    }
 }
