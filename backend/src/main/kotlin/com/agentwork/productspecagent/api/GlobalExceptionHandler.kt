@@ -3,13 +3,20 @@ package com.agentwork.productspecagent.api
 import com.agentwork.productspecagent.domain.ErrorResponse
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshException
 import com.agentwork.productspecagent.service.AssetBundleNotFoundException
+import com.agentwork.productspecagent.service.BundleFileNotFoundException
+import com.agentwork.productspecagent.service.BundleTooLargeException
 import com.agentwork.productspecagent.service.ClarificationNotFoundException
 import com.agentwork.productspecagent.service.DecisionNotFoundException
 import com.agentwork.productspecagent.service.DocumentNotFoundException
 import com.agentwork.productspecagent.service.GraphMeshDisabledException
+import com.agentwork.productspecagent.service.IllegalBundleEntryException
+import com.agentwork.productspecagent.service.InvalidManifestException
+import com.agentwork.productspecagent.service.ManifestIdMismatchException
+import com.agentwork.productspecagent.service.MissingManifestException
 import com.agentwork.productspecagent.service.ProjectNotFoundException
 import com.agentwork.productspecagent.service.TaskNotFoundException
 import com.agentwork.productspecagent.service.UnsupportedMediaTypeException
+import com.agentwork.productspecagent.service.UnsupportedStepException
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -104,4 +111,21 @@ class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     fun handleGraphMeshDisabled(ex: GraphMeshDisabledException): ErrorResponse =
         ErrorResponse("GRAPHMESH_DISABLED_BACKEND", ex.message ?: "GraphMesh is disabled in backend config", Instant.now().toString())
+
+    @ExceptionHandler(BundleFileNotFoundException::class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    fun handleBundleFileNotFound(ex: BundleFileNotFoundException): ErrorResponse =
+        ErrorResponse("NOT_FOUND", ex.message ?: "Bundle file not found", Instant.now().toString())
+
+    @ExceptionHandler(MissingManifestException::class, InvalidManifestException::class,
+                      ManifestIdMismatchException::class, UnsupportedStepException::class,
+                      IllegalBundleEntryException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleInvalidBundle(ex: RuntimeException): ErrorResponse =
+        ErrorResponse("INVALID_BUNDLE", ex.message ?: "Invalid bundle", Instant.now().toString())
+
+    @ExceptionHandler(BundleTooLargeException::class)
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    fun handleBundleTooLarge(ex: BundleTooLargeException): ErrorResponse =
+        ErrorResponse("BUNDLE_TOO_LARGE", ex.message ?: "Bundle too large", Instant.now().toString())
 }
