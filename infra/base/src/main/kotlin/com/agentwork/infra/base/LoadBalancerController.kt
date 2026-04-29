@@ -78,9 +78,14 @@ object LoadBalancerController {
                     )
                 ))
                 .cleanupOnFail(true)
-                .timeout(600)  // 10 min statt Helm-Default 5 min — EKS braucht initial länger
+                .timeout(900)  // 15 min — Spot-NodeGroups + AL2023 brauchen initial länger
                 .build(),
-            CustomResourceOptions.builder().provider(namespace.provider).build()
+            // dependsOn(nodeGroup): Helm-Release startet erst, wenn mindestens ein Worker
+            // verfügbar ist — sonst hängt der Controller-Pod als Pending bis Timeout läuft.
+            CustomResourceOptions.builder()
+                .provider(namespace.provider)
+                .dependsOn(cluster.nodeGroup)
+                .build()
         )
     }
 }
