@@ -145,6 +145,33 @@ class AssetBundleControllerTest {
     }
 
     @Test
+    fun `POST asset-bundles 400 with missing manifest_json`() {
+        val baos = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(baos).use { zip ->
+            zip.putNextEntry(java.util.zip.ZipEntry("skills/x.md"))
+            zip.write("x".toByteArray())
+            zip.closeEntry()
+        }
+        val mockFile = org.springframework.mock.web.MockMultipartFile("file", "no-manifest.zip", "application/zip", baos.toByteArray())
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles").file(mockFile))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("INVALID_BUNDLE"))
+    }
+
+    @Test
+    fun `POST asset-bundles 413 for too-large bundle`() {
+        // 101 files exceeds the 100-file limit → BundleTooLargeException → 413
+        val files = (1..101).associate { "skills/file-$it.md" to "x".toByteArray() }
+        val zipBytes = zipFor(files = files)
+        val mockFile = org.springframework.mock.web.MockMultipartFile("file", "huge.zip", "application/zip", zipBytes)
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles").file(mockFile))
+            .andExpect(status().isPayloadTooLarge)
+            .andExpect(jsonPath("$.error").value("BUNDLE_TOO_LARGE"))
+    }
+
+    @Test
     fun `POST asset-bundles 400 with manifest id mismatch`() {
         val zipBytes = zipFor(id = "backend.framework.totally-wrong")
         val mockFile = org.springframework.mock.web.MockMultipartFile("file", "bundle.zip", "application/zip", zipBytes)

@@ -111,7 +111,10 @@ class AssetBundleController(
             uri.substringAfter("/api/v1/asset-bundles/${step.name}/$field/$value/files/", "")
         }
         val relativePath = URLDecoder.decode(rawSuffix, StandardCharsets.UTF_8)
-        if (relativePath.contains("../") || relativePath.startsWith("/") || relativePath.isEmpty()) {
+        if (relativePath.contains("../") || relativePath.contains("..\\") ||
+            relativePath.startsWith("/") || relativePath.startsWith("\\") ||
+            relativePath.isEmpty()
+        ) {
             throw IllegalBundleEntryException(relativePath, "path traversal blocked")
         }
 
