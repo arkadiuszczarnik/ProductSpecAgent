@@ -41,21 +41,26 @@ class AssetBundleStorage(private val objectStore: ObjectStore) {
         return AssetBundle(manifest = manifest, files = files)
     }
 
-    private fun readManifest(folder: String): AssetBundleManifest? =
-        readManifestByKey("$rootPrefix$folder/manifest.json")
-
-    private fun readManifestByKey(key: String): AssetBundleManifest? {
+    private fun readManifest(folder: String): AssetBundleManifest? {
+        val key = "$rootPrefix$folder/manifest.json"
         val bytes = objectStore.get(key)
         if (bytes == null) {
-            log.warn("Asset bundle '{}' has no manifest.json — skipping", key)
+            log.warn("Asset bundle folder '{}' has no manifest.json — skipping", folder)
             return null
         }
-        return try {
-            json.decodeFromString<AssetBundleManifest>(bytes.toString(Charsets.UTF_8))
-        } catch (e: Exception) {
-            log.warn("Asset bundle '{}' has invalid manifest.json: {} — skipping", key, e.message)
-            null
-        }
+        return parseManifest(key, bytes)
+    }
+
+    private fun readManifestByKey(key: String): AssetBundleManifest? {
+        val bytes = objectStore.get(key) ?: return null
+        return parseManifest(key, bytes)
+    }
+
+    private fun parseManifest(key: String, bytes: ByteArray): AssetBundleManifest? = try {
+        json.decodeFromString<AssetBundleManifest>(bytes.toString(Charsets.UTF_8))
+    } catch (e: Exception) {
+        log.warn("Asset bundle '{}' has invalid manifest.json: {} — skipping", key, e.message)
+        null
     }
 
     private fun contentTypeFor(relativePath: String): String =

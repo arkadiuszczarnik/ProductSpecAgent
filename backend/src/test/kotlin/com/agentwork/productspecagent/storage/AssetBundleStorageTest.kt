@@ -2,6 +2,7 @@ package com.agentwork.productspecagent.storage
 
 import com.agentwork.productspecagent.domain.AssetBundleManifest
 import com.agentwork.productspecagent.domain.FlowStepType
+import com.agentwork.productspecagent.domain.assetBundleId
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.*
@@ -163,10 +164,21 @@ class AssetBundleStorageTest {
     @Test
     fun `assetBundleId computes deterministic id from triple`() {
         assertEquals("backend.framework.kotlin-spring",
-                     com.agentwork.productspecagent.domain.assetBundleId(FlowStepType.BACKEND, "framework", "Kotlin+Spring"))
+                     assetBundleId(FlowStepType.BACKEND, "framework", "Kotlin+Spring"))
         assertEquals("frontend.framework.stitch",
-                     com.agentwork.productspecagent.domain.assetBundleId(FlowStepType.FRONTEND, "framework", "Stitch"))
+                     assetBundleId(FlowStepType.FRONTEND, "framework", "Stitch"))
         assertEquals("architecture.architecture.microservices",
-                     com.agentwork.productspecagent.domain.assetBundleId(FlowStepType.ARCHITECTURE, "architecture", "Microservices"))
+                     assetBundleId(FlowStepType.ARCHITECTURE, "architecture", "Microservices"))
+    }
+
+    @Test
+    fun `find returns null for corrupted manifest`() {
+        val store = newStore()
+        store.put(
+            "asset-bundles/backend.framework.kotlin-spring/manifest.json",
+            "not json {".toByteArray()
+        )
+        val result = newStorage(store).find(FlowStepType.BACKEND, "framework", "Kotlin+Spring")
+        assertNull(result)
     }
 }
