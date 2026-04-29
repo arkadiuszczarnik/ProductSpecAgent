@@ -63,6 +63,9 @@ class AssetBundleZipExtractor {
         if (name.endsWith(".DS_Store")) return true
         if (name.startsWith("__MACOSX/")) return true
         if (name.endsWith("Thumbs.db")) return true
+        if (name.endsWith("desktop.ini")) return true
+        val lastSegment = name.substringAfterLast('/')
+        if (lastSegment.startsWith("._")) return true
         return false
     }
 

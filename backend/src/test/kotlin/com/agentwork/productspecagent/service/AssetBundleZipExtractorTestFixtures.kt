@@ -2,6 +2,7 @@ package com.agentwork.productspecagent.service
 
 import com.agentwork.productspecagent.domain.AssetBundleManifest
 import com.agentwork.productspecagent.domain.FlowStepType
+import com.agentwork.productspecagent.domain.assetBundleId
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
@@ -11,10 +12,10 @@ import java.util.zip.ZipOutputStream
 private val json = Json { ignoreUnknownKeys = true }
 
 fun sampleManifest(
-    id: String = "backend.framework.kotlin-spring",
     step: FlowStepType = FlowStepType.BACKEND,
     field: String = "framework",
     value: String = "Kotlin+Spring",
+    id: String = assetBundleId(step, field, value),
     title: String = "Kotlin + Spring Boot Essentials",
     description: String = "Skills für Spring",
     version: String = "1.0.0",
