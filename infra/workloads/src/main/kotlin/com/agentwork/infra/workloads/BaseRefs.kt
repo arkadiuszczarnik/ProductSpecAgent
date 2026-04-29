@@ -4,7 +4,9 @@ import com.pulumi.core.Output
 import com.pulumi.resources.StackReference
 
 class BaseRefs(baseStackName: String) {
-    private val ref = StackReference("productspec-base/$baseStackName")
+    // S3-State-Backend verlangt das Literal "organization/" als Org-Segment;
+    // bei Pulumi Cloud wäre stattdessen die echte Org einzutragen.
+    private val ref = StackReference("organization/productspec-base/$baseStackName")
 
     val kubeconfig: Output<String>          = ref.requireOutput("kubeconfig").applyValue { it.toString() }
     val namespace: Output<String>           = ref.requireOutput("namespace").applyValue { it.toString() }
