@@ -75,6 +75,26 @@ class AssetBundleStorage(private val objectStore: ObjectStore) {
         }
     }
 
+    fun writeBundle(manifest: AssetBundleManifest, files: Map<String, ByteArray>) {
+        val bundlePrefix = "$rootPrefix${manifest.id}/"
+        // Write all files first, manifest LAST — find() uses manifest as existence marker
+        files.forEach { (relativePath, bytes) ->
+            objectStore.put("$bundlePrefix$relativePath", bytes, contentTypeFor(relativePath))
+        }
+        val manifestJson = json.encodeToString(AssetBundleManifest.serializer(), manifest).toByteArray()
+        objectStore.put("${bundlePrefix}manifest.json", manifestJson, "application/json")
+    }
+
+    fun delete(step: FlowStepType, field: String, value: String) {
+        val id = assetBundleId(step, field, value)
+        objectStore.deletePrefix("$rootPrefix$id/")
+    }
+
+    fun loadFileBytes(step: FlowStepType, field: String, value: String, relativePath: String): ByteArray? {
+        val id = assetBundleId(step, field, value)
+        return objectStore.get("$rootPrefix$id/$relativePath")
+    }
+
     private fun contentTypeFor(relativePath: String): String =
         when (relativePath.substringAfterLast('.', "").lowercase()) {
             "md", "markdown" -> "text/markdown"

@@ -211,4 +211,83 @@ class AssetBundleStorageTest {
         assertNotNull(bundle)
         assertEquals("backend.framework.mismatched", bundle!!.manifest.id)
     }
+
+    @Test
+    fun `writeBundle persists manifest and files at correct keys`() {
+        val store = newStore()
+        val storage = newStorage(store)
+        val m = manifest(id = "backend.framework.kotlin-spring")
+
+        storage.writeBundle(m, mapOf(
+            "skills/x/SKILL.md" to "skill".toByteArray(),
+            "commands/cmd.md" to "cmd".toByteArray(),
+        ))
+
+        assertNotNull(store.get("asset-bundles/${m.id}/manifest.json"))
+        assertNotNull(store.get("asset-bundles/${m.id}/skills/x/SKILL.md"))
+        assertNotNull(store.get("asset-bundles/${m.id}/commands/cmd.md"))
+    }
+
+    @Test
+    fun `writeBundle writes manifest last so partial writes are invisible to find`() {
+        // Test by simulating only file writes happening (without manifest):
+        // find() should return null because manifest is the existence-marker
+        val store = newStore()
+        store.put("asset-bundles/backend.framework.kotlin-spring/skills/x.md", "x".toByteArray())
+        // No manifest written yet
+        val result = newStorage(store).find(FlowStepType.BACKEND, "framework", "Kotlin+Spring")
+        assertNull(result)
+    }
+
+    @Test
+    fun `delete removes all keys under bundle prefix`() {
+        val store = newStore()
+        val storage = newStorage(store)
+        val m = manifest(id = "backend.framework.kotlin-spring")
+        storage.writeBundle(m, mapOf("skills/x.md" to "x".toByteArray(), "commands/y.md" to "y".toByteArray()))
+
+        storage.delete(FlowStepType.BACKEND, "framework", "Kotlin+Spring")
+
+        assertNull(store.get("asset-bundles/${m.id}/manifest.json"))
+        assertNull(store.get("asset-bundles/${m.id}/skills/x.md"))
+        assertNull(store.get("asset-bundles/${m.id}/commands/y.md"))
+    }
+
+    @Test
+    fun `delete is idempotent when bundle does not exist`() {
+        val storage = newStorage(newStore())
+        // Should not throw
+        storage.delete(FlowStepType.BACKEND, "framework", "Kotlin+Spring")
+    }
+
+    @Test
+    fun `loadFileBytes returns bytes for existing file`() {
+        val store = newStore()
+        val storage = newStorage(store)
+        val m = manifest(id = "backend.framework.kotlin-spring")
+        storage.writeBundle(m, mapOf("skills/x.md" to "hello".toByteArray()))
+
+        val result = storage.loadFileBytes(FlowStepType.BACKEND, "framework", "Kotlin+Spring", "skills/x.md")
+
+        assertNotNull(result)
+        assertEquals("hello", result!!.toString(Charsets.UTF_8))
+    }
+
+    @Test
+    fun `loadFileBytes returns null for missing file`() {
+        val store = newStore()
+        val storage = newStorage(store)
+        storage.writeBundle(manifest(), mapOf("skills/x.md" to "x".toByteArray()))
+
+        val result = storage.loadFileBytes(FlowStepType.BACKEND, "framework", "Kotlin+Spring", "skills/missing.md")
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `loadFileBytes returns null when bundle does not exist`() {
+        val storage = newStorage(newStore())
+        val result = storage.loadFileBytes(FlowStepType.BACKEND, "framework", "Kotlin+Spring", "skills/x.md")
+        assertNull(result)
+    }
 }
