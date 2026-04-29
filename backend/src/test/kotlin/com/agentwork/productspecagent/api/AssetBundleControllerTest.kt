@@ -86,4 +86,174 @@ class AssetBundleControllerTest {
         mockMvc.perform(get("/api/v1/asset-bundles/INVALID_STEP/framework/Kotlin+Spring"))
             .andExpect(status().isBadRequest)
     }
+
+    private fun zipFor(
+        id: String = "backend.framework.kotlin-spring",
+        step: FlowStepType = FlowStepType.BACKEND,
+        field: String = "framework",
+        value: String = "Kotlin+Spring",
+        files: Map<String, ByteArray> = mapOf("skills/x.md" to "x".toByteArray()),
+    ): ByteArray {
+        val manifest = AssetBundleManifest(
+            id = id, step = step, field = field, value = value,
+            version = "1.0.0", title = "T", description = "D",
+            createdAt = "2026-04-29T12:00:00Z", updatedAt = "2026-04-29T12:00:00Z",
+        )
+        val baos = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(baos).use { zip ->
+            zip.putNextEntry(java.util.zip.ZipEntry("manifest.json"))
+            zip.write(json.encodeToString(manifest).toByteArray())
+            zip.closeEntry()
+            files.forEach { (path, bytes) ->
+                zip.putNextEntry(java.util.zip.ZipEntry(path))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+        }
+        return baos.toByteArray()
+    }
+
+    @Test
+    fun `POST asset-bundles 201 with valid ZIP`() {
+        val zipBytes = zipFor(files = mapOf("skills/x.md" to "skill".toByteArray(), "commands/y.md" to "cmd".toByteArray()))
+        val mockFile = org.springframework.mock.web.MockMultipartFile(
+            "file", "bundle.zip", "application/zip", zipBytes
+        )
+
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles")
+                .file(mockFile)
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.manifest.id").value("backend.framework.kotlin-spring"))
+            .andExpect(jsonPath("$.fileCount").value(2))
+    }
+
+    @Test
+    fun `POST asset-bundles 400 with malformed manifest`() {
+        val baos = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(baos).use { zip ->
+            zip.putNextEntry(java.util.zip.ZipEntry("manifest.json"))
+            zip.write("not json {".toByteArray())
+            zip.closeEntry()
+        }
+        val mockFile = org.springframework.mock.web.MockMultipartFile("file", "bad.zip", "application/zip", baos.toByteArray())
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles").file(mockFile))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("INVALID_BUNDLE"))
+    }
+
+    @Test
+    fun `POST asset-bundles 400 with manifest id mismatch`() {
+        val zipBytes = zipFor(id = "backend.framework.totally-wrong")
+        val mockFile = org.springframework.mock.web.MockMultipartFile("file", "bundle.zip", "application/zip", zipBytes)
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles").file(mockFile))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("INVALID_BUNDLE"))
+    }
+
+    @Test
+    fun `POST asset-bundles 400 with unsupported step`() {
+        val zipBytes = zipFor(id = "idea.framework.kotlin-spring", step = FlowStepType.IDEA)
+        val mockFile = org.springframework.mock.web.MockMultipartFile("file", "bundle.zip", "application/zip", zipBytes)
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles").file(mockFile))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `POST asset-bundles overwrites existing bundle`() {
+        // First upload with files A and B
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles")
+                .file(org.springframework.mock.web.MockMultipartFile("file", "v1.zip", "application/zip",
+                    zipFor(files = mapOf("skills/a.md" to "a".toByteArray(), "skills/b.md" to "b".toByteArray()))))
+        ).andExpect(status().isCreated)
+
+        // Second upload with only file C
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles")
+                .file(org.springframework.mock.web.MockMultipartFile("file", "v2.zip", "application/zip",
+                    zipFor(files = mapOf("skills/c.md" to "c".toByteArray()))))
+        ).andExpect(status().isCreated).andExpect(jsonPath("$.fileCount").value(1))
+
+        // Verify old files are gone via detail endpoint
+        mockMvc.perform(get("/api/v1/asset-bundles/BACKEND/framework/Kotlin+Spring"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.files.length()").value(1))
+            .andExpect(jsonPath("$.files[0].relativePath").value("skills/c.md"))
+    }
+
+    @Test
+    fun `DELETE asset-bundles 204 for existing bundle`() {
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles")
+                .file(org.springframework.mock.web.MockMultipartFile("file", "v.zip", "application/zip", zipFor()))
+        ).andExpect(status().isCreated)
+
+        mockMvc.perform(delete("/api/v1/asset-bundles/BACKEND/framework/Kotlin+Spring"))
+            .andExpect(status().isNoContent)
+
+        mockMvc.perform(get("/api/v1/asset-bundles/BACKEND/framework/Kotlin+Spring"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `DELETE asset-bundles 404 for unknown bundle`() {
+        mockMvc.perform(delete("/api/v1/asset-bundles/BACKEND/framework/Nonexistent"))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error").value("NOT_FOUND"))
+    }
+
+    @Test
+    fun `GET asset-bundle file 200 with bytes and correct Content-Type`() {
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles")
+                .file(org.springframework.mock.web.MockMultipartFile("file", "v.zip", "application/zip",
+                    zipFor(files = mapOf("skills/x/SKILL.md" to "# Hello".toByteArray()))))
+        ).andExpect(status().isCreated)
+
+        mockMvc.perform(get("/api/v1/asset-bundles/BACKEND/framework/Kotlin+Spring/files/skills/x/SKILL.md"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType("text/markdown"))
+            .andExpect(content().string("# Hello"))
+    }
+
+    @Test
+    fun `GET asset-bundle file 404 for unknown file path`() {
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles")
+                .file(org.springframework.mock.web.MockMultipartFile("file", "v.zip", "application/zip",
+                    zipFor(files = mapOf("skills/x.md" to "x".toByteArray()))))
+        ).andExpect(status().isCreated)
+
+        mockMvc.perform(get("/api/v1/asset-bundles/BACKEND/framework/Kotlin+Spring/files/skills/missing.md"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `GET asset-bundle file 400 for path traversal attempt`() {
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles")
+                .file(org.springframework.mock.web.MockMultipartFile("file", "v.zip", "application/zip", zipFor()))
+        ).andExpect(status().isCreated)
+
+        mockMvc.perform(get("/api/v1/asset-bundles/BACKEND/framework/Kotlin+Spring/files/skills/../etc/passwd"))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `GET asset-bundle file with deeply nested path`() {
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/asset-bundles")
+                .file(org.springframework.mock.web.MockMultipartFile("file", "v.zip", "application/zip",
+                    zipFor(files = mapOf("skills/a/b/c/d.md" to "deep".toByteArray()))))
+        ).andExpect(status().isCreated)
+
+        mockMvc.perform(get("/api/v1/asset-bundles/BACKEND/framework/Kotlin+Spring/files/skills/a/b/c/d.md"))
+            .andExpect(status().isOk)
+            .andExpect(content().string("deep"))
+    }
 }

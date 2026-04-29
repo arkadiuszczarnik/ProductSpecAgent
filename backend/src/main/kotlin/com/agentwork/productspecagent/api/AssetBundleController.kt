@@ -2,14 +2,30 @@ package com.agentwork.productspecagent.api
 
 import com.agentwork.productspecagent.domain.AssetBundleFile
 import com.agentwork.productspecagent.domain.AssetBundleManifest
+import com.agentwork.productspecagent.domain.AssetBundleUploadResult
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.assetBundleId
+import com.agentwork.productspecagent.service.AssetBundleAdminService
 import com.agentwork.productspecagent.service.AssetBundleNotFoundException
+import com.agentwork.productspecagent.service.BundleFileNotFoundException
+import com.agentwork.productspecagent.service.IllegalBundleEntryException
 import com.agentwork.productspecagent.storage.AssetBundleStorage
+import jakarta.servlet.http.HttpServletRequest
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MultipartFile
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
 data class AssetBundleListItem(
     val id: String,
@@ -29,7 +45,10 @@ data class AssetBundleDetail(
 
 @RestController
 @RequestMapping("/api/v1/asset-bundles")
-class AssetBundleController(private val storage: AssetBundleStorage) {
+class AssetBundleController(
+    private val storage: AssetBundleStorage,
+    private val adminService: AssetBundleAdminService,
+) {
 
     @GetMapping
     fun list(): List<AssetBundleListItem> =
@@ -57,4 +76,63 @@ class AssetBundleController(private val storage: AssetBundleStorage) {
             ?: throw AssetBundleNotFoundException(assetBundleId(step, field, value))
         return AssetBundleDetail(manifest = bundle.manifest, files = bundle.files)
     }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun upload(@RequestParam("file") file: MultipartFile): AssetBundleUploadResult =
+        adminService.upload(file.bytes)
+
+    @DeleteMapping("/{step}/{field}/{value}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun delete(
+        @PathVariable step: FlowStepType,
+        @PathVariable field: String,
+        @PathVariable value: String,
+    ) {
+        storage.find(step, field, value) ?: throw AssetBundleNotFoundException(assetBundleId(step, field, value))
+        storage.delete(step, field, value)
+    }
+
+    @GetMapping("/{step}/{field}/{value}/files/**")
+    fun getFile(
+        @PathVariable step: FlowStepType,
+        @PathVariable field: String,
+        @PathVariable value: String,
+        request: HttpServletRequest,
+    ): ResponseEntity<ByteArray> {
+        val uri = request.requestURI
+        val filesPrefix = "/files/"
+        val rawSuffix = uri.substringAfter(filesPrefix, "")
+        val relativePath = URLDecoder.decode(rawSuffix, StandardCharsets.UTF_8)
+        if (relativePath.contains("../") || relativePath.startsWith("/") || relativePath.isEmpty()) {
+            throw IllegalBundleEntryException(relativePath, "path traversal blocked")
+        }
+
+        storage.find(step, field, value) ?: throw AssetBundleNotFoundException(assetBundleId(step, field, value))
+
+        val bytes = storage.loadFileBytes(step, field, value, relativePath)
+            ?: throw BundleFileNotFoundException(assetBundleId(step, field, value), relativePath)
+
+        val contentType = contentTypeForExt(relativePath)
+        val headers = HttpHeaders().apply {
+            this.contentType = MediaType.parseMediaType(contentType)
+            set(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"${relativePath.substringAfterLast('/')}\"")
+        }
+        return ResponseEntity(bytes, headers, HttpStatus.OK)
+    }
+
+    private fun contentTypeForExt(relativePath: String): String =
+        when (relativePath.substringAfterLast('.', "").lowercase()) {
+            "md", "markdown" -> "text/markdown"
+            "txt" -> "text/plain"
+            "json" -> "application/json"
+            "yaml", "yml" -> "application/yaml"
+            "py" -> "text/x-python"
+            "ts", "tsx" -> "application/typescript"
+            "js", "mjs" -> "application/javascript"
+            "png" -> "image/png"
+            "jpg", "jpeg" -> "image/jpeg"
+            "svg" -> "image/svg+xml"
+            else -> "application/octet-stream"
+        }
 }
