@@ -117,7 +117,7 @@ Aktuell aktiv:
 - **Spot-Instances** für Worker-Nodes — 60–90% Rabatt auf EC2-Preise. Bei Termination werden Pods automatisch durch Kubelet-Rolling auf andere Nodes migriert.
 - **Single NAT Instance** statt 3 NAT Gateways (siehe Egress / NAT-Abschnitt) — ~$111/Monat Ersparnis
 - **EKS-Control-Plane-Logs** mit Retention (Dev 7 Tage, Prod 30 Tage)
-- **EBS-Volumes** auf 10 GB pro Node reduziert
+- **EBS-Volumes** 20 GB pro Node (AL2023-Mindestanforderung — kleiner geht nicht)
 - **Image-Build-Platform** `linux/arm64` (passend zu ARM-Workern)
 
 #### Dev-Stack nachts/Wochenenden runterfahren

@@ -5,6 +5,6 @@ config:
   productspec-base:nodeDesiredSize: "2"
   productspec-base:nodeMaxSize: "6"
   productspec-base:nodeCapacityType: SPOT
-  productspec-base:nodeDiskSize: "10"
+  productspec-base:nodeDiskSize: "20"
   productspec-base:logRetentionDays: "30"
 encryptionsalt: v1:tSIcPLSQ264=:v1:6rv/oj0zuV+W//Uw:/1PZwKBmOfDyNzIGNw16kcK4jLEl9g==

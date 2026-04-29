@@ -27,7 +27,8 @@ class EksCluster(
             val desiredSize = cfg.get("nodeDesiredSize").orElse("2").toInt()
             val maxSize = cfg.get("nodeMaxSize").orElse("4").toInt()
             val capacityType = cfg.get("nodeCapacityType").orElse("SPOT")
-            val diskSize = cfg.get("nodeDiskSize").orElse("10").toInt()
+            // AL2023-AMI verlangt min. 20 GB; kleinere Werte werden von CreateNodegroup abgelehnt.
+            val diskSize = cfg.get("nodeDiskSize").orElse("20").toInt()
             val logRetentionDays = cfg.get("logRetentionDays").orElse("7").toInt()
 
             val assumeRolePolicy = """
