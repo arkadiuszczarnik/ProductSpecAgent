@@ -523,3 +523,97 @@ export async function deleteDocument(projectId: string, documentId: string): Pro
   });
   if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
 }
+
+// ─── Asset-Bundle Types ──────────────────────────────────────────────────────
+
+export interface AssetBundleManifest {
+  id: string;
+  step: StepType;
+  field: string;
+  value: string;
+  version: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssetBundleFile {
+  relativePath: string;
+  size: number;
+  contentType: string;
+}
+
+export interface AssetBundleListItem {
+  id: string;
+  step: StepType;
+  field: string;
+  value: string;
+  version: string;
+  title: string;
+  description: string;
+  fileCount: number;
+}
+
+export interface AssetBundleDetail {
+  manifest: AssetBundleManifest;
+  files: AssetBundleFile[];
+}
+
+export interface AssetBundleUploadResult {
+  manifest: AssetBundleManifest;
+  fileCount: number;
+}
+
+// ─── Asset-Bundle API ────────────────────────────────────────────────────────
+
+export async function listAssetBundles(): Promise<AssetBundleListItem[]> {
+  return apiFetch<AssetBundleListItem[]>("/api/v1/asset-bundles");
+}
+
+export async function getAssetBundle(
+  step: StepType,
+  field: string,
+  value: string,
+): Promise<AssetBundleDetail> {
+  const path = `/api/v1/asset-bundles/${step}/${field}/${encodeURIComponent(value)}`;
+  return apiFetch<AssetBundleDetail>(path);
+}
+
+export async function uploadAssetBundle(file: File): Promise<AssetBundleUploadResult> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}/api/v1/asset-bundles`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message ?? body.error ?? `Upload failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteAssetBundle(
+  step: StepType,
+  field: string,
+  value: string,
+): Promise<void> {
+  const path = `/api/v1/asset-bundles/${step}/${field}/${encodeURIComponent(value)}`;
+  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message ?? body.error ?? `Delete failed: ${res.status}`);
+  }
+}
+
+export async function fetchAssetBundleFile(
+  step: StepType,
+  field: string,
+  value: string,
+  relativePath: string,
+): Promise<Response> {
+  const encodedPath = relativePath.split("/").map(encodeURIComponent).join("/");
+  const path = `/api/v1/asset-bundles/${step}/${field}/${encodeURIComponent(value)}/files/${encodedPath}`;
+  return fetch(`${API_BASE}${path}`);
+}
