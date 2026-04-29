@@ -4,3 +4,4 @@ config:
   productspec-workloads:imageTag: placeholder
   productspec-workloads:backendReplicas: "2"
   productspec-workloads:frontendReplicas: "2"
+encryptionsalt: v1:weLAsjCpSQo=:v1:DMTB159n4liT4tUC:TQssL/tahEotDG6AjO9Xp7ouYRcg5A==

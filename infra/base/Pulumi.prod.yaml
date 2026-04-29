@@ -1,6 +1,10 @@
 config:
   aws:region: eu-central-1
-  productspec-base:nodeInstanceType: t3.large
+  productspec-base:nodeInstanceType: t4g.medium
   productspec-base:nodeMinSize: "2"
   productspec-base:nodeDesiredSize: "2"
   productspec-base:nodeMaxSize: "6"
+  productspec-base:nodeCapacityType: SPOT
+  productspec-base:nodeDiskSize: "10"
+  productspec-base:logRetentionDays: "30"
+encryptionsalt: v1:tSIcPLSQ264=:v1:6rv/oj0zuV+W//Uw:/1PZwKBmOfDyNzIGNw16kcK4jLEl9g==

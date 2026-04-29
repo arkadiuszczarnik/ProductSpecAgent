@@ -32,11 +32,11 @@ echo "--- 2/4 ECR login ---"
 aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
-# 3) Build + push (linux/amd64 für Apple Silicon)
+# 3) Build + push (linux/arm64 für ARM-Worker-Nodes t4g.medium)
 echo "--- 3/4 build + push images ---"
-docker buildx build --platform linux/amd64 \
+docker buildx build --platform linux/arm64 \
   -t "$ECR_BACKEND:$GIT_SHA" --push "$ROOT_DIR/backend"
-docker buildx build --platform linux/amd64 \
+docker buildx build --platform linux/arm64 \
   -t "$ECR_FRONTEND:$GIT_SHA" --push "$ROOT_DIR/frontend"
 
 # 4) Workloads stack

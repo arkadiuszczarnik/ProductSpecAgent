@@ -98,3 +98,49 @@ State-Backend: S3-Bucket `productspec-pulumi-state-<account-id>` im selben AWS-A
 Worker-Nodes erreichen das Internet (z. B. OpenAI-API) über eine **einzelne NAT-Instance** in `eu-central-1a` (Image `fck-nat-al2023`, `t4g.nano`, EIP attached). Statt drei NAT Gateways (~$114/Monat) ergibt das ~$3/Monat. **Trade-off:** AZ-a-Ausfall = aller Egress fällt aus, bis die Instance wieder läuft. Für Internal-Use okay; für Customer-Facing-Production später auf NAT-pro-AZ upgraden.
 
 Vollständige Spezifikation: `docs/superpowers/specs/2026-04-28-pulumi-aws-eks-deployment-design.md`.
+
+### Kosten-Optimierungen
+
+Aktuell aktiv:
+- **ARM-Worker-Nodes** (`t4g.medium`, AWS Graviton) statt x86 — ~30% billiger bei vergleichbarer Java-/Node-Performance
+- **Spot-Instances** für Worker-Nodes — 60–90% Rabatt auf EC2-Preise. Bei Termination werden Pods automatisch durch Kubelet-Rolling auf andere Nodes migriert.
+- **Single NAT Instance** statt 3 NAT Gateways (siehe Egress / NAT-Abschnitt) — ~$111/Monat Ersparnis
+- **EKS-Control-Plane-Logs** mit Retention (Dev 7 Tage, Prod 30 Tage)
+- **EBS-Volumes** auf 10 GB pro Node reduziert
+- **Image-Build-Platform** `linux/arm64` (passend zu ARM-Workern)
+
+#### Dev-Stack nachts/Wochenenden runterfahren
+
+Spart ~$80/Monat. Manuell pro Schicht-Ende:
+```bash
+# Worker-Nodes auf 0 skalieren (EKS-Control-Plane bleibt — $73/Monat unvermeidbar)
+pulumi -C infra/base -s dev config set productspec-base:nodeDesiredSize "0"
+pulumi -C infra/base -s dev up --yes
+```
+
+Morgens wieder hoch:
+```bash
+pulumi -C infra/base -s dev config set productspec-base:nodeDesiredSize "1"
+pulumi -C infra/base -s dev up --yes
+```
+
+Alternative ohne Pulumi: `aws eks update-nodegroup-config --scaling-config minSize=0,maxSize=2,desiredSize=0 --cluster-name productspec-eks --nodegroup-name productspec-nodes`.
+
+Komplett-Destroy nachts (spart auch die $73 EKS-Fee, aber ~20 min Recreate morgens):
+```bash
+pulumi -C infra/workloads -s dev destroy --yes
+pulumi -C infra/base -s dev destroy --yes
+```
+
+#### Prod-Stack erst bei Nutzer-Bedarf
+
+Solange keine echten Nutzer den Prod-Stack brauchen: nicht hochfahren. Spart ~$160/Monat. `./scripts/deploy.sh prod` nur ausführen, wenn Prod tatsächlich gebraucht wird.
+
+#### Geschätzte Monatskosten (eu-central-1)
+
+| Konfiguration | $/Monat |
+|---|---|
+| Dev (laufend, 1× t4g.medium Spot, Single NAT Instance) | ~$95 |
+| Dev (nachts/Weekend Worker auf 0) | ~$50 |
+| Dev (komplett destroy nachts/Weekend) | ~$25 |
+| Prod (2× t4g.medium Spot, ALB, Single NAT) | ~$160 |

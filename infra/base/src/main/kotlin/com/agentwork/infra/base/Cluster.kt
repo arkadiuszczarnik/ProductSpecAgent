@@ -1,6 +1,8 @@
 package com.agentwork.infra.base
 
 import com.pulumi.Context
+import com.pulumi.aws.cloudwatch.LogGroup
+import com.pulumi.aws.cloudwatch.LogGroupArgs
 import com.pulumi.aws.eks.inputs.NodeGroupScalingConfigArgs
 import com.pulumi.aws.iam.Role
 import com.pulumi.aws.iam.RoleArgs
@@ -24,6 +26,9 @@ class EksCluster(
             val minSize = cfg.get("nodeMinSize").orElse("1").toInt()
             val desiredSize = cfg.get("nodeDesiredSize").orElse("2").toInt()
             val maxSize = cfg.get("nodeMaxSize").orElse("4").toInt()
+            val capacityType = cfg.get("nodeCapacityType").orElse("SPOT")
+            val diskSize = cfg.get("nodeDiskSize").orElse("10").toInt()
+            val logRetentionDays = cfg.get("logRetentionDays").orElse("7").toInt()
 
             val assumeRolePolicy = """
                 {
@@ -57,6 +62,14 @@ class EksCluster(
                 )
             }
 
+            val logGroup = LogGroup(
+                "productspec-eks-logs",
+                LogGroupArgs.builder()
+                    .name("/aws/eks/productspec-eks/cluster")
+                    .retentionInDays(logRetentionDays)
+                    .build()
+            )
+
             val cluster = Cluster(
                 "productspec-eks",
                 ClusterArgs.builder()
@@ -66,6 +79,10 @@ class EksCluster(
                     .skipDefaultNodeGroup(true)
                     .authenticationMode(AuthenticationMode.Api)
                     .createOidcProvider(true)
+                    .enabledClusterLogTypes(listOf("api", "audit", "authenticator"))
+                    .build(),
+                com.pulumi.resources.ComponentResourceOptions.builder()
+                    .dependsOn(logGroup)
                     .build()
             )
 
@@ -76,6 +93,8 @@ class EksCluster(
                     .cluster(cluster)
                     .nodeRole(nodeRole)
                     .instanceTypes(instanceType)
+                    .capacityType(capacityType)
+                    .diskSize(diskSize)
                     .scalingConfig(
                         NodeGroupScalingConfigArgs.builder()
                             .minSize(minSize)
