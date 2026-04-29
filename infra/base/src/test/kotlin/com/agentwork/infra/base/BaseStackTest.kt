@@ -37,6 +37,19 @@ class BaseStackTest {
     }
 
     @Test
+    fun `nat instance has source dest check disabled`() {
+        val mocks = PulumiMocks()
+        PulumiTest.withMocks(mocks).runTest { ctx ->
+            Networking.create(ctx)
+        }
+
+        val nat = mocks.resources.firstOrNull { it.type == "aws:ec2/instance:Instance" && it.name == "productspec-nat" }
+        requireNotNull(nat) { "NAT instance not found in stack" }
+        val sourceDestCheck = (nat.inputs ?: error("inputs missing"))["sourceDestCheck"]
+        assertEquals(false, sourceDestCheck, "NAT instance MUST have sourceDestCheck=false to forward packets; was: $sourceDestCheck")
+    }
+
+    @Test
     fun `irsa role trust policy targets backend-sa in productspec namespace`() {
         val mocks = PulumiMocks()
         PulumiTest.withMocks(mocks)

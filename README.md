@@ -93,4 +93,8 @@ pulumi -C infra/base -s dev destroy --yes
 
 State-Backend: S3-Bucket `productspec-pulumi-state-<account-id>` im selben AWS-Account.
 
+### Egress / NAT
+
+Worker-Nodes erreichen das Internet (z. B. OpenAI-API) über eine **einzelne NAT-Instance** in `eu-central-1a` (Image `fck-nat-al2023`, `t4g.nano`, EIP attached). Statt drei NAT Gateways (~$114/Monat) ergibt das ~$3/Monat. **Trade-off:** AZ-a-Ausfall = aller Egress fällt aus, bis die Instance wieder läuft. Für Internal-Use okay; für Customer-Facing-Production später auf NAT-pro-AZ upgraden.
+
 Vollständige Spezifikation: `docs/superpowers/specs/2026-04-28-pulumi-aws-eks-deployment-design.md`.

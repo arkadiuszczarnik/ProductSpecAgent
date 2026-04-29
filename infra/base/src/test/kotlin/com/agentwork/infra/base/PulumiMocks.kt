@@ -14,6 +14,21 @@ class PulumiMocks(private val recorded: MutableList<Mocks.ResourceArgs> = mutabl
         // Spezialfälle für Resources, die berechnete Ausgaben brauchen:
         val outputs = HashMap<String, Any>(args.inputs)
         when (args.type) {
+            // awsx VPC: mock outputs that Pulumi expects as Lists (not Maps from input serialization)
+            "awsx:ec2:Vpc" -> {
+                outputs["natGateways"] = emptyList<Any>()
+                outputs["eips"] = emptyList<Any>()
+                outputs["publicSubnetIds"] = listOf("subnet-public-0", "subnet-public-1", "subnet-public-2")
+                outputs["privateSubnetIds"] = listOf("subnet-private-0", "subnet-private-1", "subnet-private-2")
+                outputs["isolatedSubnetIds"] = emptyList<Any>()
+                outputs["routeTableAssociations"] = emptyList<Any>()
+                outputs["routeTables"] = emptyList<Any>()
+                outputs["routes"] = emptyList<Any>()
+                outputs["subnets"] = emptyList<Any>()
+                outputs["vpcEndpoints"] = emptyList<Any>()
+                outputs["subnetLayout"] = emptyList<Any>()
+                outputs["vpcId"] = "vpc-mock-id"
+            }
             "aws:s3/bucket:Bucket" -> outputs["arn"] = "arn:aws:s3:::${args.name}"
             "aws:iam/role:Role" -> outputs["arn"] = "arn:aws:iam::123456789012:role/${args.name}"
             "aws:ecr/repository:Repository" -> {

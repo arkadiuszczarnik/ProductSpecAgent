@@ -24,5 +24,7 @@ fun main() {
         ctx.export("ecrFrontendUrl", registry.frontend.repositoryUrl())
         ctx.export("namespace", ns.namespace.metadata().applyValue { it.name().get() })
         ctx.export("region", Output.of("eu-central-1"))
+        ctx.export("natInstanceId", net.natInstance.id())
+        ctx.export("natPublicIp", net.natEip.publicIp())
     }
 }
