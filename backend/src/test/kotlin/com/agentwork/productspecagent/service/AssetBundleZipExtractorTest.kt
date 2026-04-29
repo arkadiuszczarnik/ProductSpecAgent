@@ -152,4 +152,43 @@ class AssetBundleZipExtractorTest {
         assertEquals(1, result.files.size)
         assertEquals(setOf("skills/x/SKILL.md"), result.files.keys)
     }
+
+    @Test
+    fun `extract throws BundleTooLargeException for file count over 100`() {
+        val files = (1..101).associate { "skills/file-$it.md" to "x".toByteArray() }
+        val zip = buildZip(manifest = sampleManifest(), files = files)
+        assertThrows(BundleTooLargeException::class.java) { extractor.extract(zip) }
+    }
+
+    @Test
+    fun `extract throws BundleTooLargeException for single file over 2 MB`() {
+        val zip = buildZip(
+            manifest = sampleManifest(),
+            files = mapOf("skills/big.md" to bytesOfSize(2 * 1024 * 1024 + 1))
+        )
+        assertThrows(BundleTooLargeException::class.java) { extractor.extract(zip) }
+    }
+
+    @Test
+    fun `extract throws BundleTooLargeException when total size over 10 MB`() {
+        val files = (1..6).associate { "skills/file-$it.md" to bytesOfSize(2 * 1024 * 1024) }
+        val zip = buildZip(manifest = sampleManifest(), files = files)
+        assertThrows(BundleTooLargeException::class.java) { extractor.extract(zip) }
+    }
+
+    @Test
+    fun `extract counts non-filtered entries against the limit`() {
+        // 100 valid files + a few filtered junk entries should still pass
+        val files = (1..100).associate { "skills/file-$it.md" to "x".toByteArray() }
+        val zipWithFilters = buildZip(
+            manifest = sampleManifest(),
+            files = files,
+            rawExtras = mapOf(
+                ".DS_Store" to "junk".toByteArray(),
+                "__MACOSX/foo" to "junk".toByteArray(),
+            )
+        )
+        val result = extractor.extract(zipWithFilters)
+        assertEquals(100, result.files.size)
+    }
 }

@@ -7,11 +7,16 @@ import com.agentwork.productspecagent.domain.assetBundleId
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.util.zip.ZipException
 import java.util.zip.ZipInputStream
 
 @Service
 class AssetBundleZipExtractor {
+
+    private val maxFileCount = 100
+    private val maxFileSizeBytes = 2L * 1024 * 1024     // 2 MB per file
+    private val maxTotalSizeBytes = 10L * 1024 * 1024   // 10 MB total
 
     private val json = Json { ignoreUnknownKeys = true }
     private val allowedSteps = setOf(FlowStepType.BACKEND, FlowStepType.FRONTEND, FlowStepType.ARCHITECTURE)
@@ -29,6 +34,8 @@ class AssetBundleZipExtractor {
 
     private fun readZip(bytes: ByteArray): MutableMap<String, ByteArray> {
         val files = LinkedHashMap<String, ByteArray>()
+        var totalBytes = 0L
+
         val zis = try {
             ZipInputStream(ByteArrayInputStream(bytes))
         } catch (e: Exception) {
@@ -40,7 +47,16 @@ class AssetBundleZipExtractor {
                 while (entry != null) {
                     if (!entry.isDirectory && !isFiltered(entry.name)) {
                         validatePath(entry.name)
-                        files[entry.name] = stream.readAllBytes()
+                        val entryBytes = readEntryWithLimit(stream, entry.name)
+                        totalBytes += entryBytes.size
+                        if (totalBytes > maxTotalSizeBytes) {
+                            throw BundleTooLargeException("Total bundle size exceeds 10 MB")
+                        }
+                        files[entry.name] = entryBytes
+                        val nonManifestCount = files.keys.count { it != "manifest.json" }
+                        if (nonManifestCount > maxFileCount) {
+                            throw BundleTooLargeException("Too many files: > $maxFileCount")
+                        }
                     }
                     stream.closeEntry()
                     entry = stream.nextEntry
@@ -53,6 +69,22 @@ class AssetBundleZipExtractor {
             throw IllegalBundleEntryException("(zip)", "Invalid ZIP file: no entries found")
         }
         return files
+    }
+
+    private fun readEntryWithLimit(stream: ZipInputStream, name: String): ByteArray {
+        val out = ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        var total = 0L
+        while (true) {
+            val read = stream.read(buffer)
+            if (read == -1) break
+            total += read
+            if (total > maxFileSizeBytes) {
+                throw BundleTooLargeException("File too large: $name (limit ${maxFileSizeBytes / (1024 * 1024)} MB)")
+            }
+            out.write(buffer, 0, read)
+        }
+        return out.toByteArray()
     }
 
     private fun rawZipEmpty(bytes: ByteArray): Boolean {
