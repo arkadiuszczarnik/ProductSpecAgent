@@ -2,6 +2,7 @@ package com.agentwork.productspecagent.api
 
 import com.agentwork.productspecagent.domain.ErrorResponse
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshException
+import com.agentwork.productspecagent.service.AssetBundleNotFoundException
 import com.agentwork.productspecagent.service.ClarificationNotFoundException
 import com.agentwork.productspecagent.service.DecisionNotFoundException
 import com.agentwork.productspecagent.service.DocumentNotFoundException
@@ -65,6 +66,16 @@ class GlobalExceptionHandler {
         return ErrorResponse(
             error = "NOT_FOUND",
             message = ex.message ?: "Task not found",
+            timestamp = Instant.now().toString()
+        )
+    }
+
+    @ExceptionHandler(AssetBundleNotFoundException::class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    fun handleAssetBundleNotFound(ex: AssetBundleNotFoundException): ErrorResponse {
+        return ErrorResponse(
+            error = "NOT_FOUND",
+            message = ex.message ?: "Asset bundle not found",
             timestamp = Instant.now().toString()
         )
     }
