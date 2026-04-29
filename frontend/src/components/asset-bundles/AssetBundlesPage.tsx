@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useAssetBundleStore } from "@/lib/stores/asset-bundle-store";
+import { BundleList } from "./BundleList";
 
 export function AssetBundlesPage() {
   const { load } = useAssetBundleStore();
@@ -19,8 +20,8 @@ export function AssetBundlesPage() {
         </p>
       </header>
       <div className="flex flex-1 min-h-0">
-        <aside className="w-96 border-r overflow-y-auto" data-testid="bundle-list">
-          <div className="p-4 text-sm text-muted-foreground">Liste folgt …</div>
+        <aside className="w-96 border-r overflow-hidden">
+          <BundleList />
         </aside>
         <main className="flex-1 overflow-y-auto" data-testid="bundle-detail">
           <div className="p-4 text-sm text-muted-foreground">Detail folgt …</div>
