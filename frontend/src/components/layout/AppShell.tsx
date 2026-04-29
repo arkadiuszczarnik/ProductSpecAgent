@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderKanban, Plus, Settings, Sparkles } from "lucide-react";
+import { FolderKanban, Package, Plus, Settings, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AppShellProps {
@@ -62,6 +62,12 @@ function IconRail() {
           icon={<Plus size={20} />}
           label="New Project"
           active={pathname === "/projects/new"}
+        />
+        <NavItem
+          href="/asset-bundles"
+          icon={<Package size={20} />}
+          label="Asset Bundles"
+          active={pathname?.startsWith("/asset-bundles") ?? false}
         />
       </nav>
 
