@@ -5,7 +5,7 @@ import { useWizardStore } from "@/lib/stores/wizard-store";
 import { getFieldOptions } from "@/lib/category-step-config";
 
 const DEFAULT_OPTIONS = {
-  framework: ["Next.js + React", "Vue + Nuxt", "Svelte + SvelteKit", "Angular", "Remix", "Astro"],
+  framework: ["Next.js + React", "Vue + Nuxt", "Svelte + SvelteKit", "Angular", "Stitch", "Remix", "Astro"],
   uiLibrary: ["shadcn/ui", "Material UI", "Ant Design", "Chakra UI", "Radix + Custom", "Keine"],
   styling: ["Tailwind CSS", "CSS Modules", "Styled Components", "Emotion", "Vanilla CSS"],
   theme: ["Dark only", "Light only", "Both (Toggle)"],

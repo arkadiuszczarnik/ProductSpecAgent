@@ -4,4 +4,6 @@ config:
   productspec-workloads:imageTag: placeholder
   productspec-workloads:backendReplicas: "2"
   productspec-workloads:frontendReplicas: "2"
+  productspec-workloads:openaiApiKey:
+    secure: v1:VK24jsCsr4Pq0SZF:2feqLHvk30ZCXMedfC+uzIscTiaplQOsSYtAliEc6KrpqA6gshAyael2BRkziw+dNYyO2th7J6QLzoGOtXhEMEv2Fgtgvdm+Pv/6aSL1PLlX5ls9TxZx2AUh7jey0KMPFLhwt9h5aEy6WXcJNjTDqWRqzUmswxgvlYfJCwmagxR+1Gzodvg0cU02QCF5+vlxIloQkds5+sT56GDEEUs1Omt5EB7SMWlRZrV7/rGhUwVypJqR
 encryptionsalt: v1:ODxr1ajJzjU=:v1:rVAJ0KXGd/tdwDyO:8o1ItwG7djK0CeRY/2ij852hXPpysQ==

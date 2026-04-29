@@ -1,0 +1,151 @@
+Du hast alles vor dir liegen — die zwei Skripte automatisieren den ganzen Flow. Hier der Ablauf von der grünen Wiese bis zum laufenden Pod:
+
+  Vor dem ersten Mal — einmalig
+
+  0. Prereqs verifizieren
+
+  pulumi version       # 3.150+
+  aws --version        # 2.x
+  java -version        # 21
+  docker buildx version
+  aws sts get-caller-identity   # AWS-Creds müssen konfiguriert sein
+
+  Falls eines fehlt: siehe README → "Tooling".
+
+  1. Working Tree säubern (deploy.sh blockt sonst)
+
+  git -C /Users/czarnik/IdeaProjects/ProductSpecAgent status
+
+  Du hast aktuell M docker-compose.yml unstaged. Das bricht den Skript-Lauf, weil deploy.sh einen sauberen Tree erzwingt (für reproduzierbare Git-SHA-Tags). Drei Optionen:
+
+  # Option A: committen
+  git -C /Users/czarnik/IdeaProjects/ProductSpecAgent add docker-compose.yml
+  git -C /Users/czarnik/IdeaProjects/ProductSpecAgent commit -m "..."
+
+  # Option B: stash
+  git -C /Users/czarnik/IdeaProjects/ProductSpecAgent stash
+
+  # Option C: revert (verwirft die Änderungen, falls sie nicht mehr gebraucht werden)
+  git -C /Users/czarnik/IdeaProjects/ProductSpecAgent checkout -- docker-compose.yml
+
+  2. Bootstrap (idempotent, einmalig pro AWS-Account)
+
+  cd /Users/czarnik/IdeaProjects/ProductSpecAgent
+  ./scripts/pulumi-bootstrap.sh
+
+  Macht: S3-State-Bucket anlegen, pulumi login s3://..., 4 Stacks initialisieren (base/dev, base/prod, workloads/dev, workloads/prod).
+
+  → Du siehst danach 4 neue encryptionsalt:-Zeilen in den Pulumi-yaml-Dateien — das ist normal. Die hatten wir schon mit Commit 0fbb8a0 ins Repo aufgenommen.
+
+  3. OpenAI-Key in den Workloads-Stack legen
+
+  pulumi -C infra/workloads -s dev config set --secret openaiApiKey sk-...
+
+  (Für Prod analog mit -s prod.)
+
+  Deploy ausführen
+
+  cd /Users/czarnik/IdeaProjects/ProductSpecAgent
+  ./scripts/deploy.sh dev
+
+  Das Skript läuft 4 Phasen ab:
+
+  1. Base-Stack apply (~15-20 min beim allerersten Mal — EKS-Cluster-Erstellung)
+    - Provisioniert: VPC, EKS-Cluster, NodeGroup, ECR, S3, IRSA, NAT Instance, AWS LBC
+  2. ECR-Login mit aws ecr get-login-password
+  3. Docker buildx + push (linux/arm64) für Backend und Frontend
+    - Auf Apple Silicon: native und schnell
+    - Auf x86 Mac: QEMU-Emulation (langsamer, aber funktioniert)
+  4. Workloads-Stack apply mit dem frischen Git-SHA als Image-Tag (~3 min)
+    - Provisioniert: ServiceAccount, Secret, Backend-Deployment+Service, Frontend-Deployment+Service, ALB-Ingress
+
+  Am Ende gibt's eine ALB-DNS-URL aus:
+
+  === Deploy complete ===
+  Image tag: 0fbb8a0a
+  Ingress:   http://internal-productspec-... .eu-central-1.elb.amazonaws.com
+
+  ALB braucht 1–2 Min, bis der DNS-Name resolved. Dann:
+
+  curl http://<ingress-dns>/api/health
+  # → {"status":"UP","timestamp":"..."}
+
+  curl http://<ingress-dns>/
+  # → HTML der Frontend-Seite
+
+  Cluster manuell inspizieren
+
+  # kubeconfig holen
+  pulumi -C infra/base -s dev stack output kubeconfig --show-secrets > /tmp/kc.yaml
+  export KUBECONFIG=/tmp/kc.yaml
+
+  # Pods checken
+  kubectl get pods -n productspec        # 4 Pods Running (2× backend, 2× frontend)
+  kubectl get ingress -n productspec     # zeigt ALB-DNS
+
+  # Backend-Pod-Logs
+  kubectl logs -n productspec deploy/backend --tail=50 -f
+
+  # In Pod reinhüpfen und IRSA verifizieren
+  kubectl exec -n productspec deploy/backend -- aws sts get-caller-identity
+  # sollte die IRSA-Rolle zeigen, NICHT einen IAM-User
+
+  Folge-Deploys
+
+  Nach Code-Änderungen:
+
+  # Code-Änderung commiten
+  git add ... && git commit -m "..."
+
+  # Re-Deploy (~3 min — Cluster steht schon)
+  ./scripts/deploy.sh dev
+
+  Der Skript pusht ein neues Image mit dem neuen Git-SHA und triggert ein Rolling-Update der Pods.
+
+  Troubleshooting beim allerersten Mal
+
+  ┌───────────────────────────────────────┬──────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │                Problem                │                   Ursache                    │                                                     Lösung                                                     │
+  ├───────────────────────────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ deploy.sh exited mit "uncommitted     │ M docker-compose.yml (oder anderes)          │ siehe Schritt 1                                                                                                │
+  │ changes"                              │                                              │                                                                                                                │
+  ├───────────────────────────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Bootstrap hängt bei pulumi stack init │ AWS-Credentials nicht gesetzt                │ aws configure durchlaufen                                                                                      │
+  ├───────────────────────────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ pulumi up base Fehler bei             │ AWS-User hat keine Admin-Rechte              │ Profil mit IAM-Admin-Rechten verwenden                                                                         │
+  │ IAM-Erstellung                        │                                              │                                                                                                                │
+  ├───────────────────────────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ docker buildx fehlt                   │ Buildx nicht aktiviert                       │ Docker Desktop neu installieren oder docker buildx create --use                                                │
+  ├───────────────────────────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ImagePullBackOff an Pods              │ Workloads-Apply lief vor Image-Push          │ deploy.sh macht die richtige Reihenfolge — falls manuell pulumi up gemacht: einfach deploy.sh re-runnen, Pods  │
+  │                                       │                                              │ recovern automatisch                                                                                           │
+  ├───────────────────────────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ALB-DNS antwortet nicht direkt        │ ALB braucht 1–2 min Provisioning +           │ warten oder kubectl get ingress -w                                                                             │
+  │                                       │ DNS-Propagation                              │                                                                                                                │
+  └───────────────────────────────────────┴──────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Aufräumen wenn fertig
+
+  # Workloads zuerst (sonst hängen Ingress-ALBs am Cluster)
+  pulumi -C infra/workloads -s dev destroy --yes
+
+  # Dann Base
+  pulumi -C infra/base -s dev destroy --yes
+
+  Geht ~10 min. State-Bucket bleibt; manuell löschen falls AWS-Account komplett bereinigt werden soll.
+
+  ---
+  TL;DR für deinen aktuellen Stand:
+
+  # 1. Working tree säubern
+  cd /Users/czarnik/IdeaProjects/ProductSpecAgent
+  git stash    # oder commit, je nach docker-compose.yml-Plan
+
+  # 2. Einmalig Bootstrap (falls noch nicht gelaufen)
+  ./scripts/pulumi-bootstrap.sh
+  pulumi -C infra/workloads -s dev config set --secret openaiApiKey sk-...
+
+  # 3. Deploy
+  ./scripts/deploy.sh dev
+
+  Falls beim ersten Lauf was schiefgeht: poste den Fehler, dann diagnostizieren wir.

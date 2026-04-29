@@ -35,7 +35,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
         auth: ["JWT", "Session", "OAuth", "API Key"],
       },
       FRONTEND: {
-        framework: ["Next.js+React", "Vue+Nuxt", "Svelte", "Angular"],
+        framework: ["Next.js+React", "Vue+Nuxt", "Svelte", "Angular", "Stitch"],
         uiLibrary: ["shadcn/ui", "Material UI", "Ant Design", "Custom"],
         styling: ["Tailwind CSS", "CSS Modules", "Styled Components"],
         theme: ["Dark only", "Light only", "Both"],
