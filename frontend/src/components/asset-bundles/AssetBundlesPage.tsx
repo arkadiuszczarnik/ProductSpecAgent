@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useAssetBundleStore } from "@/lib/stores/asset-bundle-store";
 import { BundleList } from "./BundleList";
+import { BundleDetail } from "./BundleDetail";
 
 export function AssetBundlesPage() {
   const { load } = useAssetBundleStore();
@@ -23,8 +24,8 @@ export function AssetBundlesPage() {
         <aside className="w-96 border-r overflow-hidden">
           <BundleList />
         </aside>
-        <main className="flex-1 overflow-y-auto" data-testid="bundle-detail">
-          <div className="p-4 text-sm text-muted-foreground">Detail folgt …</div>
+        <main className="flex-1 overflow-hidden">
+          <BundleDetail />
         </main>
       </div>
     </div>
