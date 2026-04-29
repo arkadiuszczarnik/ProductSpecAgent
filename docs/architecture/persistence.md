@@ -85,3 +85,57 @@ app:
 ## Tests
 
 Storage-Tests erben von `S3TestSupport`, das einen MinIO-Container per Testcontainers JVM-weit hochfährt. Vor jedem Test wird das Test-Bucket geleert; das sorgt für Isolation ohne Container-Restart-Overhead. Service- und Controller-Tests, die schnellere Unit-Tests sind, nutzen `InMemoryObjectStore` (in-memory `ObjectStore`-Implementation, im Test-Classpath).
+
+## Asset-Bundles in S3
+
+Vorkurierte Claude-Code-Skills, -Commands und -Agents leben unter dem Prefix `asset-bundles/` im selben Bucket (`productspec-data`). Sie sind global geteilt — nicht per-Projekt.
+
+### Layout
+
+```
+asset-bundles/
+  backend.framework.kotlin-spring/
+    manifest.json
+    skills/spring-testing/SKILL.md
+    commands/gradle-build.md
+    agents/spring-debug.md
+  frontend.framework.stitch/
+    manifest.json
+    skills/...
+  architecture.architecture.microservices/
+    manifest.json
+    ...
+```
+
+Bundle-Folder-Name = Bundle-ID = `${step.lower()}.${field}.${slug(value)}`.
+
+### Manifest-Schema (`manifest.json`)
+
+```json
+{
+  "id": "backend.framework.kotlin-spring",
+  "step": "BACKEND",
+  "field": "framework",
+  "value": "Kotlin+Spring",
+  "version": "1.0.0",
+  "title": "Kotlin + Spring Boot Essentials",
+  "description": "Skills für Spring-Boot-Backend",
+  "createdAt": "2026-04-29T12:00:00Z",
+  "updatedAt": "2026-04-29T12:00:00Z"
+}
+```
+
+### Bundles befüllen
+
+Bundles werden manuell verwaltet (Sub-Feature A — kein UI). Beispiel-Sync aus separatem Repo:
+
+```bash
+aws s3 sync ./asset-bundles/ s3://productspec-data/asset-bundles/ --delete --exclude ".git/*"
+```
+
+Backend liest Bundles live aus S3 — kein Restart nötig nach Sync.
+
+### Read-API
+
+- `GET /api/v1/asset-bundles` — Liste aller Bundles (Manifest + fileCount)
+- `GET /api/v1/asset-bundles/{step}/{field}/{value}` — Detail mit File-Liste oder 404
