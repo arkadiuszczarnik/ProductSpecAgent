@@ -22,13 +22,13 @@ class AssetBundleStorage(private val objectStore: ObjectStore) {
         val key = "$rootPrefix$folder/manifest.json"
         val bytes = objectStore.get(key)
         if (bytes == null) {
-            log.warn("Asset bundle folder '{}' has no manifest.json — skipping", folder)
+            log.warn("Asset bundle '{}' has no manifest.json — skipping", key)
             return null
         }
         return try {
             json.decodeFromString<AssetBundleManifest>(bytes.toString(Charsets.UTF_8))
         } catch (e: Exception) {
-            log.warn("Asset bundle '{}' has invalid manifest.json: {} — skipping", folder, e.message)
+            log.warn("Asset bundle '{}' has invalid manifest.json: {} — skipping", key, e.message)
             null
         }
     }
