@@ -93,6 +93,9 @@ class EksCluster(
                     .cluster(cluster)
                     .nodeRole(nodeRole)
                     .instanceTypes(instanceType)
+                    // AL2023_ARM_64_STANDARD passt zu t4g/Graviton-Instances. Falls instanceType
+                    // auf x86 geändert wird (z. B. t3.*), muss amiType auf AL2023_x86_64_STANDARD.
+                    .amiType("AL2023_ARM_64_STANDARD")
                     .capacityType(capacityType)
                     .diskSize(diskSize)
                     .scalingConfig(

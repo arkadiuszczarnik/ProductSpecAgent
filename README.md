@@ -76,6 +76,17 @@ Skript erzwingt sauberen Working-Tree (Git-SHA wird Image-Tag), führt `pulumi u
 - **ImagePullBackOff:** Beim allerersten Workloads-Apply existiert noch kein Image im ECR (kommt erst durch `deploy.sh`). Pods werden nach dem Push automatisch durch das Kubelet-Rolling repariert. Bei `deploy.sh` ist die Reihenfolge so, dass dies nicht auftritt; nur bei manuellem `pulumi up workloads` ohne vorheriges Push.
 - **EKS-Erstellung dauert:** ~15 min für den Cluster, weitere 3 min für ManagedNodeGroup. Geduld.
 - **macOS Apple Silicon:** Image-Builds müssen `linux/amd64` cross-bauen (`docker buildx`); Skript macht das bereits.
+- **`pulumi up base` schlägt mit `InvalidParameterException: [t4g.medium] is not a valid instance type for requested amiType ...` fehl:** Der `amiType` muss zur Architektur des Instance-Typs passen. ARM (`t4g.*`) → `AL2023_ARM_64_STANDARD`. Aktuell hardcoded; bei Architektur-Wechsel beide Werte parallel ändern.
+
+- **AWS-LBC-Helm-Release hängt in Timeout (`failed to become available within allocated timeout`)**: Tritt auf, wenn beim ersten Apply keine Worker-Nodes verfügbar waren (z. B. wegen NodeGroup-Fehler). Nach NodeGroup-Fix:
+  ```bash
+  # Helm-Release manuell aufräumen, falls Pulumi nicht von selbst recovered
+  pulumi -C infra/base -s dev stack output kubeconfig --show-secrets > /tmp/kc.yaml
+  KUBECONFIG=/tmp/kc.yaml helm list -n kube-system
+  KUBECONFIG=/tmp/kc.yaml helm uninstall <release-name> -n kube-system
+  # Dann nochmal:
+  pulumi -C infra/base -s dev up --yes
+  ```
 
 ### Tear-down
 

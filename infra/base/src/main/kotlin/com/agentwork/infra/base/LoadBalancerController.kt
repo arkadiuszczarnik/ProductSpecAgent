@@ -77,6 +77,8 @@ object LoadBalancerController {
                         "annotations" to mapOf("eks.amazonaws.com/role-arn" to role.arn())
                     )
                 ))
+                .cleanupOnFail(true)
+                .timeout(600)  // 10 min statt Helm-Default 5 min — EKS braucht initial länger
                 .build(),
             CustomResourceOptions.builder().provider(namespace.provider).build()
         )
