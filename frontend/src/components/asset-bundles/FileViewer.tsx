@@ -8,11 +8,7 @@ export function FileViewer() {
   const [html, setHtml] = useState<string>("");
 
   useEffect(() => {
-    if (!loadedFile) {
-      setHtml("");
-      return;
-    }
-    if (loadedFile.text === undefined) return;
+    if (!loadedFile || loadedFile.text === undefined) return;
 
     let cancelled = false;
     renderText(loadedFile.text, loadedFile.contentType).then((rendered) => {
