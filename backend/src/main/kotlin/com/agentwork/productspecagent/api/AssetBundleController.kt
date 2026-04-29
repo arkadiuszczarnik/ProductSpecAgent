@@ -3,6 +3,7 @@ package com.agentwork.productspecagent.api
 import com.agentwork.productspecagent.domain.AssetBundleFile
 import com.agentwork.productspecagent.domain.AssetBundleManifest
 import com.agentwork.productspecagent.domain.FlowStepType
+import com.agentwork.productspecagent.domain.assetBundleId
 import com.agentwork.productspecagent.service.AssetBundleNotFoundException
 import com.agentwork.productspecagent.storage.AssetBundleStorage
 import org.springframework.web.bind.annotation.GetMapping
@@ -53,7 +54,7 @@ class AssetBundleController(private val storage: AssetBundleStorage) {
         @PathVariable value: String,
     ): AssetBundleDetail {
         val bundle = storage.find(step, field, value)
-            ?: throw AssetBundleNotFoundException("${step.name.lowercase()}.$field.$value")
+            ?: throw AssetBundleNotFoundException(assetBundleId(step, field, value))
         return AssetBundleDetail(manifest = bundle.manifest, files = bundle.files)
     }
 }
