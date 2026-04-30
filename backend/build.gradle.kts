@@ -24,6 +24,7 @@ dependencies {
     // Spring Boot
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
 
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-reflect")
