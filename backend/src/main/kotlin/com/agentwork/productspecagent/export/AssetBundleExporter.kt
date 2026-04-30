@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 data class MatchedBundle(
@@ -59,8 +60,32 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
     }
 
     fun writeToZip(zip: ZipOutputStream, prefix: String, bundles: List<MatchedBundle>) {
-        // Implemented in a later task
-        throw NotImplementedError("writeToZip not yet implemented")
+        val allowedTypes = setOf("skills", "commands", "agents")
+        for (bundle in bundles) {
+            for (file in bundle.files) {
+                val firstSlash = file.relativePath.indexOf('/')
+                if (firstSlash < 0) continue
+                val type = file.relativePath.substring(0, firstSlash)
+                val rest = file.relativePath.substring(firstSlash + 1)
+                if (type !in allowedTypes) continue
+
+                val bytes = storage.loadFileBytes(
+                    bundle.manifest.step,
+                    bundle.manifest.field,
+                    bundle.manifest.value,
+                    file.relativePath,
+                )
+                if (bytes == null) {
+                    log.warn("loadFileBytes returned null for {}/{} — skipping file", bundle.manifest.id, file.relativePath)
+                    continue
+                }
+
+                val entryName = "$prefix/.claude/$type/${bundle.manifest.id}/$rest"
+                zip.putNextEntry(ZipEntry(entryName))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+        }
     }
 
     fun renderReadmeSection(bundles: List<MatchedBundle>): String {
