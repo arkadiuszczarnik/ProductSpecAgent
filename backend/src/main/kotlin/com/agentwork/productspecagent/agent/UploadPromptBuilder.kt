@@ -42,7 +42,7 @@ open class UploadPromptBuilder(
             val truncated = truncatePerFile(bytes)
             val sectionBytes = truncated.text.toByteArray(StandardCharsets.UTF_8).size.toLong()
             if (bytesUsed + sectionBytes > props.maxBytesTotal) break
-            appendDocument(sb, doc.title, doc.mimeType, truncated.text)
+            appendDocument(sb, doc.title, doc.mimeType, escapeMarkers(truncated.text))
             bytesUsed += sectionBytes
             renderedCount++
         }
@@ -62,6 +62,11 @@ open class UploadPromptBuilder(
         if (!body.endsWith("\n")) sb.append('\n')
         sb.append("--- END UPLOADED DOCUMENT ---\n\n")
     }
+
+    private fun escapeMarkers(body: String): String =
+        body
+            .replace("--- BEGIN UPLOADED DOCUMENT", "-​-- BEGIN UPLOADED DOCUMENT")
+            .replace("--- END UPLOADED DOCUMENT", "-​-- END UPLOADED DOCUMENT")
 
     private fun decodeUtf8(bytes: ByteArray): String {
         val decoder = StandardCharsets.UTF_8.newDecoder()
