@@ -75,3 +75,8 @@ graphmesh:
   enabled: ${GRAPHMESH_ENABLED:false}
   url: ${GRAPHMESH_URL:http://localhost:8083/graphql}
   request-timeout: 30s
+
+feature-proposal:
+  uploads:
+    max-bytes-per-file: ${FEATURE_PROPOSAL_UPLOAD_MAX_BYTES_PER_FILE:102400}
+    max-bytes-total: ${FEATURE_PROPOSAL_UPLOAD_MAX_BYTES_TOTAL:512000}
