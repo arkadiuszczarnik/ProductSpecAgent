@@ -1,7 +1,7 @@
 config:
   aws:region: eu-central-1
   productspec-workloads:baseStackName: dev
-  productspec-workloads:imageTag: placeholder
+  productspec-workloads:imageTag: 0f6bb7eb
   productspec-workloads:backendReplicas: "2"
   productspec-workloads:frontendReplicas: "2"
   productspec-workloads:openaiApiKey:

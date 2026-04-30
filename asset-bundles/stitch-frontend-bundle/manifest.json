@@ -1,0 +1,11 @@
+{
+  "id": "frontend.framework.stitch",
+  "step": "FRONTEND",
+  "field": "framework",
+  "value": "Stitch",
+  "version": "1.0.0",
+  "title": "Stitch — Frontend-Setup",
+  "description": "Skills, Commands und Agents für die Arbeit mit Stitch im Frontend.",
+  "createdAt": "2026-04-30T00:00:00Z",
+  "updatedAt": "2026-04-30T00:00:00Z"
+}
