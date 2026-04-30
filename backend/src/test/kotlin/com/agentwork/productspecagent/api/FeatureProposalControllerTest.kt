@@ -3,6 +3,7 @@ package com.agentwork.productspecagent.api
 import com.agentwork.productspecagent.agent.FeatureProposalAgent
 import com.agentwork.productspecagent.agent.ProposalParseException
 import com.agentwork.productspecagent.agent.SpecContextBuilder
+import com.agentwork.productspecagent.agent.UploadPromptBuilder
 import com.agentwork.productspecagent.domain.FeatureScope
 import com.agentwork.productspecagent.domain.WizardFeature
 import com.agentwork.productspecagent.domain.WizardFeatureGraph
@@ -25,8 +26,11 @@ class FeatureProposalControllerTest {
     class TestAgentConfig {
         @Bean
         @Primary
-        fun testFeatureProposalAgent(contextBuilder: SpecContextBuilder): FeatureProposalAgent {
-            return object : FeatureProposalAgent(contextBuilder) {
+        fun testFeatureProposalAgent(
+            contextBuilder: SpecContextBuilder,
+            uploadPromptBuilder: UploadPromptBuilder,
+        ): FeatureProposalAgent {
+            return object : FeatureProposalAgent(contextBuilder, uploadPromptBuilder) {
                 override suspend fun proposeFeatures(projectId: String): WizardFeatureGraph {
                     return when (projectId) {
                         "p-parse-error" -> throw ProposalParseException("bad JSON from LLM")
