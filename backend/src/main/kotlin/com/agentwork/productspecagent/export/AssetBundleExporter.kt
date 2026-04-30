@@ -107,7 +107,22 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
     }
 
     fun renderReadmeSection(bundles: List<MatchedBundle>): String {
-        // Implemented in a later task
-        throw NotImplementedError("renderReadmeSection not yet implemented")
+        if (bundles.isEmpty()) return ""
+
+        val sorted = bundles.sortedBy { it.manifest.id }
+        return buildString {
+            appendLine()
+            appendLine("## Included Asset Bundles")
+            appendLine()
+            appendLine("The following Claude Code asset bundles were merged into `.claude/` based on your wizard choices:")
+            appendLine()
+            for (b in sorted) {
+                val m = b.manifest
+                appendLine("- **${m.title}** (`${m.id}` v${m.version}) — matched on `${m.step.name}.${m.field} = ${m.value}`")
+                if (m.description.isNotBlank()) {
+                    appendLine("  ${m.description}")
+                }
+            }
+        }
     }
 }
