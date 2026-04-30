@@ -105,7 +105,9 @@ class AssetBundleExporterMatchTest {
             )
         )
 
-        assertEquals(1, exporter.matchedBundles(wizardData).size)
+        val result = exporter.matchedBundles(wizardData)
+        assertEquals(1, result.size)
+        assertEquals("backend.replicas.3", result[0].manifest.id)
     }
 
     @Test
@@ -124,7 +126,29 @@ class AssetBundleExporterMatchTest {
             )
         )
 
-        assertEquals(1, exporter.matchedBundles(wizardData).size)
+        val result = exporter.matchedBundles(wizardData)
+        assertEquals(1, result.size)
+        assertEquals("backend.framework.spring-boot", result[0].manifest.id)
+    }
+
+    @Test
+    fun `matchedBundles skips empty JsonArray`() {
+        val (exporter, storage) = newExporter()
+        storage.writeBundle(
+            sampleManifest(field = "framework", value = "spring-boot"),
+            mapOf("skills/x.md" to "x".toByteArray())
+        )
+
+        val wizardData = WizardData(
+            projectId = "p1",
+            steps = mapOf(
+                "BACKEND" to WizardStepData(fields = mapOf(
+                    "framework" to Json.parseToJsonElement("[]")
+                ))
+            )
+        )
+
+        assertTrue(exporter.matchedBundles(wizardData).isEmpty())
     }
 
     @Test
