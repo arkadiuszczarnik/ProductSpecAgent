@@ -29,6 +29,7 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 | 20 | Spec-to-Docs Sync | [20-spec-to-docs-sync.md](20-spec-to-docs-sync.md) | Feature 1, 4, 10, 11 | M |
 | 31 | Project Storage auf S3 | [31-project-storage-s3.md](31-project-storage-s3.md) | Feature 0 | L |
 | 32 | Pulumi AWS EKS + S3 Deployment | [32-pulumi-aws-eks-deployment.md](32-pulumi-aws-eks-deployment.md) | Feature 0, 31 | L |
+| 35 | Feature-Proposal nutzt Upload-Dokumente | [35-feature-proposal-with-uploads.md](35-feature-proposal-with-uploads.md) | Feature 22, 28 | S |
 
 ## Architecture Docs
 
