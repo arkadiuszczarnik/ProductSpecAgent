@@ -138,46 +138,51 @@ export function FeaturesGraphEditor({ projectId }: Props) {
           className="flex-1"
           style={{ background: "var(--color-background)" }}
         />
-        <div className="border-t px-3 py-2 flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => {
-              const id = addFeature({
-                title: "Neues Feature",
-                description: "",
-                scopes: allowedScopes.slice(0, 1),
-                scopeFields: {},
-                position: { x: 0, y: 0 },
-              });
-              setSelectedId(id);
-              shouldAutoLayoutRef.current = true;
-            }}
-          >
-            <Plus size={14} /> Feature
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={async () => {
-              if (features.length > 0 && !confirm("Bestehenden Graph ueberschreiben?"))
-                return;
-              try {
-                const g = await proposeFeatures(projectId);
-                applyProposal(g);
-              } catch {
-                alert("Vorschlag fehlgeschlagen");
-              }
-            }}
-          >
-            <Sparkles size={14} /> Vorschlagen
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => ctxRef.current?.autoLayout()}
-          >
-            <LayoutGrid size={14} /> Auto-Layout
-          </Button>
+        <div className="border-t px-3 py-2 flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                const id = addFeature({
+                  title: "Neues Feature",
+                  description: "",
+                  scopes: allowedScopes.slice(0, 1),
+                  scopeFields: {},
+                  position: { x: 0, y: 0 },
+                });
+                setSelectedId(id);
+                shouldAutoLayoutRef.current = true;
+              }}
+            >
+              <Plus size={14} /> Feature
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                if (features.length > 0 && !confirm("Bestehenden Graph ueberschreiben?"))
+                  return;
+                try {
+                  const g = await proposeFeatures(projectId);
+                  applyProposal(g);
+                } catch {
+                  alert("Vorschlag fehlgeschlagen");
+                }
+              }}
+            >
+              <Sparkles size={14} /> Vorschlagen
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => ctxRef.current?.autoLayout()}
+            >
+              <LayoutGrid size={14} /> Auto-Layout
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Berücksichtigt Markdown- und Text-Dateien aus dem Documents-Tab.
+          </p>
         </div>
       </div>
 
