@@ -12,6 +12,7 @@ import java.io.ByteArrayInputStream
 import java.util.zip.ZipInputStream
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.test.assertEquals
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -19,6 +20,8 @@ class ExportControllerTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var uploadStorage: com.agentwork.productspecagent.storage.UploadStorage
+    @Autowired lateinit var assetBundleStorage: com.agentwork.productspecagent.storage.AssetBundleStorage
+    @Autowired lateinit var wizardService: com.agentwork.productspecagent.service.WizardService
 
     private val createdProjectIds = mutableListOf<String>()
 
@@ -34,6 +37,14 @@ class ExportControllerTest {
             }
         }
         createdProjectIds.clear()
+        // Clean up any test-uploaded bundles
+        try {
+            assetBundleStorage.delete(
+                com.agentwork.productspecagent.domain.FlowStepType.BACKEND,
+                "framework",
+                "spring-boot",
+            )
+        } catch (_: Exception) { /* tolerant */ }
     }
 
     private fun createProject(): String {
@@ -175,6 +186,68 @@ class ExportControllerTest {
         assertTrue(readme.contains("`docs/decisions/`"), "README should reference docs/decisions/")
         assertTrue(readme.contains("`docs/clarifications/`"), "README should reference docs/clarifications/")
         assertTrue(readme.contains("`docs/tasks/`"), "README should reference docs/tasks/")
+    }
+
+    @Test
+    fun `POST export merges matching asset bundle into zip and lists it in README`() {
+        val pid = createProject()
+
+        // Upload a bundle directly via storage (skip the HTTP upload path — that's covered elsewhere)
+        val manifest = com.agentwork.productspecagent.domain.AssetBundleManifest(
+            id = "backend.framework.spring-boot",
+            step = com.agentwork.productspecagent.domain.FlowStepType.BACKEND,
+            field = "framework",
+            value = "spring-boot",
+            version = "1.0.0",
+            title = "Spring Boot Skills",
+            description = "Curated skills",
+            createdAt = "2026-04-30T00:00:00Z",
+            updatedAt = "2026-04-30T00:00:00Z",
+        )
+        assetBundleStorage.writeBundle(
+            manifest,
+            mapOf("skills/api-design/SKILL.md" to "# API Design".toByteArray()),
+        )
+
+        // Configure wizard so that BACKEND.framework = spring-boot
+        wizardService.saveStepData(
+            pid, "BACKEND",
+            com.agentwork.productspecagent.domain.WizardStepData(
+                fields = mapOf("framework" to kotlinx.serialization.json.JsonPrimitive("spring-boot"))
+            )
+        )
+
+        val result = mockMvc.perform(
+            post("/api/v1/projects/$pid/export")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"includeDecisions":false,"includeClarifications":false,"includeTasks":false}""")
+        )
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+        val entries = mutableMapOf<String, ByteArray>()
+        ZipInputStream(ByteArrayInputStream(zipBytes)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                entries[entry.name] = zis.readBytes()
+                entry = zis.nextEntry
+            }
+        }
+
+        // Bundle file under namespaced .claude path
+        val skillKey = entries.keys.firstOrNull {
+            it.endsWith(".claude/skills/backend.framework.spring-boot/api-design/SKILL.md")
+        }
+        assertNotNull(skillKey, "expected bundle file under .claude/skills/backend.framework.spring-boot/, got: ${entries.keys}")
+        assertEquals("# API Design", entries[skillKey]?.toString(Charsets.UTF_8))
+
+        // README mentions the bundle
+        val readmeKey = entries.keys.firstOrNull { it.endsWith("/README.md") }
+        assertNotNull(readmeKey)
+        val readme = entries[readmeKey]!!.toString(Charsets.UTF_8)
+        assertTrue(readme.contains("## Included Asset Bundles"), "expected bundle section in README; got:\n$readme")
+        assertTrue(readme.contains("Spring Boot Skills"), "expected bundle title in README; got:\n$readme")
     }
 
 }
