@@ -36,6 +36,10 @@ ls backend/src/test/kotlin/com/agentwork/productspecagent/export/AssetBundleExpo
 ls docs/superpowers/specs/2026-04-30-asset-bundle-*
 ls docs/superpowers/plans/2026-04-30-asset-bundle-*
 ls docs/features/26-asset-bundle-export.md
+
+# Feature-Docs für A und B (nachträglich erstellt)
+ls docs/features/33-asset-bundle-storage-foundation*.md
+ls docs/features/34-asset-bundle-admin-ui*.md
 ```
 
 ## Was offen ist
