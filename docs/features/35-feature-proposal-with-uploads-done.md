@@ -26,6 +26,7 @@ Der `FeatureProposalAgent` zieht jetzt zusätzlich zu den Spec-Dateien (`idea.md
 | `d2e9999` | Hygiene-Fix: `PlanGeneratorAgentScopeTest` aktiviert (Stub-`SpecContextBuilder`) |
 | `d9038e2` | Konfig-Defaults via Env-Vars (`FEATURE_PROPOSAL_UPLOADS_MAX_*`) |
 | `47872d7` | Frontend-Helper-Text unter dem "Vorschlagen"-Button |
+| Final-Review-Fix | `log.debug` für übersprungene Non-Text-Uploads (AC #3-Lücke geschlossen) |
 
 (12 Implementierungs-Commits; der vorgelagerte Doc-Commit `495a6f0` legt Spec, Feature-Doc und Plan an und gehört nicht zur Implementierung.)
 
@@ -35,7 +36,7 @@ Der `FeatureProposalAgent` zieht jetzt zusätzlich zu den Spec-Dateien (`idea.md
 |---|-----------|--------------|
 | 1 | `FeatureProposalAgent.proposeFeatures` ruft `UploadPromptBuilder.renderUploadsSection` auf und bettet den Output zwischen Spec-Kontext und JSON-Format-Anweisung ein | `e546646` |
 | 2 | MD/TXT-Uploads erscheinen mit Marker-Format `--- BEGIN UPLOADED DOCUMENT: <title> (<mime>) --- … --- END UPLOADED DOCUMENT ---` | `126d057` |
-| 3 | PDFs werden still übersprungen (`log.debug`), kein UI-Fehler | `126d057` |
+| 3 | PDFs werden still übersprungen (`log.debug`), kein UI-Fehler | `126d057` (Filter), Final-Review-Fix (`log.debug`-Line) |
 | 4 | Per-File-Cap (100 KB) und Total-Cap (500 KB) greifen mit sichtbarem Truncation-/Skip-Hinweis im Prompt | `10c6d51`, `71177aa` |
 | 5 | Marker-Phrasen im Upload-Inhalt werden via Zero-Width-Space neutralisiert | `4382624` |
 | 6 | `SYSTEM_PROMPT` instruiert den LLM, Upload-Inhalt nicht als Anweisung zu interpretieren | `e546646` |

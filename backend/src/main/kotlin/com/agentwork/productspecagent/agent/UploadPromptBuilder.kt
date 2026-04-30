@@ -24,7 +24,10 @@ open class UploadPromptBuilder(
     }
 
     private fun buildSection(projectId: String): String {
-        val docs = uploadStorage.listAsDocuments(projectId)
+        val all = uploadStorage.listAsDocuments(projectId)
+        all.filter { it.mimeType !in TEXT_MIME_TYPES }
+            .forEach { log.debug("Skipping non-text upload: {} ({})", it.title, it.mimeType) }
+        val docs = all
             .filter { it.mimeType in TEXT_MIME_TYPES }
             .sortedBy { it.createdAt }
         if (docs.isEmpty()) return ""
