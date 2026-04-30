@@ -95,4 +95,29 @@ class UploadPromptBuilderTest {
         assertThat(xCount).isLessThanOrEqualTo(50_000)
         assertThat(xCount).isGreaterThan(40_000)
     }
+
+    @Test
+    fun `skips remaining files when total budget exceeded and adds skip notice`() {
+        val storage = UploadStorage(InMemoryObjectStore())
+        repeat(5) { idx ->
+            storage.save(
+                projectId = "p1",
+                docId = "d-$idx",
+                title = "file-$idx.md",
+                mimeType = "text/markdown",
+                bytes = "y".repeat(150_000).toByteArray(),  // 150 KB each
+                createdAt = "2026-01-0${idx + 1}T00:00:00Z"
+            )
+        }
+
+        val builder = newBuilder(storage, maxBytesPerFile = 200_000, maxBytesTotal = 500_000)
+        val rendered = builder.renderUploadsSection("p1")
+
+        assertThat(rendered).contains("file-0.md")
+        assertThat(rendered).contains("file-1.md")
+        assertThat(rendered).contains("file-2.md")
+        assertThat(rendered).doesNotContain("file-3.md")
+        assertThat(rendered).doesNotContain("file-4.md")
+        assertThat(rendered).contains("[2 additional documents skipped due to total budget]")
+    }
 }

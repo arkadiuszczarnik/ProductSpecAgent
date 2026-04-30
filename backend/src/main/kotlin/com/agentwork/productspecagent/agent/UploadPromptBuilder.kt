@@ -30,6 +30,8 @@ open class UploadPromptBuilder(
         if (docs.isEmpty()) return ""
 
         val sb = StringBuilder()
+        var bytesUsed = 0L
+        var renderedCount = 0
         for (doc in docs) {
             val bytes = try {
                 uploadStorage.readById(projectId, doc.id)
@@ -38,7 +40,18 @@ open class UploadPromptBuilder(
                 continue
             }
             val truncated = truncatePerFile(bytes)
+            val sectionBytes = truncated.text.toByteArray(StandardCharsets.UTF_8).size.toLong()
+            if (bytesUsed + sectionBytes > props.maxBytesTotal) break
             appendDocument(sb, doc.title, doc.mimeType, truncated.text)
+            bytesUsed += sectionBytes
+            renderedCount++
+        }
+
+        val skipped = docs.size - renderedCount
+        if (skipped > 0) {
+            sb.append("[")
+            sb.append(skipped)
+            sb.append(" additional documents skipped due to total budget]\n")
         }
         return sb.toString().trimEnd()
     }
