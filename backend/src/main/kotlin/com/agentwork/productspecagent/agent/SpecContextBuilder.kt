@@ -17,7 +17,7 @@ open class SpecContextBuilder(
     private val projectService: ProjectService,
     private val wizardService: WizardService? = null
 ) {
-    fun buildContext(projectId: String): String {
+    open fun buildContext(projectId: String): String {
         val projectResponse = projectService.getProject(projectId)
         val project = projectResponse.project
         val flowState = projectResponse.flowState

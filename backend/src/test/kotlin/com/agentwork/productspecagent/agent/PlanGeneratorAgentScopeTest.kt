@@ -26,7 +26,10 @@ class PlanGeneratorAgentScopeTest {
     private fun buildSpecContextBuilder(): SpecContextBuilder {
         val storage = ProjectStorage(InMemoryObjectStore())
         val projectService = ProjectService(storage)
-        return SpecContextBuilder(projectService)
+        return object : SpecContextBuilder(projectService) {
+            override fun buildContext(projectId: String): String =
+                "Idea: Test project\nProblem: Test problem"
+        }
     }
 
     private fun agent(response: String): CapturingAgent {
@@ -35,7 +38,7 @@ class PlanGeneratorAgentScopeTest {
     }
 
     @Test
-    fun `frontend-only feature prompt contains UI hint`() = runBlocking {
+    fun `frontend-only feature prompt contains UI hint`(): Unit = runBlocking {
         val a = agent("""{"epicEstimate":"M","stories":[]}""")
         a.generatePlanForFeature(
             projectId = "p1",
@@ -52,7 +55,7 @@ class PlanGeneratorAgentScopeTest {
     }
 
     @Test
-    fun `epic uses epicEstimate from LLM response`() = runBlocking {
+    fun `epic uses epicEstimate from LLM response`(): Unit = runBlocking {
         val a = agent("""{"epicEstimate":"L","stories":[]}""")
         val tasks = a.generatePlanForFeature(
             projectId = "p1",
@@ -68,7 +71,7 @@ class PlanGeneratorAgentScopeTest {
     }
 
     @Test
-    fun `invalid json falls back to estimate M and no stories`() = runBlocking {
+    fun `invalid json falls back to estimate M and no stories`(): Unit = runBlocking {
         val a = agent("not json")
         val tasks = a.generatePlanForFeature(
             projectId = "p1",
@@ -85,7 +88,7 @@ class PlanGeneratorAgentScopeTest {
     }
 
     @Test
-    fun `library feature (empty scopes) gets library hint`() = runBlocking {
+    fun `library feature (empty scopes) gets library hint`(): Unit = runBlocking {
         val a = agent("""{"epicEstimate":"S","stories":[]}""")
         a.generatePlanForFeature(
             projectId = "p1",
@@ -100,7 +103,7 @@ class PlanGeneratorAgentScopeTest {
     }
 
     @Test
-    fun `story and task with invalid estimate fall back to M`() = runBlocking {
+    fun `story and task with invalid estimate fall back to M`(): Unit = runBlocking {
         val a = agent("""
             {"epicEstimate":"M","stories":[
                 {"title":"s1","description":"","estimate":"LARGE",
