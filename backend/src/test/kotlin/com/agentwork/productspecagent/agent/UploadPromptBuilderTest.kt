@@ -78,4 +78,21 @@ class UploadPromptBuilderTest {
         assertThat(rendered).contains("notes.md (text/markdown)")
         assertThat(rendered).doesNotContain("drawing.pdf")
     }
+
+    @Test
+    fun `truncates a single file that exceeds the per-file budget`() {
+        val largeContent = "x".repeat(120_000)  // 120 KB, ASCII = 120_000 bytes
+        val storage = UploadStorage(InMemoryObjectStore())
+        storage.save("p1", "d1", "big.md", "text/markdown", largeContent.toByteArray())
+
+        val builder = newBuilder(storage, maxBytesPerFile = 50_000, maxBytesTotal = 1_000_000)
+        val rendered = builder.renderUploadsSection("p1")
+
+        val body = rendered.substringAfter("--- BEGIN UPLOADED DOCUMENT: big.md (text/markdown) ---\n")
+            .substringBefore("\n--- END UPLOADED DOCUMENT ---")
+        assertThat(body).contains("[…truncated, original was 117 KB]")
+        val xCount = body.count { it == 'x' }
+        assertThat(xCount).isLessThanOrEqualTo(50_000)
+        assertThat(xCount).isGreaterThan(40_000)
+    }
 }

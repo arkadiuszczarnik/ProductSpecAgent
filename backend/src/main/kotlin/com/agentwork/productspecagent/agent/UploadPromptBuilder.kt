@@ -37,8 +37,8 @@ open class UploadPromptBuilder(
                 log.warn("Failed to read upload docId=${doc.id} for project=$projectId: ${e.message}")
                 continue
             }
-            val text = decodeUtf8(bytes)
-            appendDocument(sb, doc.title, doc.mimeType, text)
+            val truncated = truncatePerFile(bytes)
+            appendDocument(sb, doc.title, doc.mimeType, truncated.text)
         }
         return sb.toString().trimEnd()
     }
@@ -56,6 +56,20 @@ open class UploadPromptBuilder(
             .onUnmappableCharacter(CodingErrorAction.REPLACE)
         return decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString()
     }
+
+    private fun truncatePerFile(bytes: ByteArray): TruncationResult {
+        val limit = props.maxBytesPerFile.toInt()
+        return if (bytes.size <= limit) {
+            TruncationResult(decodeUtf8(bytes), originalBytes = bytes.size, truncated = false)
+        } else {
+            val slice = bytes.copyOfRange(0, limit)
+            val truncatedText = decodeUtf8(slice) +
+                "\n[…truncated, original was ${bytes.size / 1024} KB]"
+            TruncationResult(truncatedText, originalBytes = bytes.size, truncated = true)
+        }
+    }
+
+    private data class TruncationResult(val text: String, val originalBytes: Int, val truncated: Boolean)
 
     companion object {
         private val TEXT_MIME_TYPES = setOf("text/markdown", "text/plain")
