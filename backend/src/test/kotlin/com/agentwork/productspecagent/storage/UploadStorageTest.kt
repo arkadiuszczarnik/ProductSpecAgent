@@ -2,6 +2,8 @@ package com.agentwork.productspecagent.storage
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import kotlin.test.assertContentEquals
+import kotlin.test.assertFailsWith
 
 class UploadStorageTest : S3TestSupport() {
 
@@ -195,5 +197,32 @@ class UploadStorageTest : S3TestSupport() {
         assertEquals("text/markdown", docs["d1"]!!.mimeType)
         assertEquals("text/plain", docs["d2"]!!.mimeType)
         assertEquals("application/octet-stream", docs["d3"]!!.mimeType)
+    }
+
+    @Test
+    fun `readById returns bytes for stored document`() {
+        val storage = UploadStorage(InMemoryObjectStore())
+        val bytes = "hello".toByteArray()
+        storage.save(
+            projectId = "p1",
+            docId = "doc-1",
+            title = "spec.md",
+            mimeType = "text/markdown",
+            bytes = bytes
+        )
+
+        val read = storage.readById("p1", "doc-1")
+
+        assertContentEquals(bytes, read)
+    }
+
+    @Test
+    fun `readById throws when docId is unknown`() {
+        val storage = UploadStorage(InMemoryObjectStore())
+        storage.save("p1", "doc-1", "a.md", "text/markdown", "x".toByteArray())
+
+        assertFailsWith<NoSuchElementException> {
+            storage.readById("p1", "unknown-id")
+        }
     }
 }

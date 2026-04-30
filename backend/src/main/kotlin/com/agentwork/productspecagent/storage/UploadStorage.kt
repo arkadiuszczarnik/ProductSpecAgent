@@ -62,6 +62,12 @@ open class UploadStorage(private val objectStore: ObjectStore) {
         objectStore.get(fileKey(projectId, filename))
             ?: throw NoSuchElementException("Upload not found: $filename")
 
+    open fun readById(projectId: String, docId: String): ByteArray {
+        val entry = readEntries(projectId).firstOrNull { it.id == docId }
+            ?: throw NoSuchElementException("Upload not found for docId: $docId")
+        return read(projectId, entry.filename)
+    }
+
     open fun list(projectId: String): List<String> =
         objectStore.listKeys(uploadsPrefix(projectId))
             .map { it.removePrefix(uploadsPrefix(projectId)) }
