@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.nio.file.Paths
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -69,6 +70,12 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
                 val rest = file.relativePath.substring(firstSlash + 1)
                 if (type !in allowedTypes) continue
 
+                // Defense in depth: reject suspicious paths even though ZipExtractor (B) already guards uploads.
+                if (isSuspiciousPath(file.relativePath)) {
+                    log.warn("Suspicious path {}/{} — skipping file", bundle.manifest.id, file.relativePath)
+                    continue
+                }
+
                 val bytes = storage.loadFileBytes(
                     bundle.manifest.step,
                     bundle.manifest.field,
@@ -85,6 +92,17 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
                 zip.write(bytes)
                 zip.closeEntry()
             }
+        }
+    }
+
+    private fun isSuspiciousPath(relativePath: String): Boolean {
+        if (relativePath.startsWith("/")) return true
+        if ("..".let { it in relativePath.split('/') }) return true
+        return try {
+            val normalized = Paths.get(relativePath).normalize().toString().replace('\\', '/')
+            normalized != relativePath
+        } catch (e: Exception) {
+            true
         }
     }
 
