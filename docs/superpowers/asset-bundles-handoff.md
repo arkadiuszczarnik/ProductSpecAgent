@@ -2,24 +2,25 @@
 
 **Letzter Sync:** 2026-04-30
 
-Asset-Bundles ist ein Feature in drei Sub-Features. Dieses Dokument speichert den aktuellen Fortschritt und die exakten Anweisungen, um in einer neuen Claude-Session weiterzumachen.
+Asset-Bundles ist ein Feature in drei Sub-Features. Alle drei sind jetzt auf `main`. Dieses Dokument bleibt als Resume-Anleitung für offene Restarbeiten (Browser-Smoke).
 
 ## Übersicht
 
 | Sub-Feature | Inhalt | Status |
 |---|---|---|
 | **A** — Storage-Foundation | Domain, `AssetBundleStorage` (read-only), REST-List/Detail, S3-Layout-Doku, ~17 Tests | ✅ Auf `main` (Commit `19a853f`) |
-| **B** — Admin-UI | ZIP-Upload, Liste, File-Vorschau, Delete; Backend-Schreib-API + Frontend-Page `/asset-bundles`; ~44 neue Tests | ✅ Auf `main` (rebase+FF am 2026-04-30, Tipp `797d70e`); Browser-Smoke ausstehend |
-| **C** — Export-Integration | Match Wizard-Wahl → Bundle-Triple, Merge in Project-Export-ZIP unter `.claude/{skills,commands,agents}/` | ⏸ Spec auf `main` (`d7b1a12`), Implementation-Plan und Code stehen aus |
+| **B** — Admin-UI | ZIP-Upload, Liste, File-Vorschau, Delete; Backend-Schreib-API + Frontend-Page `/asset-bundles`; ~44 neue Tests | ✅ Auf `main` (Tipp `797d70e`); Browser-Smoke ausstehend |
+| **C** — Export-Integration | Match Wizard-Wahl → Bundle-Triple, Merge in Project-Export-ZIP unter `.claude/{skills,commands,agents}/<bundle-id>/...` | ✅ Auf `main` (Tipp `731e548`, FF-Merge am 2026-04-30, 10 Commits, ~16 Tests); Browser-Smoke ausstehend |
 
 ## Stand der Branches
 
-**`main`:**
-- Enthält Sub-Feature A (`19a853f`) und Sub-Feature B (`748e933` … `797d70e`).
-- Lokal weit vor `origin/main` (kein Push laut Handoff-Konvention).
-- Branch `feat/asset-bundle-admin-ui` ist nach dem Merge gelöscht.
+**`main`:** Enthält A, B und C. Lokal weit vor `origin/main` (kein Push laut Handoff-Konvention).
 
-**Working-Tree (durchlaufend):** `M infra/workloads/Pulumi.dev.yaml` ist eigene Infra-Arbeit, unabhängig von Asset-Bundles. `asset-bundles/` (untracked) enthält manuelle Test-ZIPs für den Smoke.
+**Gelöschte Feature-Branches** (nach jeweiligem Merge):
+- `feat/asset-bundle-admin-ui` — B
+- `feat/asset-bundle-export` — C
+
+**Working-Tree (durchlaufend, unabhängig):** `M infra/workloads/Pulumi.dev.yaml` und `asset-bundles/` (untracked, manuelle Test-ZIPs).
 
 ## Verifikation des Ist-Zustands
 
@@ -27,13 +28,14 @@ Asset-Bundles ist ein Feature in drei Sub-Features. Dieses Dokument speichert de
 cd backend && ./gradlew test
 cd ../frontend && npm run build
 
-# B-Code auf main prüfen
-ls backend/src/main/kotlin/com/agentwork/productspecagent/service/AssetBundleZipExtractor.kt
-ls frontend/src/app/asset-bundles/page.tsx
+# C-Code auf main prüfen
+ls backend/src/main/kotlin/com/agentwork/productspecagent/export/AssetBundleExporter.kt
+ls backend/src/test/kotlin/com/agentwork/productspecagent/export/AssetBundleExporter*Test.kt
 
-# Spec + Plan
-ls docs/superpowers/specs/2026-04-29-asset-bundle-*
-ls docs/superpowers/plans/2026-04-29-asset-bundle-*
+# Spec + Plan + Feature-Doc von C
+ls docs/superpowers/specs/2026-04-30-asset-bundle-*
+ls docs/superpowers/plans/2026-04-30-asset-bundle-*
+ls docs/features/26-asset-bundle-export.md
 ```
 
 ## Was offen ist
@@ -41,28 +43,30 @@ ls docs/superpowers/plans/2026-04-29-asset-bundle-*
 ### Sub-Feature B — Browser-Smoke (Post-Merge)
 - **Manueller Browser-Smoke:** Akzeptanzkriterien #11-15 aus
   `docs/superpowers/plans/2026-04-29-asset-bundle-admin-ui.md` Task 14 Step 6:
-  Upload → Liste → Detail → File-Vorschau (md/code/image) → Delete-Confirmation → Filter
-- `./start.sh` (oder `./gradlew bootRun --quiet` + `cd frontend && npm run dev`)
+  Upload → Liste → Detail → File-Vorschau (md/code/image) → Delete-Confirmation → Filter.
+- Start: `./start.sh` (oder `./gradlew bootRun --quiet` + `cd frontend && npm run dev`).
 - Test-ZIP: `cd my-bundle/ && zip -r ../my-bundle.zip . -x ".*"` (Layout: `manifest.json` + `skills/`/`commands/`/`agents/` direkt im Root). Im Repo-Root liegt `asset-bundles/stitch-frontend-bundle.zip` als Beispiel.
 
-### Sub-Feature C
-- Spec auf `main`: `docs/superpowers/specs/2026-04-30-asset-bundle-export-design.md` (Commit `d7b1a12`).
-- Feature-Doc: `docs/features/26-asset-bundle-export.md`.
-- Implementation-Plan und Code stehen aus — als Nächstes via `superpowers:writing-plans` Skill.
-- Kern-Entscheidungen aus dem Brainstorming:
-  - Trigger: silent always-merge (kein Opt-out, kein UI-Flag); Transparenz via README-Sektion.
-  - Path-Mapping: namespaced unter `<prefix>/.claude/{type}/<bundle-id>/...`, daher Konflikte konstruktiv ausgeschlossen.
-  - Match: Bundle-driven (`storage.listAll()` → für jedes Manifest Wizard-Daten checken), slugify-tolerant.
+### Sub-Feature C — Browser-Smoke (Post-Merge)
+- **End-to-End-Manualcheck:**
+  1. Bundle hochladen via `/asset-bundles`-UI für Triple `(BACKEND, framework, spring-boot)` (oder analog).
+  2. Projekt erstellen, Wizard-BACKEND-Step ausfüllen mit `framework=spring-boot`.
+  3. Project-Export aus Project-Detail-View triggern.
+  4. ZIP entpacken, prüfen:
+     - `<prefix>/.claude/skills/backend.framework.spring-boot/...` Dateien vorhanden.
+     - `<prefix>/README.md` enthält Sektion `## Included Asset Bundles` mit Bundle-Title.
+
+### Optionale Folgearbeiten (Nicht im Scope von A/B/C)
+- `INFO`-Log-Zeile in `writeToZip` falls ein Bundle 0 Files unter den drei Top-Dirs hat (Spec-Edge-Case-Tabelle nennt das, aber Implementation läuft schweigend leer durch — funktional korrekt, semantisch fehlt das Log).
+- Doku-Refresh: `docs/features/10-project-scaffold-export.md` ggf. um Hinweis auf `.claude/`-Auslieferung erweitern.
 
 ## Resume-Prompt für die neue Session
 
-> Ich möchte das Asset-Bundles-Feature weitermachen. Lies bitte zuerst
-> `docs/superpowers/asset-bundles-handoff.md` und sag mir den Stand
-> sowie die nächsten möglichen Schritte. Sub-Features A und B sind auf
-> `main`, C ist als Spec auf `main`, Plan und Code offen.
+> Asset-Bundles-Feature ist auf `main` (A, B, C). Lies
+> `docs/superpowers/asset-bundles-handoff.md` und sag mir, was noch
+> offen ist. Browser-Smoke von B und C steht aus.
 
 Mögliche nächste Wünsche:
-1. **„Browser-Smoke für Sub-Feature B durchführen"** — startet Backend + Frontend, gibt dir Klick-Anleitung.
-2. **„Implementation-Plan für Sub-Feature C schreiben"** — `superpowers:writing-plans` über das Spec.
-3. **„Sub-Feature C implementieren"** — falls Plan schon existiert, direkt in die Umsetzung.
-4. **„Code-Review von Sub-Feature B"** — falls du die Implementierung nochmal durchgehen willst.
+1. **„Browser-Smoke für B/C durchführen"** — Backend + Frontend hochfahren, Klick-Anleitung folgen.
+2. **„INFO-Log für 0-File-Bundle nachziehen"** — kleine Spec-Compliance-Lücke aus dem Final-Review.
+3. **„Doku in `10-project-scaffold-export.md` aktualisieren"** — Hinweis auf `.claude/`-Auslieferung.
