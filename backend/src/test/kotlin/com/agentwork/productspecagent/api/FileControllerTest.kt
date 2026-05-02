@@ -75,16 +75,34 @@ class FileControllerTest {
     }
 
     @Test
-    fun `GET files includes files inside subdirectories`() {
+    fun `GET files includes files inside subdirectories with full paths`() {
         val pid = createProject()
         // put a known file under docs/uploads/
         objectStore.put("projects/$pid/docs/uploads/notes.md", "# notes".toByteArray())
 
         mockMvc.perform(get("/api/v1/projects/$pid/files"))
             .andExpect(status().isOk())
-            // docs.children must contain an uploads folder, which must contain notes.md
+            // notes.md must be reachable via docs > uploads
             .andExpect(jsonPath("$[?(@.name == 'docs')].children[?(@.name == 'uploads')].children[?(@.name == 'notes.md')]").exists())
             .andExpect(jsonPath("$[?(@.name == 'docs')].children[?(@.name == 'uploads')].children[?(@.name == 'notes.md')].isDirectory").value(false))
+            // and its path must be the FULL path from project root, otherwise the
+            // frontend's GET /files/<path> would 404
+            .andExpect(jsonPath("$[?(@.name == 'docs')].children[?(@.name == 'uploads')].children[?(@.name == 'notes.md')].path").value("docs/uploads/notes.md"))
+            .andExpect(jsonPath("$[?(@.name == 'docs')].children[?(@.name == 'uploads')].path").value("docs/uploads"))
+    }
+
+    @Test
+    fun `GET file content for deeply nested file via the path returned by listing`() {
+        val pid = createProject()
+        objectStore.put("projects/$pid/docs/features/03-user-interface.md", "# UX".toByteArray())
+
+        // The path returned by GET /files for this file must be the path that
+        // GET /files/<path> can resolve. Round-trip test.
+        mockMvc.perform(get("/api/v1/projects/$pid/files/docs/features/03-user-interface.md"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.path").value("docs/features/03-user-interface.md"))
+            .andExpect(jsonPath("$.language").value("markdown"))
+            .andExpect(jsonPath("$.content").value("# UX"))
     }
 
     @Test

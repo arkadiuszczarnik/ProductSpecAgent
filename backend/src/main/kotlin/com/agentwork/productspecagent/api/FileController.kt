@@ -80,20 +80,20 @@ class FileController(private val objectStore: ObjectStore) {
                 .map { it.removePrefix("$dir/") }
             entries.add(FileEntry(
                 name = dir,
-                path = dir,
+                // Full path from project root, not just the segment name. The previous
+                // post-processing `.map { copy(path = "$dir/${child.path}") }` only fixed
+                // direct children — grandchildren kept the wrong relative path, which the
+                // frontend then sent back to GET /files/** and got a 404.
+                path = "$pathPrefix$dir",
                 isDirectory = true,
-                children = buildTree(projectId, subPaths, "$pathPrefix$dir/").map { child ->
-                    child.copy(path = "$dir/${child.path}")
-                }
+                children = buildTree(projectId, subPaths, "$pathPrefix$dir/"),
             ))
         }
         for (file in topLevelFiles) {
-            // pathPrefix carries the current subtree position so we look up the actual key,
-            // not just `<prefix><file>` which would be wrong for any non-root file.
             val bytes = objectStore.get("$storePrefix$pathPrefix$file") ?: continue
             entries.add(FileEntry(
                 name = file,
-                path = file,
+                path = "$pathPrefix$file",
                 isDirectory = false,
                 size = bytes.size.toLong()
             ))
