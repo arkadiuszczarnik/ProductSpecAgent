@@ -125,7 +125,7 @@ export function FeaturesGraphEditor({ projectId }: Props) {
   if (!viewportWide) return <FeaturesFallbackList projectId={projectId} />;
 
   return (
-    <div className="flex h-[600px] min-h-[400px] rounded-lg border bg-background overflow-hidden">
+    <div className="flex h-full min-h-[400px] rounded-lg border bg-background overflow-hidden">
       <div className="flex-1 min-w-0 flex flex-col">
         <div
           ref={ref}
