@@ -53,8 +53,12 @@ class FileController(private val objectStore: ObjectStore) {
         )
     }
 
-    private fun buildTree(projectId: String, relativePaths: List<String>): List<FileEntry> {
-        val prefix = projectPrefix(projectId)
+    private fun buildTree(
+        projectId: String,
+        relativePaths: List<String>,
+        pathPrefix: String = "",
+    ): List<FileEntry> {
+        val storePrefix = projectPrefix(projectId)
         val entries = mutableListOf<FileEntry>()
         val dirs = mutableSetOf<String>()
 
@@ -78,13 +82,15 @@ class FileController(private val objectStore: ObjectStore) {
                 name = dir,
                 path = dir,
                 isDirectory = true,
-                children = buildTree(projectId, subPaths).map { child ->
+                children = buildTree(projectId, subPaths, "$pathPrefix$dir/").map { child ->
                     child.copy(path = "$dir/${child.path}")
                 }
             ))
         }
         for (file in topLevelFiles) {
-            val bytes = objectStore.get("$prefix$file") ?: continue
+            // pathPrefix carries the current subtree position so we look up the actual key,
+            // not just `<prefix><file>` which would be wrong for any non-root file.
+            val bytes = objectStore.get("$storePrefix$pathPrefix$file") ?: continue
             entries.add(FileEntry(
                 name = file,
                 path = file,

@@ -75,6 +75,19 @@ class FileControllerTest {
     }
 
     @Test
+    fun `GET files includes files inside subdirectories`() {
+        val pid = createProject()
+        // put a known file under docs/uploads/
+        objectStore.put("projects/$pid/docs/uploads/notes.md", "# notes".toByteArray())
+
+        mockMvc.perform(get("/api/v1/projects/$pid/files"))
+            .andExpect(status().isOk())
+            // docs.children must contain an uploads folder, which must contain notes.md
+            .andExpect(jsonPath("$[?(@.name == 'docs')].children[?(@.name == 'uploads')].children[?(@.name == 'notes.md')]").exists())
+            .andExpect(jsonPath("$[?(@.name == 'docs')].children[?(@.name == 'uploads')].children[?(@.name == 'notes.md')].isDirectory").value(false))
+    }
+
+    @Test
     fun `GET non-existent file returns 404`() {
         val pid = createProject()
         mockMvc.perform(get("/api/v1/projects/$pid/files/nonexistent.txt"))
