@@ -4,7 +4,6 @@ import { useShallow } from "zustand/react/shallow";
 import { useRete } from "rete-react-plugin";
 import { Plus, Sparkles, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useResizable } from "@/lib/hooks/use-resizable";
 import {
   useWizardStore,
   selectFeatures,
@@ -14,7 +13,7 @@ import {
 import { proposeFeatures } from "@/lib/api";
 import { getAllowedScopes } from "@/lib/category-step-config";
 import { createFeaturesEditor, type FeaturesEditorContext } from "./editor";
-import { FeatureSidePanel } from "./FeatureSidePanel";
+import { FeatureEditDialog } from "./FeatureEditDialog";
 import { FeaturesFallbackList } from "./FeaturesFallbackList";
 
 interface Props {
@@ -36,6 +35,7 @@ export function FeaturesGraphEditor({ projectId }: Props) {
   const addEdge = useWizardStore((s) => s.addEdge);
   const removeEdge = useWizardStore((s) => s.removeEdge);
   const moveFeature = useWizardStore((s) => s.moveFeature);
+  const updateFeature = useWizardStore((s) => s.updateFeature);
   const applyProposal = useWizardStore((s) => s.applyProposal);
 
   const allowedScopes = useMemo(() => getAllowedScopes(category), [category]);
@@ -58,12 +58,6 @@ export function FeaturesGraphEditor({ projectId }: Props) {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-
-  const { width: panelWidth, handleProps } = useResizable({
-    initialWidth: 360,
-    minWidth: 280,
-    maxWidth: 560,
-  });
 
   // Flag read by the post-apply effect below. We cannot call `autoLayout()`
   // straight from the "+ Feature" click: at that moment the Rete node hasn't
@@ -186,30 +180,21 @@ export function FeaturesGraphEditor({ projectId }: Props) {
         </div>
       </div>
 
-      <div
-        className="w-1 cursor-col-resize bg-border hover:bg-primary/20"
-        {...handleProps}
+      <FeatureEditDialog
+        feature={selected}
+        allowedScopes={allowedScopes}
+        open={selectedId !== null}
+        onClose={() => setSelectedId(null)}
+        onSave={(patch) => {
+          if (selected) updateFeature(selected.id, patch);
+        }}
+        onDelete={() => {
+          if (selected) {
+            removeFeature(selected.id);
+            setSelectedId(null);
+          }
+        }}
       />
-
-      <div
-        style={{ width: panelWidth }}
-        className="shrink-0 overflow-y-auto border-l"
-      >
-        {selected ? (
-          <FeatureSidePanel
-            feature={selected}
-            allowedScopes={allowedScopes}
-            onDelete={() => {
-              removeFeature(selected.id);
-              setSelectedId(null);
-            }}
-          />
-        ) : (
-          <p className="p-4 text-sm text-muted-foreground">
-            Waehle ein Feature, um es zu bearbeiten.
-          </p>
-        )}
-      </div>
     </div>
   );
 }

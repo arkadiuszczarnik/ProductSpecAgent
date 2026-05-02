@@ -20,7 +20,9 @@ Kein Test-Runner konfiguriert — das Frontend hat derzeit keine Unit-Tests. UI-
 - **Next.js 16** mit App Router (`src/app/`), Standalone-Output (siehe `next.config.ts`) für Docker-Deployment
 - **React 19** mit Server/Client-Komponenten-Split — `"use client"`-Direktive an alles, was State, Effects oder Browser-APIs nutzt
 - **Tailwind CSS 4** (PostCSS-Plugin, kein Config-File) — Theme in `src/app/globals.css` via `@theme`-Direktive mit oklch-Farben
+  - Drei Token-Blöcke koexistieren in `globals.css`: das ursprüngliche `@theme {…}` (Block A — heute live nur für `--font-*` und `--animate-*`, die Color-Tokens sind dort dead-code), `@theme inline {…}` (Block B — mappt shadcn-Variablen-Namen auf raw CSS-Variablen) sowie `:root {…}` und `.dark {…}` (Block C — liefert die tatsächlichen oklch-Werte). **Color-Werte ausschliesslich in Block C ändern** — Änderungen in Block A wirken nicht, weil Block B sie überschreibt.
 - **base-ui/react** (nicht shadcn) als Primitive-Bibliothek, kombiniert mit lokalen Variants via `class-variance-authority`
+- **shadcn/ui** (Style `base-nova`, seit Feature 36) als Komponenten-Quelle für neue UI — koexistiert mit base-ui auf gemeinsamer Primitive-Schicht (`base-nova` baut auf `@base-ui/react`, nicht auf Radix). shadcn-Komponenten landen in `src/components/ui/` (`dialog`, `input`, `textarea`, `label` installiert). Bestehende base-ui-Komponenten (`button`, `card`, `badge`, `progress`) bleiben unverändert. Neue Komponenten via `npx shadcn@latest add <name>` — Code-Snippets aus der offiziellen shadcn-Doku (Radix-basiert) müssen ggf. auf base-ui-Imports umgeschrieben werden.
 - **Rete.js 2** für Node-Editoren (Features-Graph, Spec-Flow)
 - **Zustand 5** für globalen State, keine Kontext-Provider
 - **lucide-react** für Icons, **shiki** für Syntax-Highlighting in der Datei-Vorschau
