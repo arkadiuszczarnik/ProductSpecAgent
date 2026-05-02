@@ -136,7 +136,7 @@ export function FeatureEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Feature bearbeiten</DialogTitle>
           <DialogDescription>{draft.title || "(ohne Titel)"}</DialogDescription>
