@@ -16,9 +16,10 @@ import {
 interface Props {
   id: string;
   onChange: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function PromptDetail({ id, onChange }: Props) {
+export function PromptDetail({ id, onChange, onDirtyChange }: Props) {
   const [detail, setDetail] = useState<PromptDetailDTO | null>(null);
   const [draft, setDraft] = useState("");
   const initialRef = useRef("");
@@ -37,6 +38,10 @@ export function PromptDetail({ id, onChange }: Props) {
   }, [id]);
 
   const isDirty = detail !== null && draft !== initialRef.current;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   async function handleSave() {
     setSaving(true);

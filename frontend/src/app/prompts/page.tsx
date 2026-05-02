@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { listPrompts, type PromptListItem } from "@/lib/api";
 import { PromptList } from "@/components/prompts/PromptList";
 import { PromptDetail } from "@/components/prompts/PromptDetail";
@@ -8,10 +8,21 @@ export default function PromptsPage() {
   const [items, setItems] = useState<PromptListItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     listPrompts().then(setItems).catch(() => setItems([]));
   }, [reloadTick]);
+
+  const handleSelect = useCallback(
+    (id: string) => {
+      if (id === selectedId) return;
+      if (dirty && !window.confirm("Änderungen verwerfen?")) return;
+      setDirty(false);
+      setSelectedId(id);
+    },
+    [selectedId, dirty],
+  );
 
   return (
     <div className="h-full flex flex-col">
@@ -25,7 +36,7 @@ export default function PromptsPage() {
         <PromptList
           items={items}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={handleSelect}
         />
         <div className="border-l overflow-y-auto">
           {selectedId ? (
@@ -33,6 +44,7 @@ export default function PromptsPage() {
               key={selectedId}
               id={selectedId}
               onChange={() => setReloadTick((t) => t + 1)}
+              onDirtyChange={setDirty}
             />
           ) : (
             <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
