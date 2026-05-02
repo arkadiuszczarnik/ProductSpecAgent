@@ -65,7 +65,8 @@ export function FeatureEditDialog({
       initialRef.current = snap;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft(snap);
-    } else if (!open) {
+    }
+    if (!open) {
       initialRef.current = null;
       setDraft(null);
     }
@@ -106,15 +107,35 @@ export function FeatureEditDialog({
     patch("scopeFields", { ...draft.scopeFields, [key]: val });
   }
 
-  // Handler für Save/Delete/Close folgen in Task 4 — vorerst No-Op, damit Form rendert.
-  const noop = () => {};
+  function handleClose() {
+    if (!draft) {
+      onClose();
+      return;
+    }
+    const initial = initialRef.current;
+    const isDirty = initial ? !equalDraft(draft, initial) : false;
+    if (isDirty && !window.confirm("Änderungen verwerfen?")) return;
+    onClose();
+  }
 
-  // Suppress "unused" until Task 4 wires them.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _used = { onSave, onDelete };
+  function handleSave() {
+    if (!draft) return;
+    onSave({
+      title: draft.title,
+      description: draft.description,
+      scopes: draft.scopes,
+      scopeFields: draft.scopeFields,
+    });
+    onClose();
+  }
+
+  function handleDelete() {
+    if (!window.confirm("Feature wirklich löschen?")) return;
+    onDelete();
+  }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Feature bearbeiten</DialogTitle>
@@ -192,19 +213,15 @@ export function FeatureEditDialog({
         </div>
 
         <DialogFooter className="flex flex-row justify-between sm:justify-between">
-          <Button variant="ghost" onClick={noop}>
+          <Button variant="ghost" onClick={handleDelete}>
             <Trash2 size={14} className="mr-1" /> Löschen
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={noop}>Abbrechen</Button>
-            <Button onClick={noop}>Speichern</Button>
+            <Button variant="outline" onClick={handleClose}>Abbrechen</Button>
+            <Button onClick={handleSave}>Speichern</Button>
           </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-// Suppress "unused" until Task 4 wires it.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _equalDraftUsed = equalDraft;
