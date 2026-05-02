@@ -5,7 +5,6 @@ import com.agentwork.productspecagent.agent.SpecContextBuilder
 import com.agentwork.productspecagent.service.*
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
@@ -27,12 +26,12 @@ class WizardChatControllerTest {
         fun testAgent(
             contextBuilder: SpecContextBuilder,
             projectService: ProjectService,
-            @Value("\${agent.system-prompt}") systemPrompt: String,
+            promptService: PromptService,
             decisionService: DecisionService,
             clarificationService: ClarificationService,
             wizardService: WizardService
         ): IdeaToSpecAgent {
-            return object : IdeaToSpecAgent(contextBuilder, projectService, systemPrompt, decisionService, clarificationService, wizardService) {
+            return object : IdeaToSpecAgent(contextBuilder, projectService, promptService, decisionService, clarificationService, wizardService) {
                 override suspend fun runAgent(systemPrompt: String, userMessage: String): String {
                     return "Great idea! Let's move on to define the problem."
                 }

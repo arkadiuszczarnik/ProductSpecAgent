@@ -4,12 +4,12 @@ import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.ClarificationService
 import com.agentwork.productspecagent.service.DecisionService
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.PromptService
 import com.agentwork.productspecagent.service.TaskService
 import com.agentwork.productspecagent.service.WizardFeatureInput
 import com.agentwork.productspecagent.service.WizardService
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.time.Instant
 
@@ -17,7 +17,7 @@ import java.time.Instant
 open class IdeaToSpecAgent(
     private val contextBuilder: SpecContextBuilder,
     private val projectService: ProjectService,
-    @Value("\${agent.system-prompt}") private val baseSystemPrompt: String,
+    private val promptService: PromptService,
     private val decisionService: DecisionService,
     private val clarificationService: ClarificationService,
     private val wizardService: WizardService,
@@ -36,6 +36,7 @@ open class IdeaToSpecAgent(
 
         val localeInstruction = buildLocaleInstruction(locale)
         val stepPrompt = buildStepPrompt(currentStep)
+        val baseSystemPrompt = promptService.get("idea-base")
         val systemPromptWithContext = "$baseSystemPrompt\n\n$stepPrompt\n\n$localeInstruction\n\n$context"
 
         val rawResponse = runAgent(systemPromptWithContext, userMessage)
@@ -131,6 +132,7 @@ open class IdeaToSpecAgent(
 
         val stepPrompt = if (currentStepType != null) buildStepPrompt(currentStepType) else ""
         val localeInstruction = buildLocaleInstruction(locale)
+        val baseSystemPrompt = promptService.get("idea-base")
         val systemPromptWithContext = "$baseSystemPrompt\n\n$stepPrompt\n\n$localeInstruction\n\n$wizardContext"
 
         val rawResponse = runAgent(systemPromptWithContext, prompt)
@@ -216,6 +218,7 @@ open class IdeaToSpecAgent(
                 appendLine(fullContext)
             }
             val localeInstruction = buildLocaleInstruction(locale)
+            val baseSystemPrompt = promptService.get("idea-base")
             val summarySystemPrompt = "$baseSystemPrompt\n\n$localeInstruction"
             val specContent = runAgent(summarySystemPrompt, summaryPrompt)
             projectService.saveSpecFile(projectId, "spec.md", specContent)
@@ -276,7 +279,7 @@ open class IdeaToSpecAgent(
                 appendLine("Provide brief, helpful feedback about the feature graph.")
                 appendLine("Be encouraging and mention any suggestions for improvement if applicable.")
                 appendLine()
-                appendLine(MARKER_REMINDER)
+                appendLine(promptService.get("idea-marker-reminder"))
             }
             "IDEA" -> buildString {
                 appendLine("The user just completed the IDEA wizard step with the following input:")
@@ -293,7 +296,7 @@ open class IdeaToSpecAgent(
                 appendLine("If the vision is too vague (e.g. just a few words), ask the user to elaborate on WHAT the product does – not WHY or for WHOM (those come later).")
                 appendLine("If the idea is clear enough, acknowledge it and confirm it as a solid starting point.")
                 appendLine()
-                appendLine(MARKER_REMINDER)
+                appendLine(promptService.get("idea-marker-reminder"))
             }
             "PROBLEM" -> buildString {
                 appendLine("The user just completed the PROBLEM wizard step with the following input:")
@@ -310,7 +313,7 @@ open class IdeaToSpecAgent(
                 appendLine("If there are contradictions or missing aspects, use [CLARIFICATION_NEEDED].")
                 appendLine("Be encouraging and constructive.")
                 appendLine()
-                appendLine(MARKER_REMINDER)
+                appendLine(promptService.get("idea-marker-reminder"))
             }
             "ARCHITECTURE" -> buildString {
                 appendLine("The user just completed the ARCHITECTURE wizard step with the following input:")
@@ -325,7 +328,7 @@ open class IdeaToSpecAgent(
                 appendLine("If details are unclear, use [CLARIFICATION_NEEDED].")
                 appendLine("Be encouraging and constructive.")
                 appendLine()
-                appendLine(MARKER_REMINDER)
+                appendLine(promptService.get("idea-marker-reminder"))
             }
             else -> buildString {
                 appendLine("The user just completed wizard step: $step")
@@ -335,13 +338,13 @@ open class IdeaToSpecAgent(
                 appendLine("Please provide brief, helpful feedback about their input for this step.")
                 appendLine("Be encouraging and mention any suggestions for improvement if applicable.")
                 appendLine()
-                appendLine(MARKER_REMINDER)
+                appendLine(promptService.get("idea-marker-reminder"))
             }
         }
     }
 
     private fun buildStepPrompt(step: FlowStepType): String = when (step) {
-        FlowStepType.IDEA -> IDEA_STEP_PROMPT
+        FlowStepType.IDEA -> promptService.get("idea-step-IDEA")
         else -> ""
     }
 
@@ -417,74 +420,6 @@ open class IdeaToSpecAgent(
     }
 
     companion object {
-        const val MARKER_REMINDER = """
-MANDATORY OUTPUT REQUIREMENT:
-After your feedback text, you MUST end your response with at least one of these markers on its own line:
-- [DECISION_NEEDED]: <short title> — when the user faces a strategic choice between 2-3 options
-- [CLARIFICATION_NEEDED]: <question> | <why this matters> — when important information is missing, vague, or contradictory
-
-If the user input is perfect and complete with no ambiguity whatsoever, you may omit markers. But in most cases, there IS something to clarify or decide. Err on the side of including a marker.
-
-Example response ending:
----
-Deine Idee ist ein guter Ausgangspunkt! Allerdings ist noch unklar, wer genau die Zielgruppe ist.
-
-[CLARIFICATION_NEEDED]: Wer ist die primaere Zielgruppe – Entwickler oder Nicht-Techniker? | Die Zielgruppe bestimmt die gesamte UX-Richtung und das Feature-Set grundlegend.
----"""
-
-        val IDEA_STEP_PROMPT = """
-=== IDEA STEP INSTRUCTIONS ===
-
-Du bist ein erfahrener Produktberater. In diesem Schritt geht es NUR darum, die Produktidee selbst klar zu formulieren.
-
-WICHTIG – ABGRENZUNG:
-- Sprich NICHT über Problemstellung, Zielgruppe, Nutzerwert, Pricing oder technische Details.
-- Diese Themen werden in späteren Schritten behandelt (PROBLEM, FEATURES, MVP, etc.).
-- Auch wenn die Idee vage ist: bleibe beim Thema "Was ist das Produkt? Was soll es tun?"
-
-## Dein Vorgehen:
-
-### Phase 1: Kontext verstehen
-- Prüfe, welche Informationen bereits vorhanden sind (Produktname, Kategorie, Beschreibung)
-- Verstehe die Ausgangsidee und den Rahmen
-- Wenn das Vorhaben zu breit ist, hilf bei der Zerlegung und fokussiere auf den Kern
-
-### Phase 2: Idee schärfen
-- Wenn die Beschreibung zu kurz oder vage ist, frage nach:
-  - Was genau soll das Produkt tun? (Hauptfunktion)
-  - Wie soll es funktionieren? (grobe Vorstellung, nicht technisch)
-  - Was macht es anders als Bestehendes?
-- Stelle immer nur EINE Frage pro Nachricht
-
-### Phase 3: Produktrichtungen vorschlagen (wenn nötig)
-- Falls die Idee mehrere Richtungen erlaubt, stelle 2–3 mögliche Produktrichtungen vor
-- Beschreibe jeweils kurz, was das Produkt in dieser Variante wäre
-- NICHT in Spezifikation oder Umsetzung abrutschen
-
-### Phase 4: Idee bestätigen
-Sobald die Idee klar genug ist, fasse sie zusammen:
-- Produktname und Kategorie
-- Was das Produkt tut (1-2 Sätze)
-- Grobe Richtung / Ansatz
-- Hole Bestätigung ein
-
-Erst wenn der Nutzer bestätigt hat, markiere mit [STEP_COMPLETE].
-
-## Kommunikationsregeln:
-- Sei ermutigend und konstruktiv
-- Fasse dich präzise
-- Nutze vorhandene Wizard-Daten als Ausgangspunkt statt sie erneut abzufragen
-- Wenn die Vision nur wenige Worte enthält, frage KONKRET nach was das Produkt tun soll
-
-## Markers im IDEA-Schritt:
-- Nutze [CLARIFICATION_NEEDED] wenn die Produktidee zu vage ist und du nicht verstehst, was das Produkt tun soll.
-  Beispiel: [CLARIFICATION_NEEDED]: Was genau soll ProgrammAgent tun – bestehenden Code kompilieren, oder neuen Code aus Beschreibungen generieren? | Die Grundfunktion des Produkts muss klar sein bevor wir weitermachen koennen.
-- Nutze [DECISION_NEEDED] wenn es 2-3 verschiedene Produktrichtungen gibt.
-  Beispiel: [DECISION_NEEDED]: Produktrichtung wählen (Codegenerator vs. Build-Automatisierung vs. No-Code-Plattform)
-
-=== END IDEA STEP INSTRUCTIONS ===
-        """.trimIndent()
-
         private val uuid = java.util.UUID::randomUUID
 
         /**
