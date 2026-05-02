@@ -2,6 +2,7 @@ package com.agentwork.productspecagent.api
 
 import com.agentwork.productspecagent.agent.PlanGeneratorAgent
 import com.agentwork.productspecagent.agent.SpecContextBuilder
+import com.agentwork.productspecagent.service.PromptService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -22,7 +23,7 @@ class TaskControllerTest {
     class TestConfig {
         @Bean
         @Primary
-        fun testPlanAgent(ctx: SpecContextBuilder) = object : PlanGeneratorAgent(ctx) {
+        fun testPlanAgent(ctx: SpecContextBuilder, promptService: PromptService) = object : PlanGeneratorAgent(ctx, promptService) {
             override suspend fun runAgent(prompt: String) = """{"epics":[{"title":"Setup","description":"Project setup","estimate":"L","specSection":"IDEA","stories":[{"title":"Init","description":"Initialize","estimate":"M","tasks":[{"title":"Scaffold","description":"Create structure","estimate":"S"}]}]}]}"""
         }
     }

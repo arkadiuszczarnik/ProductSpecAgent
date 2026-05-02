@@ -7,6 +7,7 @@ import com.agentwork.productspecagent.agent.UploadPromptBuilder
 import com.agentwork.productspecagent.domain.FeatureScope
 import com.agentwork.productspecagent.domain.WizardFeature
 import com.agentwork.productspecagent.domain.WizardFeatureGraph
+import com.agentwork.productspecagent.service.PromptService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -29,8 +30,9 @@ class FeatureProposalControllerTest {
         fun testFeatureProposalAgent(
             contextBuilder: SpecContextBuilder,
             uploadPromptBuilder: UploadPromptBuilder,
+            promptService: PromptService,
         ): FeatureProposalAgent {
-            return object : FeatureProposalAgent(contextBuilder, uploadPromptBuilder) {
+            return object : FeatureProposalAgent(contextBuilder, uploadPromptBuilder, promptService) {
                 override suspend fun proposeFeatures(projectId: String): WizardFeatureGraph {
                     return when (projectId) {
                         "p-parse-error" -> throw ProposalParseException("bad JSON from LLM")

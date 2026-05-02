@@ -42,7 +42,7 @@ class IdeaToSpecAgentTest {
         contextBuilder = SpecContextBuilder(projectService)
         promptService = PromptService(PromptRegistry(), InMemoryObjectStore())
         decisionStorage = DecisionStorage(InMemoryObjectStore())
-        val fakeDecisionAgent = object : DecisionAgent(contextBuilder) {
+        val fakeDecisionAgent = object : DecisionAgent(contextBuilder, promptService) {
             override suspend fun runAgent(prompt: String): String {
                 return """{"options":[{"label":"Yes","pros":["pro1"],"cons":[],"recommended":true},{"label":"No","pros":[],"cons":["con1"],"recommended":false}],"recommendation":"Go with Yes"}"""
             }
@@ -52,7 +52,7 @@ class IdeaToSpecAgentTest {
         clarificationService = ClarificationService(clarificationStorage)
         wizardService = WizardService(storage)
         taskStorage = TaskStorage(InMemoryObjectStore())
-        val fakePlanAgent = object : PlanGeneratorAgent(contextBuilder) {
+        val fakePlanAgent = object : PlanGeneratorAgent(contextBuilder, promptService) {
             override suspend fun generatePlanForFeature(
                 projectId: String,
                 input: WizardFeatureInput,
@@ -336,7 +336,7 @@ class IdeaToSpecAgentTest {
     @Test
     fun `FEATURES step calls replaceWizardFeatureTasks with parsed input`() = runBlocking {
         val project = projectService.createProject("Test")
-        val fakePlanAgentForSpy = object : PlanGeneratorAgent(contextBuilder) {
+        val fakePlanAgentForSpy = object : PlanGeneratorAgent(contextBuilder, promptService) {
             override suspend fun generatePlanForFeature(
                 projectId: String,
                 input: WizardFeatureInput,

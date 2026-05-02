@@ -24,7 +24,8 @@ class TaskServiceWizardGraphTest {
     // Fake agent: emits one EPIC per call, id = "epic-<input.id>", no stories
     private fun fakeAgentReturningOneEpicPerInput(): PlanGeneratorAgent {
         val builder = buildSpecContextBuilder()
-        return object : PlanGeneratorAgent(builder) {
+        val promptService = PromptService(PromptRegistry(), InMemoryObjectStore())
+        return object : PlanGeneratorAgent(builder, promptService) {
             override suspend fun generatePlanForFeature(
                 projectId: String,
                 input: WizardFeatureInput,

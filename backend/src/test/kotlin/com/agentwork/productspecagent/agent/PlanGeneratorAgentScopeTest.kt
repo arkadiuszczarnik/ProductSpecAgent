@@ -3,6 +3,8 @@ package com.agentwork.productspecagent.agent
 import com.agentwork.productspecagent.domain.FeatureScope
 import com.agentwork.productspecagent.domain.TaskType
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.PromptRegistry
+import com.agentwork.productspecagent.service.PromptService
 import com.agentwork.productspecagent.service.WizardFeatureInput
 import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
@@ -14,8 +16,9 @@ class PlanGeneratorAgentScopeTest {
 
     private class CapturingAgent(
         builder: SpecContextBuilder,
+        promptService: PromptService,
         private val response: String,
-    ) : PlanGeneratorAgent(builder) {
+    ) : PlanGeneratorAgent(builder, promptService) {
         var capturedPrompt: String = ""
         override suspend fun runAgent(prompt: String): String {
             capturedPrompt = prompt
@@ -34,7 +37,8 @@ class PlanGeneratorAgentScopeTest {
 
     private fun agent(response: String): CapturingAgent {
         val builder = buildSpecContextBuilder()
-        return CapturingAgent(builder, response)
+        val promptService = PromptService(PromptRegistry(), InMemoryObjectStore())
+        return CapturingAgent(builder, promptService, response)
     }
 
     @Test

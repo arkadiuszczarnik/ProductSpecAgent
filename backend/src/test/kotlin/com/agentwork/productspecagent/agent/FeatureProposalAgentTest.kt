@@ -2,6 +2,8 @@ package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.config.FeatureProposalUploadsProperties
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.PromptRegistry
+import com.agentwork.productspecagent.service.PromptService
 import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import com.agentwork.productspecagent.storage.UploadStorage
@@ -11,11 +13,14 @@ import org.junit.jupiter.api.Test
 
 class FeatureProposalAgentTest {
 
+    private val promptService = PromptService(PromptRegistry(), InMemoryObjectStore())
+
     @Test
     fun `parses JSON response into graph with auto-assigned IDs and edge ID translation`(): Unit = runBlocking {
         val mock = object : FeatureProposalAgent(
             contextBuilderStub(category = "SaaS"),
             uploadBuilderStub(""),
+            promptService,
         ) {
             override suspend fun runAgent(prompt: String): String = """
                 {"features":[
@@ -39,6 +44,7 @@ class FeatureProposalAgentTest {
         val mock = object : FeatureProposalAgent(
             contextBuilderStub(category = "SaaS"),
             uploadBuilderStub(""),
+            promptService,
         ) {
             override suspend fun runAgent(prompt: String): String = "not a json"
         }
@@ -51,6 +57,7 @@ class FeatureProposalAgentTest {
         val mock = object : FeatureProposalAgent(
             contextBuilderStub(category = "Library"),
             uploadBuilderStub(""),
+            promptService,
         ) {
             override suspend fun runAgent(prompt: String): String = """
                 {"features":[{"title":"Utils","description":""}],"edges":[]}
@@ -66,6 +73,7 @@ class FeatureProposalAgentTest {
         val mock = object : FeatureProposalAgent(
             contextBuilderStub(category = "SaaS"),
             uploadBuilderStub("--- BEGIN UPLOADED DOCUMENT: spec.md (text/markdown) ---\nhello\n--- END UPLOADED DOCUMENT ---"),
+            promptService,
         ) {
             override suspend fun runAgent(prompt: String): String {
                 capturedPrompt = prompt
@@ -92,6 +100,7 @@ class FeatureProposalAgentTest {
         val mock = object : FeatureProposalAgent(
             contextBuilderStub(category = "SaaS"),
             uploadBuilderStub(""),
+            promptService,
         ) {
             override suspend fun runAgent(prompt: String): String {
                 capturedPrompt = prompt

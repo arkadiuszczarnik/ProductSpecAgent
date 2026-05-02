@@ -2,6 +2,8 @@ package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.PromptRegistry
+import com.agentwork.productspecagent.service.PromptService
 import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import kotlinx.coroutines.runBlocking
@@ -13,16 +15,18 @@ class DecisionAgentTest {
 
     private lateinit var projectService: ProjectService
     private lateinit var contextBuilder: SpecContextBuilder
+    private lateinit var promptService: PromptService
 
     @BeforeEach
     fun setup() {
         val storage = ProjectStorage(InMemoryObjectStore())
         projectService = ProjectService(storage)
         contextBuilder = SpecContextBuilder(projectService)
+        promptService = PromptService(PromptRegistry(), InMemoryObjectStore())
     }
 
     private fun createFakeAgent(jsonResponse: String): DecisionAgent {
-        return object : DecisionAgent(contextBuilder) {
+        return object : DecisionAgent(contextBuilder, promptService) {
             override suspend fun runAgent(prompt: String): String = jsonResponse
         }
     }
