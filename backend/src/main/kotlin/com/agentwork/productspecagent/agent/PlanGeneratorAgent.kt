@@ -1,6 +1,7 @@
 package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.domain.*
+import com.agentwork.productspecagent.service.PromptService
 import com.agentwork.productspecagent.service.WizardFeatureInput
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -18,6 +19,7 @@ private fun sanitizeForPrompt(raw: String, maxLen: Int = 500): String =
 @Service
 open class PlanGeneratorAgent(
     private val contextBuilder: SpecContextBuilder,
+    private val promptService: PromptService,
     private val koogRunner: KoogAgentRunner? = null
 ) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -86,7 +88,7 @@ open class PlanGeneratorAgent(
     }
 
     protected open suspend fun runAgent(prompt: String): String {
-        return koogRunner?.run("You are a product implementation planner. Generate structured plans in JSON.", prompt)
+        return koogRunner?.run(promptService.get("plan-system"), prompt)
             ?: throw UnsupportedOperationException("KoogAgentRunner not configured.")
     }
 

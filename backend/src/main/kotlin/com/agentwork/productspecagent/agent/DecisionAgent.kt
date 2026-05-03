@@ -1,6 +1,7 @@
 package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.domain.*
+import com.agentwork.productspecagent.service.PromptService
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
@@ -8,6 +9,7 @@ import java.util.UUID
 @Service
 open class DecisionAgent(
     private val contextBuilder: SpecContextBuilder,
+    private val promptService: PromptService,
     private val koogRunner: KoogAgentRunner? = null
 ) {
     suspend fun generateDecision(projectId: String, title: String, stepType: FlowStepType): Decision {
@@ -27,7 +29,7 @@ open class DecisionAgent(
     }
 
     protected open suspend fun runAgent(prompt: String): String {
-        return koogRunner?.run("You are a product decision advisor. Generate structured decisions in JSON.", prompt)
+        return koogRunner?.run(promptService.get("decision-system"), prompt)
             ?: throw UnsupportedOperationException("KoogAgentRunner not configured.")
     }
 

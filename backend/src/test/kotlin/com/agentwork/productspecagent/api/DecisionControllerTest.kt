@@ -2,6 +2,7 @@ package com.agentwork.productspecagent.api
 
 import com.agentwork.productspecagent.agent.DecisionAgent
 import com.agentwork.productspecagent.agent.SpecContextBuilder
+import com.agentwork.productspecagent.service.PromptService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -22,8 +23,11 @@ class DecisionControllerTest {
     class TestConfig {
         @Bean
         @Primary
-        fun testDecisionAgent(contextBuilder: SpecContextBuilder): DecisionAgent {
-            return object : DecisionAgent(contextBuilder) {
+        fun testDecisionAgent(
+            contextBuilder: SpecContextBuilder,
+            promptService: PromptService,
+        ): DecisionAgent {
+            return object : DecisionAgent(contextBuilder, promptService) {
                 override suspend fun runAgent(prompt: String): String {
                     return """{"options":[{"label":"Option A","pros":["Fast"],"cons":["Risky"],"recommended":true},{"label":"Option B","pros":["Safe"],"cons":["Slow"],"recommended":false}],"recommendation":"Go with A for speed."}"""
                 }

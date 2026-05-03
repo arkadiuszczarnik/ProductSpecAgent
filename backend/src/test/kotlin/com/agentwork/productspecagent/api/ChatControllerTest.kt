@@ -5,10 +5,10 @@ import com.agentwork.productspecagent.agent.SpecContextBuilder
 import com.agentwork.productspecagent.service.ClarificationService
 import com.agentwork.productspecagent.service.DecisionService
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.PromptService
 import com.agentwork.productspecagent.service.WizardService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
@@ -30,12 +30,12 @@ class ChatControllerTest {
         fun testAgent(
             contextBuilder: SpecContextBuilder,
             projectService: ProjectService,
-            @Value("\${agent.system-prompt}") systemPrompt: String,
+            promptService: PromptService,
             decisionService: DecisionService,
             clarificationService: ClarificationService,
             wizardService: WizardService
         ): IdeaToSpecAgent {
-            return object : IdeaToSpecAgent(contextBuilder, projectService, systemPrompt, decisionService, clarificationService, wizardService) {
+            return object : IdeaToSpecAgent(contextBuilder, projectService, promptService, decisionService, clarificationService, wizardService) {
                 override suspend fun runAgent(systemPrompt: String, userMessage: String): String {
                     return if (userMessage.contains("complete")) {
                         "Step is done.\n[STEP_COMPLETE]\n[STEP_SUMMARY]: Summary of the step."

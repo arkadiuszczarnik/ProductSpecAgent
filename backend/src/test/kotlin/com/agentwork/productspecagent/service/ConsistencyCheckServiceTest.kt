@@ -27,13 +27,16 @@ class ConsistencyCheckServiceTest {
         projectService = ProjectService(projectStorage)
 
         // Create fake agents that won't be called (we create decisions/clarifications directly via storage)
+        val promptService = PromptService(PromptRegistry(), InMemoryObjectStore())
         val fakeDecisionAgent = object : com.agentwork.productspecagent.agent.DecisionAgent(
-            com.agentwork.productspecagent.agent.SpecContextBuilder(projectService)
+            com.agentwork.productspecagent.agent.SpecContextBuilder(projectService),
+            promptService,
         ) {
             override suspend fun runAgent(prompt: String) = "{}"
         }
         val fakePlanAgent = object : com.agentwork.productspecagent.agent.PlanGeneratorAgent(
-            com.agentwork.productspecagent.agent.SpecContextBuilder(projectService)
+            com.agentwork.productspecagent.agent.SpecContextBuilder(projectService),
+            promptService,
         ) {
             override suspend fun runAgent(prompt: String) = "{}"
         }

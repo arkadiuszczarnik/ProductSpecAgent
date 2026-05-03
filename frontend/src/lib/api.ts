@@ -1,5 +1,16 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly body: unknown,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
   options?: RequestInit
@@ -13,11 +24,18 @@ export async function apiFetch<T>(
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(error.message || `API error: ${res.status}`);
+    const body = await res.json().catch(() => null);
+    const bodyMessage =
+      body && typeof body === "object" && "message" in body && typeof (body as { message?: unknown }).message === "string"
+        ? (body as { message: string }).message
+        : null;
+    throw new ApiError(res.status, body, bodyMessage || `API error: ${res.status}`);
   }
 
-  return res.json();
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return undefined as T;
+  }
+  return res.json() as Promise<T>;
 }
 
 // ─── Domain Types ────────────────────────────────────────────────────────────
@@ -616,4 +634,43 @@ export async function fetchAssetBundleFile(
   const encodedPath = relativePath.split("/").map(encodeURIComponent).join("/");
   const path = `/api/v1/asset-bundles/${step}/${field}/${encodeURIComponent(value)}/files/${encodedPath}`;
   return fetch(`${API_BASE}${path}`);
+}
+
+// ─── Prompts ─────────────────────────────────────────────────────────────────
+
+export interface PromptListItem {
+  id: string;
+  title: string;
+  description: string;
+  agent: string;
+  isOverridden: boolean;
+}
+
+export interface PromptDetail extends PromptListItem {
+  content: string;
+}
+
+export interface PromptValidationError {
+  errors: string[];
+}
+
+export async function listPrompts(): Promise<PromptListItem[]> {
+  return apiFetch<PromptListItem[]>("/api/v1/prompts");
+}
+
+export async function getPrompt(id: string): Promise<PromptDetail> {
+  return apiFetch<PromptDetail>(`/api/v1/prompts/${encodeURIComponent(id)}`);
+}
+
+export async function savePrompt(id: string, content: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/prompts/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function resetPrompt(id: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/prompts/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 }

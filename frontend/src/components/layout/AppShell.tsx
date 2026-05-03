@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderKanban, Package, Plus, Settings, Sparkles } from "lucide-react";
+import { FolderKanban, MessageSquareText, Package, Plus, Settings, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AppShellProps {
@@ -69,6 +69,12 @@ function IconRail() {
           label="Asset Bundles"
           active={pathname?.startsWith("/asset-bundles") ?? false}
         />
+        <NavItem
+          href="/prompts"
+          icon={<MessageSquareText size={20} />}
+          label="Prompts"
+          active={pathname?.startsWith("/prompts") ?? false}
+        />
       </nav>
 
       <div className="flex flex-col items-center gap-1">
@@ -86,11 +92,12 @@ function IconRail() {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const isWorkspace = pathname?.startsWith("/projects/") && pathname !== "/projects/new";
+  const isFullBleed = isWorkspace || (pathname?.startsWith("/prompts") ?? false);
 
   return (
     <div className="flex h-screen bg-background">
       <IconRail />
-      <main className={cn("flex-1", isWorkspace ? "overflow-hidden" : "overflow-y-auto")}>
+      <main className={cn("flex-1", isFullBleed ? "overflow-hidden" : "overflow-y-auto")}>
         {children}
       </main>
     </div>

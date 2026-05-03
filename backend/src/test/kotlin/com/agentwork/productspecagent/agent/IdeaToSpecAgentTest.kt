@@ -4,6 +4,8 @@ import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.ClarificationService
 import com.agentwork.productspecagent.service.DecisionService
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.PromptRegistry
+import com.agentwork.productspecagent.service.PromptService
 import com.agentwork.productspecagent.service.TaskService
 import com.agentwork.productspecagent.service.WizardFeatureInput
 import com.agentwork.productspecagent.service.WizardService
@@ -31,14 +33,16 @@ class IdeaToSpecAgentTest {
     private lateinit var wizardService: WizardService
     private lateinit var taskStorage: TaskStorage
     private lateinit var taskService: TaskService
+    private lateinit var promptService: PromptService
 
     @BeforeEach
     fun setup() {
         storage = ProjectStorage(InMemoryObjectStore())
         projectService = ProjectService(storage)
         contextBuilder = SpecContextBuilder(projectService)
+        promptService = PromptService(PromptRegistry(), InMemoryObjectStore())
         decisionStorage = DecisionStorage(InMemoryObjectStore())
-        val fakeDecisionAgent = object : DecisionAgent(contextBuilder) {
+        val fakeDecisionAgent = object : DecisionAgent(contextBuilder, promptService) {
             override suspend fun runAgent(prompt: String): String {
                 return """{"options":[{"label":"Yes","pros":["pro1"],"cons":[],"recommended":true},{"label":"No","pros":[],"cons":["con1"],"recommended":false}],"recommendation":"Go with Yes"}"""
             }
@@ -48,7 +52,7 @@ class IdeaToSpecAgentTest {
         clarificationService = ClarificationService(clarificationStorage)
         wizardService = WizardService(storage)
         taskStorage = TaskStorage(InMemoryObjectStore())
-        val fakePlanAgent = object : PlanGeneratorAgent(contextBuilder) {
+        val fakePlanAgent = object : PlanGeneratorAgent(contextBuilder, promptService) {
             override suspend fun generatePlanForFeature(
                 projectId: String,
                 input: WizardFeatureInput,
@@ -74,7 +78,7 @@ class IdeaToSpecAgentTest {
     }
 
     private fun createTestAgent(agentResponse: String): IdeaToSpecAgent {
-        return object : IdeaToSpecAgent(contextBuilder, projectService, "You are IdeaToSpec.", decisionService, clarificationService, wizardService, taskService = taskService) {
+        return object : IdeaToSpecAgent(contextBuilder, projectService, promptService, decisionService, clarificationService, wizardService, taskService = taskService) {
             override suspend fun runAgent(systemPrompt: String, userMessage: String): String {
                 return agentResponse
             }
@@ -86,7 +90,7 @@ class IdeaToSpecAgentTest {
         agentResponse: String = "OK.",
         capturedUserPrompts: MutableList<String>
     ): IdeaToSpecAgent {
-        return object : IdeaToSpecAgent(contextBuilder, projectService, "You are IdeaToSpec.", decisionService, clarificationService, wizardService, taskService = taskService) {
+        return object : IdeaToSpecAgent(contextBuilder, projectService, promptService, decisionService, clarificationService, wizardService, taskService = taskService) {
             override suspend fun runAgent(systemPrompt: String, userMessage: String): String {
                 capturedUserPrompts.add(userMessage)
                 return agentResponse
@@ -332,7 +336,7 @@ class IdeaToSpecAgentTest {
     @Test
     fun `FEATURES step calls replaceWizardFeatureTasks with parsed input`() = runBlocking {
         val project = projectService.createProject("Test")
-        val fakePlanAgentForSpy = object : PlanGeneratorAgent(contextBuilder) {
+        val fakePlanAgentForSpy = object : PlanGeneratorAgent(contextBuilder, promptService) {
             override suspend fun generatePlanForFeature(
                 projectId: String,
                 input: WizardFeatureInput,
@@ -358,7 +362,7 @@ class IdeaToSpecAgentTest {
         val spyTaskService = SpyTaskService(spyStorage, fakePlanAgentForSpy)
 
         val agent = object : IdeaToSpecAgent(
-            contextBuilder, projectService, "You are IdeaToSpec.",
+            contextBuilder, projectService, promptService,
             decisionService, clarificationService, wizardService,
             taskService = spyTaskService,
         ) {

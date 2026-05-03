@@ -38,11 +38,12 @@ class ScaffoldContextBuilderTest {
         val specCtxBuilder = SpecContextBuilder(projectService, null)
 
         // Stubs — runAgent wird in diesen Tests nie aufgerufen, da kein Plan generiert wird
-        val planAgent = object : PlanGeneratorAgent(specCtxBuilder) {
+        val promptService = PromptService(PromptRegistry(), InMemoryObjectStore())
+        val planAgent = object : PlanGeneratorAgent(specCtxBuilder, promptService) {
             override suspend fun runAgent(prompt: String): String =
                 error("should not be called in scaffold tests")
         }
-        val decisionAgent = object : DecisionAgent(specCtxBuilder) {
+        val decisionAgent = object : DecisionAgent(specCtxBuilder, promptService) {
             override suspend fun runAgent(prompt: String): String =
                 error("should not be called in scaffold tests")
         }
@@ -73,11 +74,12 @@ class ScaffoldContextBuilderTest {
         wizardService.saveWizardData(projectId, wizardData)
         // Re-create builder with WizardService so scope enrichment is active
         val specCtxBuilder = SpecContextBuilder(projectService, null)
-        val planAgent = object : PlanGeneratorAgent(specCtxBuilder) {
+        val promptService = PromptService(PromptRegistry(), InMemoryObjectStore())
+        val planAgent = object : PlanGeneratorAgent(specCtxBuilder, promptService) {
             override suspend fun runAgent(prompt: String): String =
                 error("should not be called in scaffold tests")
         }
-        val decisionAgent = object : DecisionAgent(specCtxBuilder) {
+        val decisionAgent = object : DecisionAgent(specCtxBuilder, promptService) {
             override suspend fun runAgent(prompt: String): String =
                 error("should not be called in scaffold tests")
         }

@@ -2,6 +2,8 @@ package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.PromptRegistry
+import com.agentwork.productspecagent.service.PromptService
 import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import kotlinx.coroutines.runBlocking
@@ -13,17 +15,19 @@ class PlanGeneratorAgentTest {
 
     private lateinit var contextBuilder: SpecContextBuilder
     private lateinit var projectId: String
+    private lateinit var promptService: PromptService
 
     @BeforeEach
     fun setup() {
         val storage = ProjectStorage(InMemoryObjectStore())
         val projectService = ProjectService(storage)
         contextBuilder = SpecContextBuilder(projectService)
+        promptService = PromptService(PromptRegistry(), InMemoryObjectStore())
         val response = projectService.createProject("Test")
         projectId = response.project.id
     }
 
-    private fun fakeAgent(response: String) = object : PlanGeneratorAgent(contextBuilder) {
+    private fun fakeAgent(response: String) = object : PlanGeneratorAgent(contextBuilder, promptService) {
         override suspend fun runAgent(prompt: String) = response
     }
 
