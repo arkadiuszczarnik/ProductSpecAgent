@@ -65,9 +65,12 @@ class ProjectStorage(private val objectStore: ObjectStore) {
         val knownTypes = raw.steps.map { it.stepType }.toSet()
         val missing = FlowStepType.entries
             .filter { it !in knownTypes }
-            .map { FlowStep(stepType = it, status = FlowStepStatus.OPEN, updatedAt = java.time.Instant.now().toString()) }
         if (missing.isEmpty()) return raw
-        return raw.copy(steps = raw.steps + missing)
+        // Reuse the first existing step's timestamp so repeated loads produce identical results.
+        val migrationTimestamp = raw.steps.firstOrNull()?.updatedAt ?: java.time.Instant.EPOCH.toString()
+        return raw.copy(steps = raw.steps + missing.map {
+            FlowStep(stepType = it, status = FlowStepStatus.OPEN, updatedAt = migrationTimestamp)
+        })
     }
 
     fun saveSpecStep(projectId: String, fileName: String, content: String) {
