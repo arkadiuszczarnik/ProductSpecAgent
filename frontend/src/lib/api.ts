@@ -674,3 +674,31 @@ export async function resetPrompt(id: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+// Agent Models
+
+export type AgentModelTier = "SMALL" | "MEDIUM" | "LARGE";
+
+export interface AgentModelInfo {
+  agentId: string;
+  displayName: string;
+  defaultTier: AgentModelTier;
+  currentTier: AgentModelTier;
+  isOverridden: boolean;
+  tierMapping: Record<AgentModelTier, string>;
+}
+
+export async function listAgentModels(): Promise<AgentModelInfo[]> {
+  return apiFetch<AgentModelInfo[]>("/api/v1/agent-models");
+}
+
+export async function updateAgentModel(agentId: string, tier: AgentModelTier): Promise<void> {
+  await apiFetch<void>(`/api/v1/agent-models/${encodeURIComponent(agentId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ tier }),
+  });
+}
+
+export async function resetAgentModel(agentId: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/agent-models/${encodeURIComponent(agentId)}`, { method: "DELETE" });
+}
