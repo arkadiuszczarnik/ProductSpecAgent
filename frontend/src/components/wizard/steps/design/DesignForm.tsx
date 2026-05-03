@@ -103,7 +103,7 @@ export function DesignForm({ projectId }: Props) {
           />
         </div>
         <div className="flex-1 overflow-hidden">
-          <DesignIframePreview src={iframeSrc} reloadKey={iframeKey} />
+          <DesignIframePreview key={iframeKey} src={iframeSrc} />
         </div>
       </div>
       <div className="flex justify-end border-t border-border bg-card px-4 py-3">
