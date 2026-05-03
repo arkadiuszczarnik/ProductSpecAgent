@@ -22,8 +22,8 @@ ai:
 agent:
   models:
     tiers:
-      SMALL: "gpt-5-nano"
-      MEDIUM: "gpt-5-mini"
+      SMALL: "gpt-5.4-nano"
+      MEDIUM: "gpt-5.4-mini"
       LARGE: "gpt-5-2"
     defaults:
       idea-to-spec: LARGE

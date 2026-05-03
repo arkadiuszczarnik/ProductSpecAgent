@@ -14,6 +14,8 @@ class OpenAiModelResolverTest {
         assertThat(resolveOpenAiModel("gpt-5")).isEqualTo(OpenAIModels.Chat.GPT5)
         assertThat(resolveOpenAiModel("gpt-5-2")).isEqualTo(OpenAIModels.Chat.GPT5_2)
         assertThat(resolveOpenAiModel("gpt-5-2-pro")).isEqualTo(OpenAIModels.Chat.GPT5_2Pro)
+        assertThat(resolveOpenAiModel("gpt-5.4-mini")).isEqualTo(OpenAIModels.Chat.GPT5_4Mini)
+        assertThat(resolveOpenAiModel("gpt-5.4-nano")).isEqualTo(OpenAIModels.Chat.GPT5_4Nano)
     }
 
     @Test
