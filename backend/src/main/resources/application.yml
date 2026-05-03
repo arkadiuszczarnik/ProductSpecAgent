@@ -20,7 +20,7 @@ ai:
       api-key: ${OPENAI_API_KEY:not-set}
 
 agent:
-  model: gpt-4o
+  model: gpt-5.5
 app:
   storage:
     bucket: ${S3_BUCKET:productspec-data}

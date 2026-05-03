@@ -22,7 +22,7 @@ object LoadBalancerController {
 
         val trustPolicy: Output<String> = Output.tuple(oidcArn, oidcUrl).applyValue { tup ->
             val arn = tup.t1
-            val url = tup.t2
+            val url = tup.t2!!.removePrefix("https://")
             """
             {
               "Version": "2012-10-17",
