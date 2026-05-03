@@ -4,12 +4,15 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.HttpMethod
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
+import java.net.URI
 
 @SpringBootTest
 class DesignBundleControllerTest {
@@ -76,6 +79,30 @@ class DesignBundleControllerTest {
         // which then rejects the path traversal with 400 (mirrors AssetBundleController pattern).
         mockMvc.perform(get("/api/v1/projects/proj-t/design/files/../etc/passwd"))
             .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `files endpoint rejects URL-encoded path traversal with 400`() {
+        val file = MockMultipartFile("file", "Scheduler.zip", "application/zip", schedulerZip)
+        mockMvc.perform(multipart("/api/v1/projects/proj-tu/design/upload").file(file))
+            .andExpect(status().isOk)
+
+        // URL-encoded ..%2F variant — Spring routes the request and the controller's
+        // post-decode traversal check should reject it.
+        mockMvc.perform(
+            MockMvcRequestBuilders.request(
+                HttpMethod.GET,
+                URI("/api/v1/projects/proj-tu/design/files/..%2F..%2Fetc%2Fpasswd"),
+            )
+        ).andExpect(status().isBadRequest)
+
+        // Double-encoded dots variant
+        mockMvc.perform(
+            MockMvcRequestBuilders.request(
+                HttpMethod.GET,
+                URI("/api/v1/projects/proj-tu/design/files/%2e%2e%2fetc%2fpasswd"),
+            )
+        ).andExpect(status().isBadRequest)
     }
 
     @Test

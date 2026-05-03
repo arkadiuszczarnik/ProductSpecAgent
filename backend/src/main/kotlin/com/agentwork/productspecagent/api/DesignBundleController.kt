@@ -9,6 +9,8 @@ import com.agentwork.productspecagent.storage.DesignBundleStorage
 import kotlinx.serialization.Serializable
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.beans.factory.annotation.Value
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -88,7 +90,8 @@ class DesignBundleController(
         request: HttpServletRequest,
     ): ResponseEntity<ByteArray> {
         val filesPrefix = "/api/v1/projects/$projectId/design/files/"
-        val relPath = request.requestURI.substringAfter(filesPrefix, "")
+        val raw = request.requestURI.substringAfter(filesPrefix, "")
+        val relPath = URLDecoder.decode(raw, StandardCharsets.UTF_8)
         if (relPath.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "empty path")
         }

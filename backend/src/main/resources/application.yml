@@ -31,6 +31,7 @@ agent:
       feature-proposal: MEDIUM
       plan-generator: LARGE
 app:
+  frontend-origin: ${APP_FRONTEND_ORIGIN:http://localhost:3001}
   storage:
     bucket: ${S3_BUCKET:productspec-data}
     endpoint: ${S3_ENDPOINT:}
