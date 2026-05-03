@@ -69,7 +69,7 @@ export function FeaturesGraphEditor({ projectId }: Props) {
   const editorFactory = useCallback(
     async (container: HTMLElement) => {
       const ctx = await createFeaturesEditor(container);
-      ctx.onNodeSelect(setSelectedId);
+      ctx.onNodeDoubleClick(setSelectedId);
       ctx.onConnectionCreate((from, to) => addEdge(from, to));
       ctx.onCycleRejected(() => {
         alert("Zyklus verhindert: Die Kante wuerde eine Schleife erzeugen.");
@@ -100,7 +100,7 @@ export function FeaturesGraphEditor({ projectId }: Props) {
     const f = features
       .map(
         (x) =>
-          `${x.id}:${x.title}:${[...x.scopes].sort().join(",")}:${x.position.x}:${x.position.y}`,
+          `${x.id}:${x.title}:${x.description}:${[...x.scopes].sort().join(",")}:${x.position.x}:${x.position.y}`,
       )
       .join("|");
     const e = edges.map((x) => `${x.id}:${x.from}>${x.to}`).join("|");

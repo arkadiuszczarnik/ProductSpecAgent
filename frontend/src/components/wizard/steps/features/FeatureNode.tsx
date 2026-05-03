@@ -8,11 +8,12 @@ import type { FeatureScope } from "@/lib/api";
 
 export class FeatureRNode extends ClassicPreset.Node {
   width = 220;
-  height = 96;
+  height = 120;
   constructor(
     public featureId: string,
     label: string,
     public scopes: FeatureScope[] = [],
+    public description: string = "",
   ) {
     super(label);
   }
@@ -50,6 +51,16 @@ export function FeatureNodeComponent({ data, emit }: Props) {
           {hasBackend && <Badge label="BE" color="violet" />}
         </div>
       </div>
+
+      {data.description && (
+        <div
+          className="px-3 py-2 text-xs text-muted-foreground line-clamp-3 leading-snug"
+          data-testid="description"
+          title={data.description}
+        >
+          {data.description}
+        </div>
+      )}
 
       {inputs.map(([key, input]) =>
         input ? (
