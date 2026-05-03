@@ -5,7 +5,7 @@ import type { FeatureScope } from "./api";
 export type Category = "SaaS" | "Mobile App" | "CLI Tool" | "Library" | "Desktop App" | "API";
 
 export const ALL_STEP_KEYS = [
-  "IDEA", "PROBLEM", "FEATURES", "MVP",
+  "IDEA", "PROBLEM", "FEATURES", "MVP", "DESIGN",
   "ARCHITECTURE", "BACKEND", "FRONTEND",
 ] as const;
 
@@ -21,7 +21,7 @@ export interface CategoryConfig {
 
 export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
   "SaaS": {
-    visibleSteps: [...BASE_STEPS, "ARCHITECTURE", "BACKEND", "FRONTEND"],
+    visibleSteps: [...BASE_STEPS, "DESIGN", "ARCHITECTURE", "BACKEND", "FRONTEND"],
     allowedScopes: ["FRONTEND", "BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
@@ -43,7 +43,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
     },
   },
   "Mobile App": {
-    visibleSteps: [...BASE_STEPS, "ARCHITECTURE", "BACKEND", "FRONTEND"],
+    visibleSteps: [...BASE_STEPS, "DESIGN", "ARCHITECTURE", "BACKEND", "FRONTEND"],
     allowedScopes: ["FRONTEND", "BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
@@ -81,7 +81,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
     fieldOptions: {},
   },
   "Desktop App": {
-    visibleSteps: [...BASE_STEPS, "ARCHITECTURE", "BACKEND", "FRONTEND"],
+    visibleSteps: [...BASE_STEPS, "DESIGN", "ARCHITECTURE", "BACKEND", "FRONTEND"],
     allowedScopes: ["FRONTEND", "BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
