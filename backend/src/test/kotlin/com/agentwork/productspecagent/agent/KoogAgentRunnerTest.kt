@@ -35,7 +35,7 @@ class KoogAgentRunnerTest {
     )
 
     @Test
-    fun `run uses tier from service to select model`() = runBlocking {
+    fun `run uses tier from service to select model`(): Unit = runBlocking {
         val registry = AgentModelRegistry(validProps)
         val service = AgentModelService(registry, InMemoryObjectStore())
         val capturing = CapturingExecutor()
