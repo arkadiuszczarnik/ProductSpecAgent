@@ -31,7 +31,7 @@ export interface FeaturesEditorContext {
   destroy: () => void;
   applyGraph: (features: WizardFeature[], edges: WizardFeatureEdge[]) => Promise<void>;
   autoLayout: () => Promise<void>;
-  onNodeSelect: (cb: (featureId: string | null) => void) => void;
+  onNodeDoubleClick: (cb: (featureId: string) => void) => void;
   onConnectionCreate: (cb: (from: string, to: string) => boolean) => void; // return false to reject
   onCycleRejected: (cb: () => void) => void;
   onNodeMove: (cb: (featureId: string, x: number, y: number) => void) => void;
@@ -40,10 +40,13 @@ export interface FeaturesEditorContext {
 
 interface RenderedFeature {
   title: string;
+  description: string;
   scopesKey: string; // sorted join of scopes for change detection
   x: number;
   y: number;
 }
+
+const DOUBLE_CLICK_MS = 350;
 
 const scopesKey = (scopes: FeatureScope[]): string => [...scopes].sort().join(",");
 
@@ -87,11 +90,13 @@ export async function createFeaturesEditor(
   const edgeIdByConnectionId = new Map<string, string>(); // rete conn id -> wizard edge id
   const connectionIdByEdgeId = new Map<string, string>(); // wizard edge id -> rete conn id
 
-  let selectCb: ((id: string | null) => void) | null = null;
+  let doubleClickCb: ((featureId: string) => void) | null = null;
   let createCb: ((from: string, to: string) => boolean) | null = null;
   let cycleCb: (() => void) | null = null;
   let moveCb: ((id: string, x: number, y: number) => void) | null = null;
   let removeCb: ((edgeId: string) => void) | null = null;
+  let lastPickedNodeId: string | null = null;
+  let lastPickedAt = 0;
 
   // ---- Event wiring ----
   // `suppressPipeEvents` guards against feedback loops while `applyGraphOnce` is
@@ -133,7 +138,20 @@ export async function createFeaturesEditor(
     if (ctx.type === "nodepicked") {
       const id = (ctx.data as { id: string }).id;
       const node = editor.getNode(id);
-      if (node instanceof FeatureRNode) selectCb?.(node.featureId);
+      if (node instanceof FeatureRNode) {
+        const now = Date.now();
+        const isDouble =
+          lastPickedNodeId === id && now - lastPickedAt < DOUBLE_CLICK_MS;
+        if (isDouble) {
+          doubleClickCb?.(node.featureId);
+          // Reset so a third pick does not chain into another double-click event.
+          lastPickedNodeId = null;
+          lastPickedAt = 0;
+        } else {
+          lastPickedNodeId = id;
+          lastPickedAt = now;
+        }
+      }
     }
     if (ctx.type === "nodedragged") {
       const id = (ctx.data as { id: string }).id;
@@ -172,7 +190,7 @@ export async function createFeaturesEditor(
         const existingReteId = nodeIdByFeatureId.get(f.id);
         if (!existingReteId) {
           // NEW node
-          const node = new FeatureRNode(f.id, f.title, f.scopes);
+          const node = new FeatureRNode(f.id, f.title, f.scopes, f.description);
           node.addInput("in", new ClassicPreset.Input(socket, "depends on"));
           node.addOutput("out", new ClassicPreset.Output(socket, "required by"));
           await editor.addNode(node);
@@ -180,6 +198,7 @@ export async function createFeaturesEditor(
           nodeIdByFeatureId.set(f.id, node.id);
           renderedFeatures.set(f.id, {
             title: f.title,
+            description: f.description,
             scopesKey: scopesKey(f.scopes),
             x: f.position.x,
             y: f.position.y,
@@ -190,9 +209,15 @@ export async function createFeaturesEditor(
         const rendered = renderedFeatures.get(f.id)!;
         const newScopesKey = scopesKey(f.scopes);
         const node = editor.getNode(existingReteId) as FeatureRNode | undefined;
-        if (node && (rendered.title !== f.title || rendered.scopesKey !== newScopesKey)) {
+        if (
+          node &&
+          (rendered.title !== f.title ||
+            rendered.description !== f.description ||
+            rendered.scopesKey !== newScopesKey)
+        ) {
           node.label = f.title;
           node.scopes = f.scopes;
+          node.description = f.description;
           await area.update("node", existingReteId); // React re-renders the custom node
         }
         if (rendered.x !== f.position.x || rendered.y !== f.position.y) {
@@ -201,6 +226,7 @@ export async function createFeaturesEditor(
         }
         renderedFeatures.set(f.id, {
           title: f.title,
+          description: f.description,
           scopesKey: newScopesKey,
           x: f.position.x,
           y: f.position.y,
@@ -288,7 +314,7 @@ export async function createFeaturesEditor(
   return {
     destroy: () => {
       destroyed = true;
-      selectCb = null;
+      doubleClickCb = null;
       createCb = null;
       cycleCb = null;
       moveCb = null;
@@ -305,8 +331,8 @@ export async function createFeaturesEditor(
       await arrange.layout();
       await AreaExtensions.zoomAt(area, editor.getNodes());
     },
-    onNodeSelect: (cb) => {
-      selectCb = cb;
+    onNodeDoubleClick: (cb) => {
+      doubleClickCb = cb;
     },
     onConnectionCreate: (cb) => {
       createCb = cb;
