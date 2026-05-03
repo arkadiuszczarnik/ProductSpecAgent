@@ -88,7 +88,7 @@ open class PlanGeneratorAgent(
     }
 
     protected open suspend fun runAgent(prompt: String): String {
-        return koogRunner?.run(promptService.get("plan-system"), prompt)
+        return koogRunner?.run("plan-generator", promptService.get("plan-system"), prompt)
             ?: throw UnsupportedOperationException("KoogAgentRunner not configured.")
     }
 

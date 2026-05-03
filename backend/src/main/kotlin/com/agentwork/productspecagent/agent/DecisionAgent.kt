@@ -29,7 +29,7 @@ open class DecisionAgent(
     }
 
     protected open suspend fun runAgent(prompt: String): String {
-        return koogRunner?.run(promptService.get("decision-system"), prompt)
+        return koogRunner?.run("decision", promptService.get("decision-system"), prompt)
             ?: throw UnsupportedOperationException("KoogAgentRunner not configured.")
     }
 

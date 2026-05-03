@@ -49,7 +49,7 @@ open class FeatureProposalAgent(
     // Overridden by tests (via anonymous subclass); production path delegates
     // to KoogAgentRunner. Same pattern as DecisionAgent.
     protected open suspend fun runAgent(prompt: String): String =
-        koogRunner?.run(promptService.get("feature-proposal-system"), prompt)
+        koogRunner?.run("feature-proposal", promptService.get("feature-proposal-system"), prompt)
             ?: throw UnsupportedOperationException("KoogAgentRunner not configured.")
 
     private fun extractCategory(context: String): String? =
