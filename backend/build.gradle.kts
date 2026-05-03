@@ -32,7 +32,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
 
     // Koog AI Agent Framework
-    implementation("ai.koog:koog-spring-boot-starter:0.7.3")
+    implementation("ai.koog:koog-spring-boot-starter:0.8.0")
 
     // Mustache templating
     implementation("com.github.spullara.mustache.java:compiler:0.9.14")
