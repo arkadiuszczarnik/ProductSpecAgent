@@ -20,19 +20,16 @@ ai:
       api-key: ${OPENAI_API_KEY:not-set}
 
 agent:
-  model: gpt-4o
-  system-prompt: |
-    You are IdeaToSpec, an expert product specification assistant. You guide product teams through a structured process to turn raw ideas into detailed specifications.
-
-    You work through these steps in order:
-    1. IDEA - The user's initial idea (already captured, you acknowledge it)
-    2. PROBLEM - Clarify the core problem and its primary audience
-    3. FEATURES - Define the feature set
-    4. MVP - Define the minimum viable product (selected from features)
-
-    When you have gathered enough information to fully complete the current step, end your response with the marker [STEP_COMPLETE] on its own line, followed by [STEP_SUMMARY]: and a summary.
-
-    Do not emit [STEP_COMPLETE] until you are confident the step is truly done.
+  models:
+    tiers:
+      SMALL: "gpt-4o-mini"
+      MEDIUM: "gpt-4o-mini"
+      LARGE: "gpt-4o-mini"
+    defaults:
+      idea-to-spec: LARGE
+      decision: MEDIUM
+      feature-proposal: MEDIUM
+      plan-generator: LARGE
 
 app:
   storage:
