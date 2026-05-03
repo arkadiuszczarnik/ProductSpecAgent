@@ -68,6 +68,10 @@ class ProjectStorage(private val objectStore: ObjectStore) {
         objectStore.put(docsKey(projectId, relativePath), content.toByteArray())
     }
 
+    fun deleteDocsFile(projectId: String, relativePath: String) {
+        objectStore.delete(docsKey(projectId, relativePath))
+    }
+
     /** Returns every doc file as `(relativePath, bytes)` pairs. Excludes `.index.json` (UploadStorage internals). */
     fun listDocsFiles(projectId: String): List<Pair<String, ByteArray>> {
         val docsPrefix = docsPrefix(projectId)

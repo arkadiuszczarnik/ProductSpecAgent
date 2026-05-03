@@ -37,7 +37,7 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
     loadProject, reset, setProject,
   } = useProjectStore();
 
-  const [showExplorer, setShowExplorer] = useState(true);
+  const [showExplorer, setShowExplorer] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showHandoff, setShowHandoff] = useState(false);
   const [rightTab, setRightTab] = useState<"chat" | "decisions" | "clarifications" | "tasks" | "checks" | "documents">("chat");
@@ -62,9 +62,9 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { width: sidebarWidth, isDragging, handleProps } = useResizable({
-    initialWidth: 340,
+    initialWidth: 600,
     minWidth: 280,
-    maxWidth: 600,
+    maxWidth: 900,
   });
 
   if (projectLoading) {
