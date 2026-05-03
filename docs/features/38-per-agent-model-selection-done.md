@@ -6,7 +6,7 @@
 **Plan:** `docs/superpowers/plans/2026-05-03-per-agent-model-selection.md`
 **Feature-Doc:** `docs/features/38-per-agent-model-selection.md`
 
-## Was umgesetzt wurde
+## Was umgesetzt wurde.
 
 **Backend**
 
