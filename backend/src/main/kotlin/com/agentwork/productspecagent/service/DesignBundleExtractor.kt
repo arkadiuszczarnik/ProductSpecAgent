@@ -70,6 +70,10 @@ open class DesignBundleExtractor(
         val tmpFile = Files.createTempFile("design-bundle-", ".zip")
         try {
             Files.write(tmpFile, zipBytes)
+            // Use ZipFile (random access via central directory) instead of ZipInputStream:
+            // real Claude-Design bundles include STORED entries with EXT data-descriptor
+            // (general-purpose-bit 3), which ZipInputStream cannot read without entry.size
+            // available upfront.
             ZipFile(tmpFile.toFile()).use { zf ->
                 for (entry in zf.entries()) {
                     val name = entry.name
@@ -82,6 +86,13 @@ open class DesignBundleExtractor(
                     if (!resolved.startsWith(rootPath) || name.startsWith("/") || name.startsWith("\\")) {
                         throw InvalidBundleException("path traversal rejected: $name")
                     }
+                    if (files.size >= props.maxFiles) {
+                        throw InvalidBundleException("file count exceeds maxFiles ${props.maxFiles}")
+                    }
+                    // Pre-check declared size to avoid heap blowup on malicious entries
+                    if (entry.size > 0 && entry.size > props.maxFileBytes) {
+                        throw InvalidBundleException("file exceeds maxFileBytes (declared): $name")
+                    }
                     val data = zf.getInputStream(entry).readBytes()
                     if (data.size > props.maxFileBytes) {
                         throw InvalidBundleException("file exceeds maxFileBytes: $name")
@@ -89,9 +100,6 @@ open class DesignBundleExtractor(
                     totalBytes += data.size
                     if (totalBytes > props.maxExtractedBytes) {
                         throw InvalidBundleException("extracted size exceeds maxExtractedBytes ${props.maxExtractedBytes}")
-                    }
-                    if (files.size >= props.maxFiles) {
-                        throw InvalidBundleException("file count exceeds maxFiles ${props.maxFiles}")
                     }
                     files[name] = data
                 }
