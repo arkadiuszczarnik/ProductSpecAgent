@@ -20,7 +20,16 @@ ai:
       api-key: ${OPENAI_API_KEY:not-set}
 
 agent:
-  model: gpt-5.5
+  models:
+    tiers:
+      SMALL: "gpt-5-nano"
+      MEDIUM: "gpt-5-mini"
+      LARGE: "gpt-5-2"
+    defaults:
+      idea-to-spec: LARGE
+      decision: MEDIUM
+      feature-proposal: MEDIUM
+      plan-generator: LARGE
 app:
   storage:
     bucket: ${S3_BUCKET:productspec-data}

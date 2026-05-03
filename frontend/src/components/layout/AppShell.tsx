@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderKanban, MessageSquareText, Package, Plus, Settings, Sparkles } from "lucide-react";
+import { Cpu, FolderKanban, MessageSquareText, Package, Plus, Settings, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AppShellProps {
@@ -75,6 +75,12 @@ function IconRail() {
           label="Prompts"
           active={pathname?.startsWith("/prompts") ?? false}
         />
+        <NavItem
+          href="/agent-models"
+          icon={<Cpu size={20} />}
+          label="Agent-Modelle"
+          active={pathname?.startsWith("/agent-models") ?? false}
+        />
       </nav>
 
       <div className="flex flex-col items-center gap-1">
@@ -92,7 +98,10 @@ function IconRail() {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const isWorkspace = pathname?.startsWith("/projects/") && pathname !== "/projects/new";
-  const isFullBleed = isWorkspace || (pathname?.startsWith("/prompts") ?? false);
+  const isFullBleed =
+    isWorkspace ||
+    (pathname?.startsWith("/prompts") ?? false) ||
+    (pathname?.startsWith("/agent-models") ?? false);
 
   return (
     <div className="flex h-screen bg-background">

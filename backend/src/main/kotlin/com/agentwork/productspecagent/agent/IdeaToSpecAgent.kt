@@ -413,13 +413,14 @@ open class IdeaToSpecAgent(
     }
 
     protected open suspend fun runAgent(systemPrompt: String, userMessage: String): String {
-        val result = koogRunner?.run(systemPrompt, userMessage)
+        val result = koogRunner?.run(AGENT_ID, systemPrompt, userMessage)
             ?: throw UnsupportedOperationException("KoogAgentRunner not configured.")
         logger.info("Agent raw response (last 500 chars): ...{}", result.takeLast(500))
         return result
     }
 
     companion object {
+        const val AGENT_ID = "idea-to-spec"
         private val uuid = java.util.UUID::randomUUID
 
         /**
