@@ -32,7 +32,7 @@ agent:
       plan-generator: LARGE
       design-summary: MEDIUM
 app:
-  frontend-origin: ${APP_FRONTEND_ORIGIN:http://localhost:3001}
+  frontend-origin: ${APP_FRONTEND_ORIGIN:http://localhost:3000}
   storage:
     bucket: ${S3_BUCKET:productspec-data}
     endpoint: ${S3_ENDPOINT:}
