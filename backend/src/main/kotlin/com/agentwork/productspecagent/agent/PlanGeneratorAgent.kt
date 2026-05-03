@@ -22,6 +22,10 @@ open class PlanGeneratorAgent(
     private val promptService: PromptService,
     private val koogRunner: KoogAgentRunner? = null
 ) {
+    companion object {
+        const val AGENT_ID = "plan-generator"
+    }
+
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun generatePlan(projectId: String): List<SpecTask> {
@@ -88,7 +92,7 @@ open class PlanGeneratorAgent(
     }
 
     protected open suspend fun runAgent(prompt: String): String {
-        return koogRunner?.run("plan-generator", promptService.get("plan-system"), prompt)
+        return koogRunner?.run(AGENT_ID, promptService.get("plan-system"), prompt)
             ?: throw UnsupportedOperationException("KoogAgentRunner not configured.")
     }
 

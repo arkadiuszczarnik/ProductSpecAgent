@@ -12,6 +12,10 @@ open class DecisionAgent(
     private val promptService: PromptService,
     private val koogRunner: KoogAgentRunner? = null
 ) {
+    companion object {
+        const val AGENT_ID = "decision"
+    }
+
     suspend fun generateDecision(projectId: String, title: String, stepType: FlowStepType): Decision {
         val context = contextBuilder.buildContext(projectId)
         val prompt = buildString {
@@ -29,7 +33,7 @@ open class DecisionAgent(
     }
 
     protected open suspend fun runAgent(prompt: String): String {
-        return koogRunner?.run("decision", promptService.get("decision-system"), prompt)
+        return koogRunner?.run(AGENT_ID, promptService.get("decision-system"), prompt)
             ?: throw UnsupportedOperationException("KoogAgentRunner not configured.")
     }
 
