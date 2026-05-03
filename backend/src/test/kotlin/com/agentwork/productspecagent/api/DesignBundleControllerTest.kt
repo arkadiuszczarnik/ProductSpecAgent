@@ -14,17 +14,21 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
 import java.net.URI
+import com.agentwork.productspecagent.service.ProjectService
 
 @SpringBootTest
 class DesignBundleControllerTest {
 
     @Autowired private lateinit var ctx: WebApplicationContext
+    @Autowired private lateinit var projectService: ProjectService
     private lateinit var mockMvc: MockMvc
 
     @BeforeEach
     fun setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(ctx).build()
     }
+
+    private fun createProject(name: String): String = projectService.createProject(name).project.id
 
     private val schedulerZip: ByteArray =
         java.io.File("../examples/Scheduler.zip").readBytes()
@@ -129,12 +133,13 @@ class DesignBundleControllerTest {
 
     @Test
     fun `complete with bundle runs agent and advances flow`() {
+        val projectId = createProject("Complete With Bundle Test")
         val file = MockMultipartFile("file", "Scheduler.zip", "application/zip", schedulerZip)
-        mockMvc.perform(multipart("/api/v1/projects/proj-cc/design/upload").file(file))
+        mockMvc.perform(multipart("/api/v1/projects/$projectId/design/upload").file(file))
             .andExpect(status().isOk)
 
         mockMvc.perform(
-            post("/api/v1/projects/proj-cc/design/complete")
+            post("/api/v1/projects/$projectId/design/complete")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"locale":"de"}""")
         ).andExpect(status().isOk)
@@ -144,8 +149,9 @@ class DesignBundleControllerTest {
 
     @Test
     fun `complete without bundle skips agent and advances flow`() {
+        val projectId = createProject("Complete Without Bundle Test")
         mockMvc.perform(
-            post("/api/v1/projects/no-bundle-skip/design/complete")
+            post("/api/v1/projects/$projectId/design/complete")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"locale":"de"}""")
         ).andExpect(status().isOk)

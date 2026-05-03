@@ -113,11 +113,11 @@ class ProjectService(
 
     /**
      * Marks [step] as COMPLETED, advances currentStep to the next one, and returns the next
-     * FlowStepType (or null if [step] is the last). Works even without a pre-existing project
-     * entry — uses a fresh FlowState if none is persisted yet (test-friendly).
+     * FlowStepType (or null if [step] is the last). Requires a pre-existing FlowState —
+     * throws [ProjectNotFoundException] if the project does not exist.
      */
     fun advanceStep(projectId: String, step: FlowStepType): FlowStepType? {
-        val flowState = storage.loadFlowState(projectId) ?: createInitialFlowState(projectId)
+        val flowState = storage.loadFlowState(projectId) ?: throw ProjectNotFoundException(projectId)
         val stepOrder = FlowStepType.entries.toList()
         val now = Instant.now().toString()
         val currentIndex = stepOrder.indexOf(step)
