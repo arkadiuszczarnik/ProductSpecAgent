@@ -13,6 +13,7 @@ import { FeaturesForm } from "./steps/FeaturesForm";
 import { ArchitectureForm } from "./steps/ArchitectureForm";
 import { BackendForm } from "./steps/BackendForm";
 import { FrontendForm } from "./steps/FrontendForm";
+import { DesignForm } from "./steps/design/DesignForm";
 
 const FORM_MAP: Record<string, React.ComponentType<{ projectId: string }>> = {
   IDEA: IdeaForm,
@@ -22,6 +23,7 @@ const FORM_MAP: Record<string, React.ComponentType<{ projectId: string }>> = {
   ARCHITECTURE: ArchitectureForm,
   BACKEND: BackendForm,
   FRONTEND: FrontendForm,
+  DESIGN: DesignForm,
 };
 
 interface WizardFormProps {

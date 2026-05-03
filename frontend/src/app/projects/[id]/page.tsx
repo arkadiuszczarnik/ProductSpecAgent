@@ -13,6 +13,7 @@ import { useProjectStore } from "@/lib/stores/project-store";
 import { useDecisionStore } from "@/lib/stores/decision-store";
 import { useClarificationStore } from "@/lib/stores/clarification-store";
 import { useTaskStore } from "@/lib/stores/task-store";
+import { useDesignBundleStore } from "@/lib/stores/design-bundle-store";
 import { TaskTree } from "@/components/tasks/TaskTree";
 import { CheckResultsPanel } from "@/components/checks/CheckResultsPanel";
 import { DocumentsPanel } from "@/components/documents/DocumentsPanel";
@@ -53,12 +54,14 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
     resetClars();
     resetTasks();
     useWizardStore.getState().reset();
+    useDesignBundleStore.getState().reset();
     loadProject(id);
     loadDecs(id);
     loadClars(id);
     loadTsks(id);
     loadCoverage(id);
     useWizardStore.getState().loadWizard(id);
+    useDesignBundleStore.getState().loadBundle(id);
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { width: sidebarWidth, isDragging, handleProps } = useResizable({
