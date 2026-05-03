@@ -1,0 +1,101 @@
+package com.agentwork.productspecagent.api
+
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.mock.web.MockMultipartFile
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.web.context.WebApplicationContext
+
+@SpringBootTest
+class DesignBundleControllerTest {
+
+    @Autowired private lateinit var ctx: WebApplicationContext
+    private lateinit var mockMvc: MockMvc
+
+    @BeforeEach
+    fun setUp() {
+        mockMvc = MockMvcBuilders.webAppContextSetup(ctx).build()
+    }
+
+    private val schedulerZip: ByteArray =
+        java.io.File("../examples/Scheduler.zip").readBytes()
+
+    @Test
+    fun `upload returns bundle with derived URLs`() {
+        val file = MockMultipartFile(
+            "file", "Scheduler.zip", "application/zip", schedulerZip,
+        )
+        mockMvc.perform(
+            multipart("/api/v1/projects/proj-c/design/upload").file(file)
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.entryHtml").value("Scheduler.html"))
+            .andExpect(jsonPath("$.pages.length()").value(5))
+            .andExpect(jsonPath("$.entryUrl")
+                .value("/api/v1/projects/proj-c/design/files/Scheduler.html"))
+            .andExpect(jsonPath("$.bundleUrl")
+                .value("/api/v1/projects/proj-c/design/files/"))
+    }
+
+    @Test
+    fun `get returns 404 when no bundle`() {
+        mockMvc.perform(get("/api/v1/projects/no-bundle/design"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `delete is idempotent`() {
+        mockMvc.perform(delete("/api/v1/projects/missing/design"))
+            .andExpect(status().isNoContent)
+    }
+
+    @Test
+    fun `files endpoint serves with security headers and correct content-type`() {
+        val file = MockMultipartFile("file", "Scheduler.zip", "application/zip", schedulerZip)
+        mockMvc.perform(multipart("/api/v1/projects/proj-h/design/upload").file(file))
+            .andExpect(status().isOk)
+
+        mockMvc.perform(get("/api/v1/projects/proj-h/design/files/Scheduler.html"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentTypeCompatibleWith("text/html"))
+            .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+            .andExpect(header().exists("Content-Security-Policy"))
+    }
+
+    @Test
+    fun `files endpoint rejects path traversal with 400`() {
+        val file = MockMultipartFile("file", "Scheduler.zip", "application/zip", schedulerZip)
+        mockMvc.perform(multipart("/api/v1/projects/proj-t/design/upload").file(file))
+            .andExpect(status().isOk)
+
+        // Use un-encoded "../" so Spring routes the request to the controller,
+        // which then rejects the path traversal with 400 (mirrors AssetBundleController pattern).
+        mockMvc.perform(get("/api/v1/projects/proj-t/design/files/../etc/passwd"))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `upload returns 413 when zip exceeds limit`() {
+        // Build a 6 MB zip using STORED (no compression) so the zip itself is > 5 MB.
+        // Deflate compresses zeroes to almost nothing, so we need STORED + random-ish data.
+        val baos = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(baos).use { zos ->
+            val entry = java.util.zip.ZipEntry("big.bin")
+            entry.method = java.util.zip.ZipEntry.STORED
+            val data = ByteArray(6 * 1024 * 1024) { it.toByte() }
+            entry.size = data.size.toLong()
+            entry.compressedSize = data.size.toLong()
+            entry.crc = java.util.zip.CRC32().also { it.update(data) }.value
+            zos.putNextEntry(entry)
+            zos.write(data)
+            zos.closeEntry()
+        }
+        val big = MockMultipartFile("file", "big.zip", "application/zip", baos.toByteArray())
+        mockMvc.perform(multipart("/api/v1/projects/proj-big/design/upload").file(big))
+            .andExpect(status().isPayloadTooLarge)
+    }
+}
