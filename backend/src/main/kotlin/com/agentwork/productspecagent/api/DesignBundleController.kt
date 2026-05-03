@@ -1,10 +1,13 @@
 package com.agentwork.productspecagent.api
 
+import com.agentwork.productspecagent.agent.DesignSummaryAgent
 import com.agentwork.productspecagent.config.DesignBundleProperties
 import com.agentwork.productspecagent.domain.DesignBundle
 import com.agentwork.productspecagent.domain.DesignBundleFile
 import com.agentwork.productspecagent.domain.DesignPage
+import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.service.DesignBundleExtractor
+import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.storage.DesignBundleStorage
 import kotlinx.serialization.Serializable
 import jakarta.servlet.http.HttpServletRequest
@@ -23,6 +26,8 @@ import org.springframework.web.server.ResponseStatusException
 class DesignBundleController(
     private val storage: DesignBundleStorage,
     private val props: DesignBundleProperties,
+    private val designSummaryAgent: DesignSummaryAgent,
+    private val projectService: ProjectService,
     @Value("\${app.frontend-origin:http://localhost:3001}") private val frontendOrigin: String,
 ) {
 
@@ -119,6 +124,42 @@ class DesignBundleController(
         headers.set(HttpHeaders.CACHE_CONTROL, "no-store")
         return ResponseEntity(bytes, headers, HttpStatus.OK)
     }
+
+    data class CompleteRequest(val locale: String = "de")
+
+    data class CompleteResponse(
+        val message: String,
+        val nextStep: String?,
+    )
+
+    @PostMapping("/complete")
+    fun complete(
+        @PathVariable projectId: String,
+        @RequestBody body: CompleteRequest,
+    ): ResponseEntity<CompleteResponse> {
+        val bundle = storage.get(projectId)
+        val message: String
+        if (bundle != null) {
+            try {
+                designSummaryAgent.summarize(projectId)
+                message = "Design-Bundle '${bundle.originalFilename}' analysiert. Spec aktualisiert."
+            } catch (e: Exception) {
+                log.warn("design summarize unexpectedly threw for $projectId", e)
+                return ResponseEntity.ok(
+                    CompleteResponse(
+                        message = "Design-Summary konnte nicht generiert werden, Page-Liste wurde übernommen.",
+                        nextStep = projectService.advanceStep(projectId, FlowStepType.DESIGN)?.name,
+                    )
+                )
+            }
+        } else {
+            message = "Design-Step übersprungen — kein Bundle hochgeladen."
+        }
+        val nextStep = projectService.advanceStep(projectId, FlowStepType.DESIGN)
+        return ResponseEntity.ok(CompleteResponse(message, nextStep?.name))
+    }
+
+    private val log = org.slf4j.LoggerFactory.getLogger(javaClass)
 
     private fun mimeTypeFor(path: String): String {
         val lower = path.lowercase()

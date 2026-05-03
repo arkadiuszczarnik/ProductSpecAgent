@@ -111,6 +111,28 @@ class ProjectService(
         storage.saveFlowState(flowState)
     }
 
+    /**
+     * Marks [step] as COMPLETED, advances currentStep to the next one, and returns the next
+     * FlowStepType (or null if [step] is the last). Works even without a pre-existing project
+     * entry — uses a fresh FlowState if none is persisted yet (test-friendly).
+     */
+    fun advanceStep(projectId: String, step: FlowStepType): FlowStepType? {
+        val flowState = storage.loadFlowState(projectId) ?: createInitialFlowState(projectId)
+        val stepOrder = FlowStepType.entries.toList()
+        val now = Instant.now().toString()
+        val currentIndex = stepOrder.indexOf(step)
+        val nextStepType = if (currentIndex + 1 < stepOrder.size) stepOrder[currentIndex + 1] else null
+        val updatedSteps = flowState.steps.map { s ->
+            when (s.stepType) {
+                step -> s.copy(status = FlowStepStatus.COMPLETED, updatedAt = now)
+                nextStepType -> s.copy(status = FlowStepStatus.IN_PROGRESS, updatedAt = now)
+                else -> s
+            }
+        }
+        storage.saveFlowState(flowState.copy(steps = updatedSteps, currentStep = nextStepType ?: step))
+        return nextStepType
+    }
+
     fun saveSpecFile(projectId: String, fileName: String, content: String) {
         storage.loadProject(projectId) ?: throw ProjectNotFoundException(projectId)
         storage.saveSpecStep(projectId, fileName, content)

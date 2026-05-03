@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpMethod
+import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -124,5 +125,31 @@ class DesignBundleControllerTest {
         val big = MockMultipartFile("file", "big.zip", "application/zip", baos.toByteArray())
         mockMvc.perform(multipart("/api/v1/projects/proj-big/design/upload").file(big))
             .andExpect(status().isPayloadTooLarge)
+    }
+
+    @Test
+    fun `complete with bundle runs agent and advances flow`() {
+        val file = MockMultipartFile("file", "Scheduler.zip", "application/zip", schedulerZip)
+        mockMvc.perform(multipart("/api/v1/projects/proj-cc/design/upload").file(file))
+            .andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/api/v1/projects/proj-cc/design/complete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"locale":"de"}""")
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.message").exists())
+            .andExpect(jsonPath("$.nextStep").value("ARCHITECTURE"))
+    }
+
+    @Test
+    fun `complete without bundle skips agent and advances flow`() {
+        mockMvc.perform(
+            post("/api/v1/projects/no-bundle-skip/design/complete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"locale":"de"}""")
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("übersprungen")))
+            .andExpect(jsonPath("$.nextStep").value("ARCHITECTURE"))
     }
 }
