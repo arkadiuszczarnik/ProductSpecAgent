@@ -30,6 +30,7 @@ agent:
       decision: MEDIUM
       feature-proposal: MEDIUM
       plan-generator: LARGE
+      design-summary: MEDIUM
 
 app:
   storage:

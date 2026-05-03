@@ -23,6 +23,7 @@ class AgentModelServiceTest {
             "decision" to AgentModelTier.MEDIUM,
             "feature-proposal" to AgentModelTier.MEDIUM,
             "plan-generator" to AgentModelTier.LARGE,
+            "design-summary" to AgentModelTier.MEDIUM,
         ),
     )
 
@@ -67,7 +68,7 @@ class AgentModelServiceTest {
     fun `listAll returns one entry per known agent`() {
         service.setTier("decision", AgentModelTier.SMALL)
         val list = service.listAll()
-        assertThat(list).hasSize(4)
+        assertThat(list).hasSize(5)
         val decision = list.first { it.agentId == "decision" }
         assertThat(decision.currentTier).isEqualTo(AgentModelTier.SMALL)
         assertThat(decision.defaultTier).isEqualTo(AgentModelTier.MEDIUM)

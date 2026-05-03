@@ -30,6 +30,7 @@ agent:
       decision: MEDIUM
       feature-proposal: MEDIUM
       plan-generator: LARGE
+      design-summary: MEDIUM
 app:
   frontend-origin: ${APP_FRONTEND_ORIGIN:http://localhost:3001}
   storage:

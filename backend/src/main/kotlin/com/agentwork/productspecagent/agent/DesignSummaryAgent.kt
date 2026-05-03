@@ -68,6 +68,8 @@ open class DesignSummaryAgent(
         }
         sb.appendLine()
 
+        var totalBytes = 0L
+
         // Komponenten-Breakdown.md if present
         val mdFile = bundle.files.firstOrNull {
             it.path.equals("Komponenten-Breakdown.md", ignoreCase = true)
@@ -78,6 +80,7 @@ open class DesignSummaryAgent(
                 ?.toString(Charsets.UTF_8)
                 ?.take(props.summaryMaxFileBytes.toInt())
             if (raw != null) {
+                totalBytes += raw.toByteArray().size
                 sb.appendLine("--- BEGIN DESIGN FILE: ${mdFile.path} ---")
                 sb.appendLine(escapeMarkers(raw))
                 sb.appendLine("--- END DESIGN FILE ---")
@@ -91,7 +94,6 @@ open class DesignSummaryAgent(
             bundle.files.filter { it.path.endsWith(".jsx") }
         val selected = pool.sortedBy { it.path }.take(props.summaryMaxJsxFiles)
 
-        var totalBytes = 0L
         for (f in selected) {
             if (totalBytes >= props.summaryMaxTotalBytes) break
             val raw = runCatching { storage.readFile(bundle.projectId, f.path) }.getOrNull() ?: continue
