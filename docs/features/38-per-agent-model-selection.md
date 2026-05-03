@@ -9,7 +9,7 @@
 
 Heute nutzen alle vier Backend-Agents (`IdeaToSpecAgent`, `DecisionAgent`, `FeatureProposalAgent`, `PlanGeneratorAgent`) das gleiche, global in `application.yml` unter `agent.model` konfigurierte OpenAI-Modell. Das ist aus zwei Gründen unzureichend:
 
-1. **Nicht differenziert nach Aufgabe:** Ein einfaches Decision-JSON braucht kein `GPT5_2Pro`, eine vollständige Spec-Generierung profitiert dagegen messbar von einem stärkeren Modell. Kosten und Latenz werden unnötig über alle Agents gemittelt.
+1. **Nicht differenziert nach Aufgabe:** Ein einfaches Decision-JSON braucht kein `GPT5_2Pro`, eine vollständige Spec-Generierung profitiert dagegen messbar von einem stärkeren Modell. Kosten und Latenz werden unnötig über alle Agents gemittelt..
 2. **Aktuell gar nicht funktional:** Der konfigurierte Wert `gpt-5.5` ist im `KoogAgentRunner.resolveModel()` nicht gemappt — der Runner fällt still auf `OpenAIModels.Chat.GPT4o` zurück. Die Konfiguration suggeriert eine Auswahl, die es nicht gibt.
 
 ## Ziel
