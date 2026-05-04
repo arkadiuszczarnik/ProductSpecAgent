@@ -9,6 +9,11 @@ import {
   type AssetBundleDetail,
   type StepType,
 } from "@/lib/api";
+import {
+  diffMissingTriples,
+  getAllPossibleTriples,
+  type BundleTriple,
+} from "@/lib/asset-bundles/possible-triples";
 
 interface LoadedFile {
   path: string;
@@ -35,6 +40,14 @@ interface AssetBundleState {
   upload: (file: File) => Promise<void>;
   delete: (step: StepType, field: string, value: string) => Promise<void>;
   clearError: () => void;
+
+  // Coverage-View
+  activeTab: "uploaded" | "missing";
+  selectedMissingTripleId: string | null;
+
+  setActiveTab: (tab: "uploaded" | "missing") => void;
+  selectMissingTriple: (id: string | null) => void;
+  getMissingTriples: () => BundleTriple[];
 }
 
 export const useAssetBundleStore = create<AssetBundleState>((set, get) => ({
@@ -145,5 +158,21 @@ export const useAssetBundleStore = create<AssetBundleState>((set, get) => ({
 
   clearError() {
     set({ error: null });
+  },
+
+  // Coverage-View
+  activeTab: "uploaded",
+  selectedMissingTripleId: null,
+
+  setActiveTab(tab) {
+    set({ activeTab: tab });
+  },
+
+  selectMissingTriple(id) {
+    set({ selectedMissingTripleId: id });
+  },
+
+  getMissingTriples() {
+    return diffMissingTriples(getAllPossibleTriples(), get().bundles);
   },
 }));
