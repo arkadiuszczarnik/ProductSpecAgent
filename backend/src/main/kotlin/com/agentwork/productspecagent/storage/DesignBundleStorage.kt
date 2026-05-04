@@ -13,10 +13,8 @@ open class DesignBundleStorage(
 ) {
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
 
-    private fun designPrefix(projectId: String) = "projects/$projectId/design/"
-    private fun zipKey(projectId: String) = "${designPrefix(projectId)}bundle.zip"
-    private fun manifestKey(projectId: String) = "${designPrefix(projectId)}manifest.json"
-    private fun filesPrefix(projectId: String) = "${designPrefix(projectId)}files/"
+    private fun filesPrefix(projectId: String) = "projects/$projectId/docs/design/"
+    private fun manifestKey(projectId: String) = "${filesPrefix(projectId)}manifest.json"
     private fun fileKey(projectId: String, relPath: String) =
         "${filesPrefix(projectId)}$relPath"
 
@@ -30,9 +28,6 @@ open class DesignBundleStorage(
         for ((relPath, data) in result.files) {
             objectStore.put(fileKey(projectId, relPath), data, contentTypeFor(relPath))
         }
-        // Write original ZIP
-        objectStore.put(zipKey(projectId), zipBytes, "application/zip")
-
         // Persist manifest with projectId populated
         val bundle = result.bundle.copy(projectId = projectId)
         objectStore.put(
@@ -57,10 +52,9 @@ open class DesignBundleStorage(
     }
 
     open fun delete(projectId: String) {
+        // deleteFiles wipes the whole docs/design/ prefix, including manifest.json.
+        // spec/design.md cleanup is delegated to caller (ProjectService) — keep storage focused.
         deleteFiles(projectId)
-        objectStore.delete(zipKey(projectId))
-        objectStore.delete(manifestKey(projectId))
-        // design.md cleanup is delegated to caller (ProjectService) — keep storage focused.
     }
 
     private fun deleteFiles(projectId: String) {
