@@ -28,6 +28,7 @@ export function DesignIframePreview({ src }: Props) {
           sandbox="allow-scripts allow-same-origin"
           onLoad={() => setLoaded(true)}
           className="h-full w-full border-0"
+          style={{ minHeight: "70vh" }}
         />
         {timedOut && !loaded && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 p-6 text-center text-sm text-muted-foreground">
