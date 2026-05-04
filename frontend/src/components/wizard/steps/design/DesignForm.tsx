@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 import { useDesignBundleStore } from "@/lib/stores/design-bundle-store";
 import { useWizardStore } from "@/lib/stores/wizard-store";
 import { DesignDropzone } from "./DesignDropzone";
@@ -107,9 +107,12 @@ export function DesignForm({ projectId }: Props) {
         </div>
       </div>
       <div className="flex justify-end border-t border-border bg-card px-4 py-3">
-        <Button onClick={handleComplete} disabled={completing}>
-          {completing && <Loader2 size={14} className="mr-2 animate-spin" />}
-          Step abschließen
+        <Button size="sm" onClick={handleComplete} disabled={completing} className="gap-1.5">
+          {completing ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <>Weiter <ArrowRight size={14} /></>
+          )}
         </Button>
       </div>
       <DesignReplaceConfirmDialog
