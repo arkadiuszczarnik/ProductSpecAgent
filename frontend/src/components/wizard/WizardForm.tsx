@@ -104,20 +104,23 @@ export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardF
                 {chatPending ? "Agent antwortet..." : "Saving..."}
               </span>
             )}
-            <Button
-              size="sm"
-              onClick={handleNext}
-              disabled={isWorking || (isBlocked && !wizardDone)}
-              className="gap-1.5"
-            >
-              {wizardDone ? (
-                <><Download size={14} /> Exportieren</>
-              ) : isLast ? (
-                <><Save size={14} /> Abschliessen</>
-              ) : (
-                <>Weiter <ArrowRight size={14} /></>
-              )}
-            </Button>
+            {/* DESIGN owns its own complete/skip CTAs inside DesignForm */}
+            {activeStep !== "DESIGN" && (
+              <Button
+                size="sm"
+                onClick={handleNext}
+                disabled={isWorking || (isBlocked && !wizardDone)}
+                className="gap-1.5"
+              >
+                {wizardDone ? (
+                  <><Download size={14} /> Exportieren</>
+                ) : isLast ? (
+                  <><Save size={14} /> Abschliessen</>
+                ) : (
+                  <>Weiter <ArrowRight size={14} /></>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>
