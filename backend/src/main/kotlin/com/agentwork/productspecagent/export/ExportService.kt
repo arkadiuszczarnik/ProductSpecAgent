@@ -2,7 +2,6 @@ package com.agentwork.productspecagent.export
 
 import com.agentwork.productspecagent.domain.*
 import com.agentwork.productspecagent.service.*
-import com.agentwork.productspecagent.storage.DesignBundleStorage
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.util.zip.ZipEntry
@@ -16,9 +15,7 @@ class ExportService(
     private val taskService: TaskService,
     private val wizardService: WizardService,
     private val assetBundleExporter: AssetBundleExporter,
-    private val designBundleStorage: DesignBundleStorage,
 ) {
-    private val json = kotlinx.serialization.json.Json { prettyPrint = true }
     fun exportProject(projectId: String, request: ExportRequest = ExportRequest()): ByteArray {
         val projectResponse = projectService.getProject(projectId)
         val project = projectResponse.project
@@ -82,19 +79,6 @@ class ExportService(
             // Asset bundles namespaced under .claude/{type}/<bundle-id>/
             assetBundleExporter.writeToZip(zip, prefix, matchedBundles)
 
-            // Design bundle: manifest.json + files/
-            val bundle = designBundleStorage.get(projectId)
-            if (bundle != null) {
-                val manifestJson = json.encodeToString(DesignBundle.serializer(), bundle)
-                zip.addEntry("$prefix/design/manifest.json", manifestJson)
-
-                for (file in bundle.files) {
-                    val bytes = runCatching { designBundleStorage.readFile(projectId, file.path) }.getOrNull()
-                    if (bytes != null) {
-                        zip.addBinaryEntry("$prefix/design/files/${file.path}", bytes)
-                    }
-                }
-            }
 
         }
 

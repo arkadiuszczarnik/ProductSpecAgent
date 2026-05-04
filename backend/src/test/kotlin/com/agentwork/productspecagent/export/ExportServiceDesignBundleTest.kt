@@ -52,7 +52,7 @@ class ExportServiceDesignBundleTest {
     }
 
     @Test
-    fun `export includes design manifest and files when bundle is uploaded`() {
+    fun `export includes design manifest and files under docs design`() {
         val projectId = createProject()
         val schedulerZip = java.io.File("../examples/Scheduler.zip").readBytes()
 
@@ -63,12 +63,33 @@ class ExportServiceDesignBundleTest {
 
         val entryNames = entries.keys.toList()
         assertTrue(
-            entryNames.any { it.endsWith("design/manifest.json") },
-            "ZIP should contain design/manifest.json, got: $entryNames"
+            entryNames.any { it.endsWith("docs/design/manifest.json") },
+            "ZIP should contain docs/design/manifest.json, got: $entryNames"
         )
         assertTrue(
-            entryNames.any { it.endsWith("design/files/Scheduler.html") },
-            "ZIP should contain design/files/Scheduler.html, got: $entryNames"
+            entryNames.any { it.endsWith("docs/design/Scheduler.html") },
+            "ZIP should contain docs/design/Scheduler.html, got: $entryNames"
+        )
+    }
+
+    @Test
+    fun `export does not duplicate design files under legacy design prefix`() {
+        val projectId = createProject()
+        val schedulerZip = java.io.File("../examples/Scheduler.zip").readBytes()
+
+        designBundleStorage.save(projectId, "Scheduler.zip", schedulerZip)
+
+        val zipBytes = exportService.exportProject(projectId)
+        val entries = zipEntries(zipBytes)
+
+        // Compute the prefix that ExportService applies (slugified project name).
+        // The project name "Export Design Test" slugifies to "export-design-test".
+        val legacyPrefixedEntries = entries.keys.filter {
+            it.matches(Regex("[^/]+/design/.*"))
+        }
+        assertTrue(
+            legacyPrefixedEntries.isEmpty(),
+            "No entry should live under <prefix>/design/ (legacy layout). Got: $legacyPrefixedEntries"
         )
     }
 }
