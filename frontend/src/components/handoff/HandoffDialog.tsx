@@ -86,7 +86,7 @@ export function HandoffDialog({ projectId, projectName, open, onClose }: Handoff
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <Card className="relative z-10 w-full max-w-3xl mx-4 max-h-[85vh] flex flex-col">
+      <Card className="relative z-10 w-full max-w-6xl mx-4 h-[92vh] flex flex-col">
         <CardHeader className="shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle>Agent Handoff</CardTitle>
