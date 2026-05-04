@@ -186,4 +186,26 @@ class ProjectServiceTest {
 
         assertEquals("# Idea", storage.loadSpecStep(projectId, "idea.md"))
     }
+
+    @Test
+    fun `regenerateDocsScaffold preserves docs design contents`() {
+        // Convention: DocsScaffoldGenerator never emits under docs/design/, so the
+        // diff-sync's managedDirs computation never includes that path, so user-uploaded
+        // design-bundle files survive every spec-save / regen.
+        val syncingService = ProjectService(storage, DocsScaffoldGenerator())
+        val response = syncingService.createProject("Design Preserve Test")
+        val projectId = response.project.id
+
+        // Simulate a design bundle written by DesignBundleStorage.
+        storage.saveDocsFile(projectId, "docs/design/manifest.json", """{"projectId":"x"}""")
+        storage.saveDocsFile(projectId, "docs/design/Scheduler.html", "<html/>")
+        storage.saveDocsFile(projectId, "docs/design/design-canvas.jsx", "// canvas")
+
+        syncingService.regenerateDocsScaffold(projectId)
+
+        val paths = listDocsRelativePaths(projectId)
+        assertTrue("docs/design/manifest.json" in paths, "manifest was deleted")
+        assertTrue("docs/design/Scheduler.html" in paths, "html was deleted")
+        assertTrue("docs/design/design-canvas.jsx" in paths, "jsx was deleted")
+    }
 }
