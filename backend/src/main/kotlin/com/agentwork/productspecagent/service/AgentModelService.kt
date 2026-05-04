@@ -87,6 +87,7 @@ class AgentModelService(
             "decision" -> "Decision"
             "feature-proposal" -> "Feature Proposal"
             "plan-generator" -> "Plan Generator"
+            "design-summary" -> "Design-Summary"
             else -> agentId
         }
     }

@@ -40,7 +40,8 @@ export async function apiFetch<T>(
 
 // ─── Domain Types ────────────────────────────────────────────────────────────
 
-export type StepType = "IDEA" | "PROBLEM" | "FEATURES" | "MVP" | "ARCHITECTURE" | "BACKEND" | "FRONTEND";
+export type StepType = "IDEA" | "PROBLEM" | "FEATURES" | "MVP" | "DESIGN"
+  | "ARCHITECTURE" | "BACKEND" | "FRONTEND";
 export type StepStatus = "OPEN" | "IN_PROGRESS" | "COMPLETED";
 
 // ─── Feature Graph Types ──────────────────────────────────────────────────────
@@ -701,4 +702,78 @@ export async function updateAgentModel(agentId: string, tier: AgentModelTier): P
 
 export async function resetAgentModel(agentId: string): Promise<void> {
   await apiFetch<void>(`/api/v1/agent-models/${encodeURIComponent(agentId)}`, { method: "DELETE" });
+}
+
+// ─── Design Bundle Types ─────────────────────────────────────────────────────
+
+export interface DesignPage {
+  id: string;
+  label: string;
+  sectionId: string;
+  sectionTitle: string;
+  width: number;
+  height: number;
+}
+
+export interface DesignBundleFile {
+  path: string;
+  sizeBytes: number;
+  mimeType: string;
+}
+
+export interface DesignBundle {
+  projectId: string;
+  originalFilename: string;
+  uploadedAt: string;
+  sizeBytes: number;
+  entryHtml: string;
+  pages: DesignPage[];
+  files: DesignBundleFile[];
+  entryUrl: string;
+  bundleUrl: string;
+}
+
+export interface DesignCompleteResponse {
+  message: string;
+  nextStep: string | null;
+}
+
+// ─── Design Bundle API ───────────────────────────────────────────────────────
+
+export async function uploadDesignBundle(projectId: string, file: File): Promise<DesignBundle> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design/upload`, {
+    method: "POST",
+    body: fd,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Upload failed (${res.status})`);
+  }
+  return (await res.json()) as DesignBundle;
+}
+
+export async function getDesignBundle(projectId: string): Promise<DesignBundle | null> {
+  const res = await fetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load design bundle (${res.status})`);
+  return (await res.json()) as DesignBundle;
+}
+
+export async function deleteDesignBundle(projectId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design`, {
+    method: "DELETE",
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Failed to delete design bundle (${res.status})`);
+  }
+}
+
+export async function completeDesignStep(projectId: string, locale: string): Promise<DesignCompleteResponse> {
+  const res = await apiFetch<DesignCompleteResponse>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/design/complete`,
+    { method: "POST", body: JSON.stringify({ locale }) },
+  );
+  return res;
 }

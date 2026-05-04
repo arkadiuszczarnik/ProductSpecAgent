@@ -30,7 +30,9 @@ agent:
       decision: MEDIUM
       feature-proposal: MEDIUM
       plan-generator: LARGE
+      design-summary: MEDIUM
 app:
+  frontend-origin: ${APP_FRONTEND_ORIGIN:http://localhost:3000}
   storage:
     bucket: ${S3_BUCKET:productspec-data}
     endpoint: ${S3_ENDPOINT:}
@@ -48,3 +50,13 @@ feature-proposal:
   uploads:
     max-bytes-per-file: ${FEATURE_PROPOSAL_UPLOAD_MAX_BYTES_PER_FILE:102400}
     max-bytes-total: ${FEATURE_PROPOSAL_UPLOAD_MAX_BYTES_TOTAL:512000}
+
+design:
+  bundle:
+    max-zip-bytes: ${DESIGN_BUNDLE_MAX_ZIP_BYTES:5242880}
+    max-extracted-bytes: ${DESIGN_BUNDLE_MAX_EXTRACTED_BYTES:10485760}
+    max-files: ${DESIGN_BUNDLE_MAX_FILES:500}
+    max-file-bytes: ${DESIGN_BUNDLE_MAX_FILE_BYTES:5242880}
+    summary-max-file-bytes: ${DESIGN_BUNDLE_SUMMARY_MAX_FILE_BYTES:51200}
+    summary-max-total-bytes: ${DESIGN_BUNDLE_SUMMARY_MAX_TOTAL_BYTES:204800}
+    summary-max-jsx-files: ${DESIGN_BUNDLE_SUMMARY_MAX_JSX_FILES:5}

@@ -12,6 +12,7 @@ class AgentModelRegistry(private val properties: AgentModelsProperties) {
             "decision",
             "feature-proposal",
             "plan-generator",
+            "design-summary",
         )
     }
 

@@ -11,6 +11,7 @@ export const WIZARD_STEPS = [
   { key: "PROBLEM", label: "Problem & Zielgruppe" },
   { key: "FEATURES", label: "Features" },
   { key: "MVP", label: "MVP" },
+  { key: "DESIGN", label: "Design" },
   { key: "ARCHITECTURE", label: "Architektur" },
   { key: "BACKEND", label: "Backend" },
   { key: "FRONTEND", label: "Frontend" },
@@ -146,6 +147,80 @@ export const useWizardStore = create<WizardState>((set, get) => ({
   completeStep: async (projectId, step) => {
     const { data, visibleSteps } = get();
     if (!data) return null;
+
+    // DESIGN step: skip generic wizard save, use dedicated endpoint
+    if (step === "DESIGN") {
+      const { useDesignBundleStore } = await import("@/lib/stores/design-bundle-store");
+      const bundle = useDesignBundleStore.getState().bundle;
+      const { completeDesignStep } = await import("@/lib/api");
+
+      const chatMessage = bundle
+        ? `**Design**\n\nBundle: ${bundle.originalFilename} (${bundle.pages.length} Pages)`
+        : `**Design** — übersprungen, kein Bundle hochgeladen`;
+
+      const userMsg = {
+        id: `wizard-${Date.now()}`,
+        role: "user" as const,
+        content: chatMessage,
+        timestamp: Date.now(),
+      };
+      useProjectStore.setState((s) => ({
+        messages: [...s.messages, userMsg],
+        chatSending: true,
+      }));
+
+      set({ chatPending: true });
+      try {
+        const locale = typeof navigator !== "undefined" ? navigator.language : "de";
+        const response = await completeDesignStep(projectId, locale);
+        const agentMsg = {
+          id: `wizard-agent-${Date.now()}`,
+          role: "agent" as const,
+          content: response.message,
+          timestamp: Date.now(),
+        };
+        useProjectStore.setState((s) => ({
+          messages: [...s.messages, agentMsg],
+          chatSending: false,
+        }));
+
+        // Mark DESIGN as completed in wizardData so StepIndicator shows the checkmark.
+        // Persists via saveWizardStep so it survives a page reload.
+        const completedAt = new Date().toISOString();
+        const designStepData = data.steps.DESIGN ?? { fields: {}, completedAt: null };
+        const updatedDesign = { ...designStepData, completedAt };
+        try {
+          const persisted = await saveWizardStep(projectId, "DESIGN", updatedDesign);
+          set({ data: persisted });
+        } catch {
+          // Fall back to local-only update if persist fails
+          set({
+            data: { ...data, steps: { ...data.steps, DESIGN: updatedDesign } },
+          });
+        }
+
+        if (response.nextStep) {
+          const visible = visibleSteps();
+          const nextVisible = visible.find((v) => v.key === response.nextStep);
+          if (nextVisible) set({ activeStep: response.nextStep });
+        }
+      } catch (err) {
+        const errMsg = {
+          id: `wizard-err-${Date.now()}`,
+          role: "system" as const,
+          content: `Fehler: ${err instanceof Error ? err.message : "Agent konnte nicht antworten"}`,
+          timestamp: Date.now(),
+        };
+        useProjectStore.setState((s) => ({
+          messages: [...s.messages, errMsg],
+          chatSending: false,
+        }));
+      } finally {
+        set({ chatPending: false });
+      }
+      return { exportTriggered: false };
+    }
+
     const stepData = data.steps[step] ?? { fields: {}, completedAt: null };
     const completed = { ...stepData, completedAt: new Date().toISOString() };
 

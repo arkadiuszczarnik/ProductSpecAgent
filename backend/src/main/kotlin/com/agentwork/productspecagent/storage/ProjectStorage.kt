@@ -1,6 +1,9 @@
 package com.agentwork.productspecagent.storage
 
 import com.agentwork.productspecagent.domain.FlowState
+import com.agentwork.productspecagent.domain.FlowStep
+import com.agentwork.productspecagent.domain.FlowStepStatus
+import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.Project
 import com.agentwork.productspecagent.domain.WizardData
 import kotlinx.serialization.encodeToString
@@ -56,6 +59,19 @@ class ProjectStorage(private val objectStore: ObjectStore) {
         objectStore.get(flowStateKey(projectId))
             ?.toString(Charsets.UTF_8)
             ?.let { json.decodeFromString<FlowState>(it) }
+            ?.let { fillMissingSteps(it) }
+
+    private fun fillMissingSteps(raw: FlowState): FlowState {
+        val knownTypes = raw.steps.map { it.stepType }.toSet()
+        val missing = FlowStepType.entries
+            .filter { it !in knownTypes }
+        if (missing.isEmpty()) return raw
+        // Reuse the first existing step's timestamp so repeated loads produce identical results.
+        val migrationTimestamp = raw.steps.firstOrNull()?.updatedAt ?: java.time.Instant.EPOCH.toString()
+        return raw.copy(steps = raw.steps + missing.map {
+            FlowStep(stepType = it, status = FlowStepStatus.OPEN, updatedAt = migrationTimestamp)
+        })
+    }
 
     fun saveSpecStep(projectId: String, fileName: String, content: String) {
         objectStore.put(specKey(projectId, fileName), content.toByteArray(), "text/markdown")

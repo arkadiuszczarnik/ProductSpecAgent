@@ -16,6 +16,10 @@ export const STEP_FIELD_LABELS: Record<string, Record<string, string>> = {
     mvpFeatures: "MVP Features",
     successCriteria: "Erfolgskriterien",
   },
+  DESIGN: {
+    bundleName: "Bundle",
+    pageCount: "Pages",
+  },
   FEATURES: {
     features: "Feature-Liste",
   },
@@ -61,6 +65,7 @@ export function formatStepFields(step: string, fields: Record<string, any>): str
   const stepLabel: Record<string, string> = {
     IDEA: "Idee", PROBLEM: "Problem & Zielgruppe",
     FEATURES: "Features", MVP: "MVP",
+    DESIGN: "Design",
     ARCHITECTURE: "Architektur", BACKEND: "Backend", FRONTEND: "Frontend",
   };
 

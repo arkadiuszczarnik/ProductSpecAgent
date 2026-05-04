@@ -13,6 +13,7 @@ import { FeaturesForm } from "./steps/FeaturesForm";
 import { ArchitectureForm } from "./steps/ArchitectureForm";
 import { BackendForm } from "./steps/BackendForm";
 import { FrontendForm } from "./steps/FrontendForm";
+import { DesignForm } from "./steps/design/DesignForm";
 
 const FORM_MAP: Record<string, React.ComponentType<{ projectId: string }>> = {
   IDEA: IdeaForm,
@@ -22,6 +23,7 @@ const FORM_MAP: Record<string, React.ComponentType<{ projectId: string }>> = {
   ARCHITECTURE: ArchitectureForm,
   BACKEND: BackendForm,
   FRONTEND: FrontendForm,
+  DESIGN: DesignForm,
 };
 
 interface WizardFormProps {
@@ -74,7 +76,7 @@ export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardF
     <div className="flex flex-col h-full">
       {/* Form Content */}
       <div className="flex-1 overflow-y-auto px-8 py-6">
-        <div className={activeStep === "FEATURES" ? "h-full" : "max-w-2xl mx-auto"}>
+        <div className={activeStep === "FEATURES" || activeStep === "DESIGN" ? "h-full" : "max-w-2xl mx-auto"}>
           {FormComponent && <FormComponent projectId={projectId} />}
         </div>
       </div>
@@ -102,20 +104,23 @@ export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardF
                 {chatPending ? "Agent antwortet..." : "Saving..."}
               </span>
             )}
-            <Button
-              size="sm"
-              onClick={handleNext}
-              disabled={isWorking || (isBlocked && !wizardDone)}
-              className="gap-1.5"
-            >
-              {wizardDone ? (
-                <><Download size={14} /> Exportieren</>
-              ) : isLast ? (
-                <><Save size={14} /> Abschliessen</>
-              ) : (
-                <>Weiter <ArrowRight size={14} /></>
-              )}
-            </Button>
+            {/* DESIGN owns its own complete/skip CTAs inside DesignForm */}
+            {activeStep !== "DESIGN" && (
+              <Button
+                size="sm"
+                onClick={handleNext}
+                disabled={isWorking || (isBlocked && !wizardDone)}
+                className="gap-1.5"
+              >
+                {wizardDone ? (
+                  <><Download size={14} /> Exportieren</>
+                ) : isLast ? (
+                  <><Save size={14} /> Abschliessen</>
+                ) : (
+                  <>Weiter <ArrowRight size={14} /></>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>
