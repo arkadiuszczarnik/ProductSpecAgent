@@ -76,7 +76,7 @@ export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardF
     <div className="flex flex-col h-full">
       {/* Form Content */}
       <div className="flex-1 overflow-y-auto px-8 py-6">
-        <div className={activeStep === "FEATURES" ? "h-full" : "max-w-2xl mx-auto"}>
+        <div className={activeStep === "FEATURES" || activeStep === "DESIGN" ? "h-full" : "max-w-2xl mx-auto"}>
           {FormComponent && <FormComponent projectId={projectId} />}
         </div>
       </div>
