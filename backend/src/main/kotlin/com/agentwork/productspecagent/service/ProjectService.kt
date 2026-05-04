@@ -83,6 +83,21 @@ class ProjectService(
             )
         }
         val entries = generator.generate(context)
+
+        // Diff-sync: drop ORPHANED files only in subdirectories the generator actually
+        // manages. Critical: docs/clarifications/, docs/decisions/, docs/tasks/, and
+        // docs/uploads/ also live under projects/{id}/docs/ but are owned by other
+        // storages — they must never be touched here.
+        val desired = entries.keys
+        val managedDirs = desired.map { it.substringBeforeLast('/') + "/" }.toSet()
+        val onDisk = storage.listDocsFiles(projectId).map { it.first }
+        for (path in onDisk) {
+            if (path in desired) continue
+            if (managedDirs.any { path.startsWith(it) }) {
+                storage.deleteDocsFile(projectId, path)
+            }
+        }
+
         for ((path, content) in entries) {
             storage.saveDocsFile(projectId, path, content)
         }
