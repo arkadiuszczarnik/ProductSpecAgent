@@ -78,8 +78,6 @@ class ExportService(
 
             // Asset bundles namespaced under .claude/{type}/<bundle-id>/
             assetBundleExporter.writeToZip(zip, prefix, matchedBundles)
-
-
         }
 
         return baos.toByteArray()
