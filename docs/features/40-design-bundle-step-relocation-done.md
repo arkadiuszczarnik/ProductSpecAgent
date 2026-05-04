@@ -10,7 +10,7 @@
 - `DesignBundleStorage` schreibt entpackte Files und Manifest unter `projects/{id}/docs/design/` statt `projects/{id}/design/files/` bzw. `projects/{id}/design/manifest.json`. Originaler ZIP-Upload wird nicht mehr persistiert.
 - `delete()` collapsed auf einen einzelnen `deleteFiles(...)`-Call, weil Manifest jetzt unter dem gleichen Prefix lebt.
 - `ExportService` Constructor verliert `designBundleStorage`; der explizite Design-Bundle-Block (Manifest + Files unter `prefix/design/...`) ist raus. Die generische `docs/`-Iteration übernimmt automatisch unter `prefix/docs/design/...`.
-- Drei neue Tests:
+- Vier neue Tests:
   - `DesignBundleStorageTest.save does not persist the original bundle zip`
   - `DesignBundleStorageTest.save writes manifest and files under docs design prefix`
   - `ExportServiceDesignBundleTest.export does not duplicate design files under legacy design prefix`
