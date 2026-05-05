@@ -52,6 +52,7 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 | 43a | shadcn Wizard-Forms (Phase 1) | [43a-shadcn-wizard-forms-done.md](43a-shadcn-wizard-forms-done.md) | Feature 6 | M |
 | 43b | shadcn Buttons (Phase 2) | _geplant_ | Feature 43a | M |
 | 43c | shadcn Dialoge & Selects (Phase 3) | _geplant_ | Feature 43a | M |
+| 44 | Akzeptanzkriterien im Feature-Edit-Modal | [44-feature-acceptance-criteria.md](44-feature-acceptance-criteria.md) | Feature 22, 36 | M |
 
 ## Architecture Docs
 
