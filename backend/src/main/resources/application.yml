@@ -16,7 +16,7 @@ cors:
 
 auth:
   jwt:
-    secret: ${AUTH_JWT_SECRET:}
+    secret: ${AUTH_JWT_SECRET:dev-secret-change-me-dev-secret-change-me-dev-secret}
     expiry-seconds: 604800
   cookie:
     name: session
