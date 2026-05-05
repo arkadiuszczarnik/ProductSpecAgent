@@ -1,0 +1,11 @@
+{
+  "id": "backend.framework.dotnet",
+  "step": "BACKEND",
+  "field": "framework",
+  "value": "DotNet",
+  "version": "1.0.0",
+  "title": "DotNet Bundle",
+  "description": "Skills, Commands und Agents für DotNet",
+  "createdAt": "2026-05-05T06:43:30.263Z",
+  "updatedAt": "2026-05-05T06:43:30.263Z"
+}

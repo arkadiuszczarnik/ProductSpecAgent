@@ -1,0 +1,11 @@
+{
+  "id": "architecture.database.postgresql",
+  "step": "ARCHITECTURE",
+  "field": "database",
+  "value": "PostgreSQL",
+  "version": "1.0.0",
+  "title": "PostgreSQL Bundle",
+  "description": "Skills, Commands und Agents für PostgreSQL",
+  "createdAt": "2026-05-05T06:43:02.192Z",
+  "updatedAt": "2026-05-05T06:43:02.192Z"
+}

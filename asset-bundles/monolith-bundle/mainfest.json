@@ -1,0 +1,11 @@
+{
+  "id": "architecture.architecture.monolith",
+  "step": "ARCHITECTURE",
+  "field": "architecture",
+  "value": "Monolith",
+  "version": "1.0.0",
+  "title": "Monolith Bundle",
+  "description": "Skills, Commands und Agents für Monolith",
+  "createdAt": "2026-05-05T06:38:34.679Z",
+  "updatedAt": "2026-05-05T06:38:34.679Z"
+}
