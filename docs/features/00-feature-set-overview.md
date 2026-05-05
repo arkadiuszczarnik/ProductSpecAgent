@@ -27,9 +27,27 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 | 18 | Step Blocker Gate | [18-step-blocker-gate.md](18-step-blocker-gate.md) | Feature 2, 3, 11 | M |
 | 19 | Explorer Debug Toggle | [19-explorer-debug-toggle.md](19-explorer-debug-toggle.md) | Feature 9, 15 | S |
 | 20 | Spec-to-Docs Sync | [20-spec-to-docs-sync.md](20-spec-to-docs-sync.md) | Feature 1, 4, 10, 11 | M |
+| 21 | Wizard FEATURES → EPIC + Stories Tasks | [21-wizard-features-to-tasks-done.md](21-wizard-features-to-tasks-done.md) | Feature 4, 11, 20 | M |
+| 22 | Intelligenter FEATURES-Step mit DAG | [22-features-graph-wizard.md](22-features-graph-wizard.md) | Feature 11, 12, 17, 18, 20, 21 | L |
+| 23 | Project Create vereinfachen | [23-simplify-project-create.md](23-simplify-project-create.md) | Feature 1, 11, 12 | S |
+| 24 | PROBLEM-Step „Auswirkung" entfernen | [24-remove-problem-impact-field.md](24-remove-problem-impact-field.md) | Feature 11 | XS |
+| 25 | TARGET_AUDIENCE „TechLevel" entfernen | [25-remove-target-audience-techlevel-field.md](25-remove-target-audience-techlevel-field.md) | Feature 11 | XS |
+| 26 | Merge PROBLEM + TARGET_AUDIENCE | [26-merge-problem-target-audience.md](26-merge-problem-target-audience.md) | Feature 24, 25 | M |
+| 27 | SCOPE-Step entfernen, FEATURES vor MVP | [27-remove-scope-merge-into-features.md](27-remove-scope-merge-into-features.md) | Feature 11, 22, 26 | M |
+| 28 | Projekt-Dokumente in GraphMesh | [28-project-document-upload.md](28-project-document-upload.md) | Feature 0, 1 | M |
+| 29 | Projekt aus Übersicht löschen | [29-project-delete.md](29-project-delete.md) | Feature 0 | S |
+| 30 | Statische CLAUDE.md mit Sync-URL im Handoff | [30-handoff-url-sync.md](30-handoff-url-sync.md) | Feature 0, 5, 8 | S–M |
 | 31 | Project Storage auf S3 | [31-project-storage-s3.md](31-project-storage-s3.md) | Feature 0 | L |
 | 32 | Pulumi AWS EKS + S3 Deployment | [32-pulumi-aws-eks-deployment.md](32-pulumi-aws-eks-deployment.md) | Feature 0, 31 | L |
+| 33 | Asset-Bundle-Storage-Foundation (Sub A) | [33-asset-bundle-storage-foundation.md](33-asset-bundle-storage-foundation.md) | Feature 31 | M |
+| 34 | Asset-Bundle-Admin-UI (Sub B) | [34-asset-bundle-admin-ui.md](34-asset-bundle-admin-ui.md) | Feature 33 | L |
 | 35 | Feature-Proposal nutzt Upload-Dokumente | [35-feature-proposal-with-uploads.md](35-feature-proposal-with-uploads.md) | Feature 22, 28 | S |
+| 36 | Features-Edit-Modal | [36-features-edit-modal.md](36-features-edit-modal.md) | Feature 22 | S |
+| 37 | Editable Agent Prompts | [37-editable-agent-prompts.md](37-editable-agent-prompts.md) | Feature 31, 33 | M |
+| 38 | Per-Agent Model Selection | [38-per-agent-model-selection.md](38-per-agent-model-selection.md) | Feature 0, 37 | M |
+| 39 | Chat-Anzeige-Fix für strukturierte Wizard-Felder | [39-chat-object-rendering-fix.md](39-chat-object-rendering-fix.md) | Feature 13, 22 | S |
+| 40 | Design-Bundle-Step | [40-design-bundle-step.md](40-design-bundle-step.md) | Feature 33 | L |
+| 41 | Asset-Bundle-Coverage-View | [41-asset-bundle-coverage-view.md](41-asset-bundle-coverage-view.md) | Feature 33, 34 | S |
 | 42 | Login-Gate | [42-login-gate.md](42-login-gate.md) | Feature 0 | M |
 | 43a | shadcn Wizard-Forms (Phase 1) | [43a-shadcn-wizard-forms-done.md](43a-shadcn-wizard-forms-done.md) | Feature 6 | M |
 | 43b | shadcn Buttons (Phase 2) | _geplant_ | Feature 43a | M |
