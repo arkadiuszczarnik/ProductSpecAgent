@@ -74,7 +74,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
             placeholder="Message the agent... (Enter to send)"
             rows={1}
             disabled={chatSending}
-            className="flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 max-h-32 min-h-[24px] px-0 py-0"
+            className="flex-1 resize-none border-0 bg-transparent dark:bg-transparent shadow-none focus-visible:ring-0 max-h-32 min-h-[24px] px-0 py-0"
           />
           <Button size="icon-sm" onClick={handleSend} disabled={!input.trim() || chatSending} className="shrink-0">
             {chatSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}

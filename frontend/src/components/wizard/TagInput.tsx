@@ -52,7 +52,7 @@ export function TagInput({ tags, onAdd, onRemove, placeholder = "Add tag...", co
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKey}
         placeholder={tags.length === 0 ? placeholder : ""}
-        className="border-0 bg-transparent shadow-none focus-visible:ring-0 h-auto p-0 text-xs"
+        className="border-0 bg-transparent dark:bg-transparent shadow-none focus-visible:ring-0 h-auto p-0 text-xs"
       />
     </div>
   );
