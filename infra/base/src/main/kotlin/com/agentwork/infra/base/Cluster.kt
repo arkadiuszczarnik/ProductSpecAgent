@@ -22,7 +22,11 @@ class EksCluster(
     companion object {
         fun create(ctx: Context, networking: Networking): EksCluster {
             val cfg = ctx.config("productspec-base")
-            val instanceType = cfg.get("nodeInstanceType").orElse("t3.medium")
+            // Mehrere Instance-Typen erhöhen die Spot-Verfügbarkeit (unabhängige Capacity-Pools).
+            // nodeInstanceTypes (komma-separiert) hat Vorrang; nodeInstanceType bleibt als Fallback.
+            val instanceTypes = cfg.get("nodeInstanceTypes").orElse(
+                cfg.get("nodeInstanceType").orElse("t3.medium")
+            ).split(",").map { it.trim() }.filter { it.isNotEmpty() }
             val minSize = cfg.get("nodeMinSize").orElse("1").toInt()
             val desiredSize = cfg.get("nodeDesiredSize").orElse("2").toInt()
             val maxSize = cfg.get("nodeMaxSize").orElse("4").toInt()
@@ -93,10 +97,10 @@ class EksCluster(
                 ManagedNodeGroupArgs.builder()
                     .cluster(cluster)
                     .nodeRole(nodeRole)
-                    .instanceTypes(instanceType)
-                    // AL2023_ARM_64_STANDARD passt zu t4g/Graviton-Instances. Falls instanceType
-                    // auf x86 geändert wird (z. B. t3.*), muss amiType auf AL2023_x86_64_STANDARD.
-                    .amiType("AL2023_ARM_64_STANDARD")
+                    .instanceTypes(instanceTypes)
+                    // AL2023_x86_64_STANDARD passt zu t3*/t3a.*-Instances. Für Graviton (t4g.*)
+                    // müsste amiType auf AL2023_ARM_64_STANDARD und die Container-Images arm64 sein.
+                    .amiType("AL2023_x86_64_STANDARD")
                     .capacityType(capacityType)
                     .diskSize(diskSize)
                     .scalingConfig(

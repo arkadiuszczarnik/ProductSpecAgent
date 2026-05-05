@@ -1,6 +1,6 @@
 config:
   aws:region: eu-central-1
-  productspec-base:nodeInstanceType: t4g.medium
+  productspec-base:nodeInstanceTypes: t3a.medium,t3.medium
   productspec-base:nodeMinSize: "0"
   productspec-base:nodeDesiredSize: "1"
   productspec-base:nodeMaxSize: "2"
