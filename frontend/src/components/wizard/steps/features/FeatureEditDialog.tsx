@@ -235,7 +235,6 @@ export function FeatureEditDialog({
     if (open && feature) {
       const snap = snapshot(feature);
       initialRef.current = snap;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft(snap);
     }
     if (!open) {
