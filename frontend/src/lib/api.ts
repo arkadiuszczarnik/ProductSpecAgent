@@ -406,9 +406,11 @@ export async function getHandoffPreview(projectId: string, format: string = "cla
 export async function exportHandoff(projectId: string, request: HandoffExportRequest = {}): Promise<Blob> {
   const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/handoff/export`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
   });
+  if (res.status === 401) onUnauthorized?.();
   if (!res.ok) throw new Error("Handoff export failed");
   return res.blob();
 }
@@ -463,6 +465,7 @@ export async function exportProject(
 ): Promise<Blob> {
   const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/export`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       includeDecisions: options.includeDecisions ?? true,
@@ -470,6 +473,7 @@ export async function exportProject(
       includeTasks: options.includeTasks ?? true,
     }),
   });
+  if (res.status === 401) onUnauthorized?.();
   if (!res.ok) throw new Error("Export failed");
   return res.blob();
 }
