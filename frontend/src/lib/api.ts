@@ -303,7 +303,8 @@ export async function getProject(id: string): Promise<ProjectResponse> {
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/v1/projects/${id}`, { method: "DELETE" });
+  const res = await fetch(`${API_BASE}/api/v1/projects/${id}`, { method: "DELETE", credentials: "include" });
+  if (res.status === 401) onUnauthorized?.();
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(error.message || `API error: ${res.status}`);
@@ -384,7 +385,8 @@ export async function updateTask(projectId: string, taskId: string, data: Update
 }
 
 export async function deleteTask(projectId: string, taskId: string): Promise<void> {
-  await fetch(`${API_BASE}/api/v1/projects/${projectId}/tasks/${taskId}`, { method: "DELETE" });
+  const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/tasks/${taskId}`, { method: "DELETE", credentials: "include" });
+  if (res.status === 401) onUnauthorized?.();
 }
 
 export async function getTaskCoverage(projectId: string): Promise<CoverageMap> {
@@ -538,8 +540,10 @@ export async function uploadDocument(projectId: string, file: File): Promise<Pro
   form.append("file", file);
   const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/documents`, {
     method: "POST",
+    credentials: "include",
     body: form,
   });
+  if (res.status === 401) onUnauthorized?.();
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error ?? `Upload failed: ${res.status}`);
@@ -554,7 +558,9 @@ export async function listDocuments(projectId: string): Promise<ProjectDocument[
 export async function deleteDocument(projectId: string, documentId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/documents/${documentId}`, {
     method: "DELETE",
+    credentials: "include",
   });
+  if (res.status === 401) onUnauthorized?.();
   if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
 }
 
@@ -619,8 +625,10 @@ export async function uploadAssetBundle(file: File): Promise<AssetBundleUploadRe
   form.append("file", file);
   const res = await fetch(`${API_BASE}/api/v1/asset-bundles`, {
     method: "POST",
+    credentials: "include",
     body: form,
   });
+  if (res.status === 401) onUnauthorized?.();
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.message ?? body.error ?? `Upload failed: ${res.status}`);
@@ -634,7 +642,8 @@ export async function deleteAssetBundle(
   value: string,
 ): Promise<void> {
   const path = `/api/v1/asset-bundles/${step}/${field}/${encodeURIComponent(value)}`;
-  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE", credentials: "include" });
+  if (res.status === 401) onUnauthorized?.();
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.message ?? body.error ?? `Delete failed: ${res.status}`);
@@ -649,7 +658,7 @@ export async function fetchAssetBundleFile(
 ): Promise<Response> {
   const encodedPath = relativePath.split("/").map(encodeURIComponent).join("/");
   const path = `/api/v1/asset-bundles/${step}/${field}/${encodeURIComponent(value)}/files/${encodedPath}`;
-  return fetch(`${API_BASE}${path}`);
+  return fetch(`${API_BASE}${path}`, { credentials: "include" });
 }
 
 // ─── Prompts ─────────────────────────────────────────────────────────────────
@@ -760,8 +769,10 @@ export async function uploadDesignBundle(projectId: string, file: File): Promise
   fd.append("file", file);
   const res = await fetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design/upload`, {
     method: "POST",
+    credentials: "include",
     body: fd,
   });
+  if (res.status === 401) onUnauthorized?.();
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Upload failed (${res.status})`);
@@ -770,7 +781,8 @@ export async function uploadDesignBundle(projectId: string, file: File): Promise
 }
 
 export async function getDesignBundle(projectId: string): Promise<DesignBundle | null> {
-  const res = await fetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design`);
+  const res = await fetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design`, { credentials: "include" });
+  if (res.status === 401) onUnauthorized?.();
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to load design bundle (${res.status})`);
   return (await res.json()) as DesignBundle;
@@ -779,7 +791,9 @@ export async function getDesignBundle(projectId: string): Promise<DesignBundle |
 export async function deleteDesignBundle(projectId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design`, {
     method: "DELETE",
+    credentials: "include",
   });
+  if (res.status === 401) onUnauthorized?.();
   if (!res.ok && res.status !== 404) {
     throw new Error(`Failed to delete design bundle (${res.status})`);
   }
