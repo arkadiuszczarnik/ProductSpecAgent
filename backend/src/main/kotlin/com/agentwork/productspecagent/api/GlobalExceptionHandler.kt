@@ -8,8 +8,11 @@ import com.agentwork.productspecagent.service.BundleTooLargeException
 import com.agentwork.productspecagent.service.ClarificationNotFoundException
 import com.agentwork.productspecagent.service.DecisionNotFoundException
 import com.agentwork.productspecagent.service.DocumentNotFoundException
+import com.agentwork.productspecagent.service.EmailAlreadyExistsException
 import com.agentwork.productspecagent.service.GraphMeshDisabledException
 import com.agentwork.productspecagent.service.IllegalBundleEntryException
+import com.agentwork.productspecagent.service.InvalidCredentialsException
+import com.agentwork.productspecagent.service.InvalidEmailException
 import com.agentwork.productspecagent.service.InvalidManifestException
 import com.agentwork.productspecagent.service.ManifestIdMismatchException
 import com.agentwork.productspecagent.service.MissingManifestException
@@ -17,6 +20,7 @@ import com.agentwork.productspecagent.service.ProjectNotFoundException
 import com.agentwork.productspecagent.service.TaskNotFoundException
 import com.agentwork.productspecagent.service.UnsupportedMediaTypeException
 import com.agentwork.productspecagent.service.UnsupportedStepException
+import com.agentwork.productspecagent.service.WeakPasswordException
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -128,4 +132,19 @@ class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
     fun handleBundleTooLarge(ex: BundleTooLargeException): ErrorResponse =
         ErrorResponse("BUNDLE_TOO_LARGE", ex.message ?: "Bundle too large", Instant.now().toString())
+
+    @ExceptionHandler(InvalidCredentialsException::class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    fun handleInvalidCredentials(ex: InvalidCredentialsException): ErrorResponse =
+        ErrorResponse("INVALID_CREDENTIALS", ex.message ?: "Login fehlgeschlagen", Instant.now().toString())
+
+    @ExceptionHandler(EmailAlreadyExistsException::class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    fun handleEmailExists(ex: EmailAlreadyExistsException): ErrorResponse =
+        ErrorResponse("EMAIL_ALREADY_EXISTS", ex.message ?: "Email bereits registriert", Instant.now().toString())
+
+    @ExceptionHandler(WeakPasswordException::class, InvalidEmailException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleAuthValidation(ex: RuntimeException): ErrorResponse =
+        ErrorResponse("VALIDATION_ERROR", ex.message ?: "Ungültige Eingabe", Instant.now().toString())
 }
