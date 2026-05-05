@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Cpu, FolderKanban, MessageSquareText, Package, Plus, Settings, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -84,6 +85,7 @@ function IconRail() {
       </nav>
 
       <div className="flex flex-col items-center gap-1">
+        <LogoutButton />
         <button
           className="flex h-10 w-10 items-center justify-center rounded-lg text-sidebar-foreground hover:text-zinc-200 transition-colors duration-150"
           title="Settings"
