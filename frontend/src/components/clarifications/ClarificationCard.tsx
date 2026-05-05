@@ -4,6 +4,7 @@ import { useState } from "react";
 import { HelpCircle, CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import type { Clarification } from "@/lib/api";
 import { useClarificationStore } from "@/lib/stores/clarification-store";
 import { cn } from "@/lib/utils";
@@ -62,15 +63,12 @@ export function ClarificationCard({ clarification, projectId }: ClarificationCar
         )}
 
         {!isAnswered && (
-          <textarea
+          <Textarea
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             placeholder="Provide your answer..."
             rows={3}
-            className={cn(
-              "w-full resize-none rounded-md border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground",
-              "focus:outline-none focus:ring-2 focus:ring-ring"
-            )}
+            className="resize-none"
           />
         )}
       </CardContent>
