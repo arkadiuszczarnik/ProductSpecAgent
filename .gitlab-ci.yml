@@ -20,12 +20,10 @@ include:
 docker-build:
   stage: build
   script:
-    - redo docker:build docker:push -Dproject_name=$PROJECT_NAME -Ddocker_build_file=$DOCKER_BUILD_FILE
+    - redo docker:build docker:push -Dproject_name=$PROJECT_DIR -Ddocker_build_ctx=$PROJECT_DIR -Ddocker_build_file=$PROJECT_DIR/Dockerfile
   rules:
     - if: $CI_COMMIT_BRANCH
   parallel:
     matrix:
-      - PROJECT_NAME: backend
-        DOCKER_BUILD_FILE: backend/Dockerfile
-      - PROJECT_NAME: frontend
-        DOCKER_BUILD_FILE: frontend/Dockerfile
+      - PROJECT_DIR: backend
+      - PROJECT_DIR: frontend

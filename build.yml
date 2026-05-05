@@ -11,6 +11,7 @@ redo:
     docker_registry: "hub.netrtl.com"
     docker_registry_namespace: "cvdt/product-spec-agent"
     docker_build_file: "backend/Dockerfile"
+    docker_build_ctx: "backend"
 
   branches:
     main:
