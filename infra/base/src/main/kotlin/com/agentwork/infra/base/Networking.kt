@@ -10,6 +10,8 @@ import com.pulumi.aws.ec2.Route
 import com.pulumi.aws.ec2.RouteArgs
 import com.pulumi.aws.ec2.SecurityGroup
 import com.pulumi.aws.ec2.SecurityGroupArgs
+import com.pulumi.aws.ec2.Tag
+import com.pulumi.aws.ec2.TagArgs
 import com.pulumi.aws.ec2.inputs.GetAmiArgs
 import com.pulumi.aws.ec2.inputs.GetAmiFilterArgs
 import com.pulumi.aws.ec2.inputs.SecurityGroupEgressArgs
@@ -131,6 +133,35 @@ class Networking(
                             }
                         }
                     }
+                }
+            }
+
+            // Subnet-Tags für aws-load-balancer-controller-Auto-Discovery.
+            // Public-Subnets -> kubernetes.io/role/elb=1 (für internet-facing ALB)
+            // Private-Subnets -> kubernetes.io/role/internal-elb=1 (für internal ALB)
+            // Ohne diese Tags scheitert jeder Ingress mit "couldn't auto-discover subnets".
+            vpc.publicSubnetIds().applyValue { ids ->
+                ids.forEachIndexed { idx, subnetId ->
+                    Tag(
+                        "subnet-elb-public-$idx",
+                        TagArgs.builder()
+                            .resourceId(subnetId)
+                            .key("kubernetes.io/role/elb")
+                            .value("1")
+                            .build()
+                    )
+                }
+            }
+            vpc.privateSubnetIds().applyValue { ids ->
+                ids.forEachIndexed { idx, subnetId ->
+                    Tag(
+                        "subnet-elb-private-$idx",
+                        TagArgs.builder()
+                            .resourceId(subnetId)
+                            .key("kubernetes.io/role/internal-elb")
+                            .value("1")
+                            .build()
+                    )
                 }
             }
 
