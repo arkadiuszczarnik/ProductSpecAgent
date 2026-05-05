@@ -26,3 +26,6 @@ Thumbs.db
 
 # Superpowers (visual companion mockups, brainstorming sessions)
 .superpowers/
+
+# Asset bundles (zips are build artifacts of build-bundles.sh)
+asset-bundles/*.zip
