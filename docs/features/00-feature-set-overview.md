@@ -78,7 +78,7 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 
 ### Backend
 - Kotlin 2.2 + Spring Boot 4
-- JetBrains Koog (AI Agent Framework)
+- JetBrains Koog 0.8.0 (AI Agent Framework)
 - Filesystem/Git Persistenz
 
 ### Deployment
