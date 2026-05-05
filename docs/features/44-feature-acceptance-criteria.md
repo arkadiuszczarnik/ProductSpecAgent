@@ -111,7 +111,7 @@ Mustache-Template (`feature.md.mustache`) bleibt unverändert.
 **Backend (neu):**
 - `backend/src/main/kotlin/com/agentwork/productspecagent/agent/AcceptanceCriteriaProposalAgent.kt`
 - `backend/src/main/kotlin/com/agentwork/productspecagent/api/AcceptanceCriteriaProposalController.kt`
-- `backend/data/agent-prompts/acceptance-criteria-proposal-system.md`
+- `backend/src/main/resources/prompts/acceptance-criteria-proposal-system.md` (zusätzlich in `PromptRegistry.kt` als `PromptDefinition` registrieren)
 - `backend/src/test/kotlin/com/agentwork/productspecagent/agent/AcceptanceCriteriaProposalAgentTest.kt`
 - `backend/src/test/kotlin/com/agentwork/productspecagent/export/ScaffoldContextBuilderTest.kt` (falls noch nicht existent)
 

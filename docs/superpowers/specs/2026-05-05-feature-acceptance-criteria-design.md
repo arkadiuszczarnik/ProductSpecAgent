@@ -23,7 +23,7 @@ Im `FeatureEditDialog` lassen sich pro Feature Akzeptanzkriterien als geordnete 
 |---|---|---|
 | Backend Domain | `WizardFeatureGraph.kt` | Neuer Datentyp `AcceptanceCriterion(id, title, description)`; neues Feld `acceptanceCriteria: List<AcceptanceCriterion> = emptyList()` in `WizardFeature` |
 | Backend Agent | `agent/AcceptanceCriteriaProposalAgent.kt` (neu) | Eigener Koog-Agent mit gleichem Pattern wie `FeatureProposalAgent`: contextBuilder + promptService + koogRunner, JSON-Output |
-| Backend Prompt | `data/agent-prompts/acceptance-criteria-proposal-system.md` (neu) | System-Prompt für AC-Generierung (geladen über `PromptService`) |
+| Backend Prompt | `src/main/resources/prompts/acceptance-criteria-proposal-system.md (registriert in PromptRegistry)` (neu) | System-Prompt für AC-Generierung (geladen über `PromptService`) |
 | Backend API | `api/AcceptanceCriteriaProposalController.kt` (neu) | `POST /api/v1/projects/{projectId}/features/{featureId}/acceptance-criteria/propose` → liefert `List<AcceptanceCriterion>` |
 | Backend Export | `export/ScaffoldContextBuilder.kt` | 3-Zeilen-Diff: Fallback-Logik (Wizard-AC > Story-Subtasks) |
 | Frontend Types | `lib/api.ts` | TypeScript-Type `AcceptanceCriterion`; Feld in `WizardFeature`; Endpoint-Wrapper `proposeAcceptanceCriteria(projectId, featureId)` |
@@ -302,7 +302,7 @@ Konsistent mit `FeatureProposalAgent`: gleiche Struktur, gleicher Test-Override-
 
 ### Backend — System-Prompt
 
-`backend/data/agent-prompts/acceptance-criteria-proposal-system.md`:
+`backend/src/main/resources/prompts/acceptance-criteria-proposal-system.md (registriert in PromptRegistry)`:
 
 ```markdown
 You generate acceptance criteria for product features.
