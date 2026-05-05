@@ -45,3 +45,11 @@ graphmesh:
   enabled: true
   url: http://localhost:0/graphql
   request-timeout: 5s
+
+auth:
+  jwt:
+    secret: test-secret-test-secret-test-secret-test-secret-test-secret
+    expiry-seconds: 604800
+  cookie:
+    name: session
+    secure: false
