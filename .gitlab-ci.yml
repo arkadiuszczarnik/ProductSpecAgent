@@ -20,7 +20,7 @@ include:
 docker-build:
   stage: build
   script:
-    - redo docker:build docker:push -Dproject_name=$project_name -Ddocker_build_file=$docker_build_file
+    - redo docker:build docker:push -Dproject_name=$PROJECT_NAME -Ddocker_build_file=$DOCKER_BUILD_FILE
   rules:
     - if: $CI_COMMIT_BRANCH
   parallel:
