@@ -30,7 +30,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
         deployment: ["Docker", "Vercel+Cloud", "Kubernetes"],
       },
       BACKEND: {
-        framework: ["Kotlin+Spring", "Node+Express", "Python+FastAPI", "Go", "Rust"],
+        framework: ["Kotlin+Spring", "Node+Express", "Python+FastAPI", "Go", "Rust", "DotNet"],
         apiStyle: ["REST", "GraphQL", "gRPC"],
         auth: ["JWT", "Session", "OAuth", "API Key"],
       },
@@ -52,7 +52,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
         deployment: ["App Store", "Play Store", "TestFlight"],
       },
       BACKEND: {
-        framework: ["Kotlin+Spring", "Node+Express", "Python+FastAPI", "Go"],
+        framework: ["Kotlin+Spring", "Node+Express", "Python+FastAPI", "Go", "DotNet"],
         apiStyle: ["REST", "GraphQL"],
         auth: ["JWT", "OAuth", "API Key"],
       },
@@ -90,7 +90,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
         deployment: ["Installer", "App Store", "Portable"],
       },
       BACKEND: {
-        framework: ["Kotlin+Spring", "Node+Express", "Python+FastAPI"],
+        framework: ["Kotlin+Spring", "Node+Express", "Python+FastAPI", "DotNet"],
         apiStyle: ["REST", "IPC"],
         auth: ["OAuth", "Local Auth"],
       },
@@ -112,7 +112,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
         deployment: ["Docker", "Vercel+Cloud", "Kubernetes"],
       },
       BACKEND: {
-        framework: ["Kotlin+Spring", "Node+Express", "Python+FastAPI", "Go", "Rust"],
+        framework: ["Kotlin+Spring", "Node+Express", "Python+FastAPI", "Go", "Rust", "DotNet"],
         apiStyle: ["REST", "GraphQL", "gRPC"],
         auth: ["JWT", "OAuth", "API Key"],
       },
