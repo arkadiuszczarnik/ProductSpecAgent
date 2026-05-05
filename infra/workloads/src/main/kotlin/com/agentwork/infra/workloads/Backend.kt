@@ -62,6 +62,10 @@ class Backend(val deployment: Deployment, val service: Service) {
                                                         EnvVarArgs.builder().name("S3_BUCKET").value(base.bucketName).build(),
                                                         EnvVarArgs.builder().name("S3_REGION").value(base.region).build(),
                                                         EnvVarArgs.builder().name("S3_PATH_STYLE").value("false").build(),
+                                                        // Solange der ALB nur HTTP serviert (kein TLS-Cert/Domain), darf der
+                                                        // Session-Cookie nicht "Secure" sein – sonst sendet der Browser ihn
+                                                        // nie zurück und Login schlägt fehl. Auf prod mit HTTPS auf "true" setzen.
+                                                        EnvVarArgs.builder().name("AUTH_COOKIE_SECURE").value("false").build(),
                                                         EnvVarArgs.builder().name("OPENAI_API_KEY")
                                                             .valueFrom(
                                                                 EnvVarSourceArgs.builder()
