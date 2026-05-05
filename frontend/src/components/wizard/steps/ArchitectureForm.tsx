@@ -1,6 +1,7 @@
 "use client";
 import { FormField } from "../FormField";
 import { ChipSelect } from "../ChipSelect";
+import { Textarea } from "@/components/ui/textarea";
 import { useWizardStore } from "@/lib/stores/wizard-store";
 import { getFieldOptions } from "@/lib/category-step-config";
 
@@ -31,9 +32,9 @@ export function ArchitectureForm({ projectId }: { projectId: string }) {
         <ChipSelect options={options.deployment ?? DEFAULT_OPTIONS.deployment} value={get("deployment")} onChange={(v) => set("deployment", v)} />
       </FormField>
       <FormField label="Architektur-Notizen">
-        <textarea value={get("notes")} onChange={(e) => set("notes", e.target.value)}
+        <Textarea value={get("notes")} onChange={(e) => set("notes", e.target.value)}
           placeholder="Zusaetzliche Architektur-Details..." rows={3}
-          className="w-full resize-y rounded-md border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          className="resize-y" />
       </FormField>
     </div>
   );
