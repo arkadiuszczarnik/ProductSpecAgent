@@ -2,6 +2,8 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   useWizardStore,
   selectFeatures,
@@ -42,21 +44,21 @@ export function FeaturesFallbackList({ projectId: _projectId }: Props) {
         return (
           <div key={f.id} className="rounded-lg border bg-card p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <input
+              <Input
                 value={f.title}
                 onChange={(e) => updateFeature(f.id, { title: e.target.value })}
-                className="flex-1 bg-transparent text-sm font-medium"
+                className="flex-1 border-0 bg-transparent dark:bg-transparent shadow-none focus-visible:ring-0 h-auto p-0 text-sm font-medium"
               />
               <button onClick={() => removeFeature(f.id)} className="text-muted-foreground hover:text-destructive">
                 <Trash2 size={13} />
               </button>
             </div>
-            <textarea
+            <Textarea
               value={f.description}
               onChange={(e) => updateFeature(f.id, { description: e.target.value })}
               placeholder="Beschreibung..."
               rows={2}
-              className="w-full resize-none rounded-md border bg-input px-3 py-1.5 text-xs"
+              className="resize-none text-xs"
             />
             {allowedScopes.length > 0 && (
               <div className="flex gap-2">

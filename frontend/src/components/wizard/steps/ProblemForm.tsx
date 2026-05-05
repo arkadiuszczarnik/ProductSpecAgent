@@ -1,6 +1,8 @@
 "use client";
 import { FormField } from "../FormField";
 import { TagInput } from "../TagInput";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useWizardStore } from "@/lib/stores/wizard-store";
 import { cn } from "@/lib/utils";
 
@@ -14,14 +16,13 @@ export function ProblemForm({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-5">
       <FormField label="Kernproblem" required>
-        <textarea value={get("coreProblem")} onChange={(e) => set("coreProblem", e.target.value)}
+        <Textarea value={get("coreProblem")} onChange={(e) => set("coreProblem", e.target.value)}
           placeholder="Welches Problem loest dein Produkt?" rows={3}
-          className="w-full resize-y rounded-md border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring min-h-[80px]" />
+          className="resize-y min-h-[80px]" />
       </FormField>
       <FormField label="Primäre Zielgruppe" required>
-        <input value={get("primaryAudience")} onChange={(e) => set("primaryAudience", e.target.value)}
-          placeholder="z.B. Product Owner, Startup-Gründer"
-          className="w-full rounded-md border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+        <Input value={get("primaryAudience")} onChange={(e) => set("primaryAudience", e.target.value)}
+          placeholder="z.B. Product Owner, Startup-Gründer" />
       </FormField>
       <FormField label="Pain Points">
         <TagInput tags={getTags("painPoints")}

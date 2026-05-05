@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from "react";
 import { Send, Loader2, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ChatMessage } from "./ChatMessage";
 import { useProjectStore } from "@/lib/stores/project-store";
-import { cn } from "@/lib/utils";
 
 interface ChatPanelProps {
   projectId: string;
@@ -67,18 +67,14 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
 
       <div className="border-t p-3">
         <div className="flex items-end gap-2 rounded-lg border border-border bg-background p-2">
-          <textarea
+          <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Message the agent... (Enter to send)"
             rows={1}
             disabled={chatSending}
-            className={cn(
-              "flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground",
-              "focus:outline-none disabled:opacity-50",
-              "max-h-32 min-h-[24px]"
-            )}
+            className="flex-1 resize-none border-0 bg-transparent dark:bg-transparent shadow-none focus-visible:ring-0 max-h-32 min-h-[24px] px-0 py-0"
           />
           <Button size="icon-sm" onClick={handleSend} disabled={!input.trim() || chatSending} className="shrink-0">
             {chatSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}

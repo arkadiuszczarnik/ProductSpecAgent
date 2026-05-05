@@ -6,8 +6,8 @@ import Link from "next/link";
 import { ArrowLeft, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { createProject } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -60,7 +60,7 @@ export default function NewProjectPage() {
                 <label htmlFor="project-name" className="block text-sm font-medium">
                   Project Name
                 </label>
-                <input
+                <Input
                   id="project-name"
                   type="text"
                   value={name}
@@ -68,11 +68,6 @@ export default function NewProjectPage() {
                   placeholder="e.g. TaskFlow Pro"
                   maxLength={120}
                   disabled={loading}
-                  className={cn(
-                    "w-full rounded-md border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground",
-                    "focus:outline-none focus:ring-2 focus:ring-ring",
-                    "disabled:opacity-50"
-                  )}
                 />
               </div>
 

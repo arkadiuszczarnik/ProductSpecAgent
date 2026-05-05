@@ -2,6 +2,7 @@
 
 import { useState, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface TagInputProps {
@@ -45,13 +46,13 @@ export function TagInput({ tags, onAdd, onRemove, placeholder = "Add tag...", co
           </span>
         ))}
       </div>
-      <input
+      <Input
         type="text"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKey}
         placeholder={tags.length === 0 ? placeholder : ""}
-        className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+        className="border-0 bg-transparent dark:bg-transparent shadow-none focus-visible:ring-0 h-auto p-0 text-xs"
       />
     </div>
   );

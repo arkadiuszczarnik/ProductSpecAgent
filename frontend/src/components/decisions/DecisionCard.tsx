@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, X, Star, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import type { Decision } from "@/lib/api";
 import { useDecisionStore } from "@/lib/stores/decision-store";
 import { cn } from "@/lib/utils";
@@ -109,15 +110,12 @@ export function DecisionCard({ decision, projectId }: DecisionCardProps) {
         {/* Resolve form (only if pending) */}
         {!isResolved && selectedOption && (
           <div className="space-y-2 pt-1">
-            <textarea
+            <Textarea
               value={rationale}
               onChange={(e) => setRationale(e.target.value)}
               placeholder="Why did you choose this option?"
               rows={2}
-              className={cn(
-                "w-full resize-none rounded-md border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground",
-                "focus:outline-none focus:ring-2 focus:ring-ring"
-              )}
+              className="resize-none"
             />
           </div>
         )}
