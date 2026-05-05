@@ -24,6 +24,11 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Secrets — never commit
+s3-creds.txt
+*credentials*
+*.pem
+
 # Superpowers (visual companion mockups, brainstorming sessions)
 .superpowers/
 
