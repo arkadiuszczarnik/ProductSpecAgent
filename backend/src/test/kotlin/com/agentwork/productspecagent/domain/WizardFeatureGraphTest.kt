@@ -47,4 +47,36 @@ class WizardFeatureGraphTest {
         )
         assertThat(feature.scopes).isEmpty()
     }
+
+    @Test
+    fun `legacy WizardFeature JSON without acceptanceCriteria deserializes with empty list`() {
+        val legacy = """
+            {"id":"f1","title":"Login","scopes":["BACKEND"],"description":"Auth","scopeFields":{}}
+        """.trimIndent()
+
+        val feature = json.decodeFromString<WizardFeature>(legacy)
+
+        assertThat(feature.acceptanceCriteria).isEmpty()
+        assertThat(feature.title).isEqualTo("Login")
+    }
+
+    @Test
+    fun `WizardFeature with acceptanceCriteria roundtrips through JSON`() {
+        val original = WizardFeature(
+            id = "f1",
+            title = "Login",
+            acceptanceCriteria = listOf(
+                AcceptanceCriterion(id = "ac1", title = "User can log in", description = "with valid creds"),
+                AcceptanceCriterion(id = "ac2", title = "Wrong password is rejected"),
+            ),
+        )
+
+        val encoded = json.encodeToString(WizardFeature.serializer(), original)
+        val decoded = json.decodeFromString<WizardFeature>(encoded)
+
+        assertThat(decoded.acceptanceCriteria).hasSize(2)
+        assertThat(decoded.acceptanceCriteria[0].title).isEqualTo("User can log in")
+        assertThat(decoded.acceptanceCriteria[0].description).isEqualTo("with valid creds")
+        assertThat(decoded.acceptanceCriteria[1].description).isEmpty()
+    }
 }
