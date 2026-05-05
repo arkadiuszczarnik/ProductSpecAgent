@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import type { AcceptanceCriterion, FeatureScope, WizardFeature } from "@/lib/api";
+import { proposeAcceptanceCriteria } from "@/lib/api";
 import { SCOPE_FIELD_LABELS, SCOPE_FIELDS_BY_SCOPE } from "@/lib/step-field-labels";
 
 interface FeatureEditDialogProps {
@@ -255,10 +256,20 @@ export function FeatureEditDialog({
 
   const [isProposing, setIsProposing] = useState(false);
   const [proposeError, setProposeError] = useState<string | null>(null);
-  const handlePropose = () => { /* implemented in Task 6 */ };
-  void projectId;
-  void setIsProposing;
-  void setProposeError;
+
+  async function handlePropose() {
+    if (!feature || !draft) return;
+    setIsProposing(true);
+    setProposeError(null);
+    try {
+      const proposed = await proposeAcceptanceCriteria(projectId, feature.id);
+      patch("acceptanceCriteria", [...draft.acceptanceCriteria, ...proposed]);
+    } catch (e) {
+      setProposeError(e instanceof Error ? e.message : "Vorschlag fehlgeschlagen");
+    } finally {
+      setIsProposing(false);
+    }
+  }
 
   if (!draft) {
     return (
