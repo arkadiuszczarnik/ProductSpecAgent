@@ -142,6 +142,7 @@ export function FeaturesGraphEditor({ projectId }: Props) {
                   description: "",
                   scopes: allowedScopes.slice(0, 1),
                   scopeFields: {},
+                  acceptanceCriteria: [],
                   position: { x: 0, y: 0 },
                 });
                 setSelectedId(id);

@@ -61,12 +61,19 @@ export type FeatureScope = "FRONTEND" | "BACKEND";
 
 export interface GraphPosition { x: number; y: number }
 
+export interface AcceptanceCriterion {
+  id: string;
+  title: string;
+  description: string;
+}
+
 export interface WizardFeature {
   id: string;
   title: string;
   scopes: FeatureScope[];
   description: string;
   scopeFields: Record<string, string>;
+  acceptanceCriteria: AcceptanceCriterion[];
   position: GraphPosition;
 }
 
@@ -356,6 +363,16 @@ export async function proposeFeatures(projectId: string): Promise<WizardFeatureG
   return apiFetch<WizardFeatureGraph>(`/api/v1/projects/${projectId}/features/propose`, {
     method: "POST",
   });
+}
+
+export async function proposeAcceptanceCriteria(
+  projectId: string,
+  featureId: string,
+): Promise<AcceptanceCriterion[]> {
+  return apiFetch<AcceptanceCriterion[]>(
+    `/api/v1/projects/${projectId}/features/${featureId}/acceptance-criteria/propose`,
+    { method: "POST" },
+  );
 }
 
 export async function answerClarification(projectId: string, clarificationId: string, data: AnswerClarificationRequest): Promise<Clarification> {

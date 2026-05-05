@@ -30,7 +30,7 @@ export function FeaturesFallbackList({ projectId: _projectId }: Props) {
       <Button size="sm" onClick={() => addFeature({
         title: "Neues Feature", description: "",
         scopes: allowedScopes.slice(0, 1),
-        scopeFields: {}, position: { x: 0, y: 0 },
+        scopeFields: {}, acceptanceCriteria: [], position: { x: 0, y: 0 },
       })}>
         <Plus size={14} /> Feature
       </Button>
