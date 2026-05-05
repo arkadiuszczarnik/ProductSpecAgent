@@ -55,6 +55,9 @@ export S3_SECRET_KEY="minioadmin"
 export S3_PATH_STYLE="true"
 export S3_REGION="us-east-1"
 
+export AUTH_JWT_SECRET="${AUTH_JWT_SECRET:-dev-secret-change-me-dev-secret-change-me-dev-secret}"
+export AUTH_COOKIE_SECURE="${AUTH_COOKIE_SECURE:-false}"
+
 echo "=== Starting Backend (Spring Boot) ==="
 cd "$ROOT_DIR/backend"
 ./gradlew bootRun --quiet &
