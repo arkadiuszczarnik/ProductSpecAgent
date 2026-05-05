@@ -1,6 +1,7 @@
 "use client";
 import { FormField } from "../FormField";
 import { ChipSelect } from "../ChipSelect";
+import { Textarea } from "@/components/ui/textarea";
 import { useWizardStore } from "@/lib/stores/wizard-store";
 
 interface FeatureLike {
@@ -21,9 +22,9 @@ export function MvpForm({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-5">
       <FormField label="MVP-Ziel" required>
-        <textarea value={get("goal")} onChange={(e) => set("goal", e.target.value)}
+        <Textarea value={get("goal")} onChange={(e) => set("goal", e.target.value)}
           placeholder="Was soll das MVP leisten?" rows={3}
-          className="w-full resize-y rounded-md border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring min-h-[80px]" />
+          className="resize-y min-h-[80px]" />
       </FormField>
       {featureOptions.length > 0 && (
         <FormField label="MVP Features (aus Feature-Liste)">
@@ -36,9 +37,9 @@ export function MvpForm({ projectId }: { projectId: string }) {
         </FormField>
       )}
       <FormField label="Erfolgskriterien">
-        <textarea value={get("successCriteria")} onChange={(e) => set("successCriteria", e.target.value)}
+        <Textarea value={get("successCriteria")} onChange={(e) => set("successCriteria", e.target.value)}
           placeholder="Woran erkennst du, dass das MVP erfolgreich ist?" rows={2}
-          className="w-full resize-y rounded-md border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          className="resize-y" />
       </FormField>
     </div>
   );
