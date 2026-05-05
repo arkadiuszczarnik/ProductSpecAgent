@@ -270,7 +270,16 @@ open class AcceptanceCriteriaProposalAgent(
         koogRunner?.run(AGENT_ID, promptService.get("acceptance-criteria-proposal-system"), prompt)
             ?: throw UnsupportedOperationException("KoogAgentRunner not configured.")
 
-    private fun loadFeature(projectId: String, featureId: String): WizardFeature? { /* via wizardService */ }
+    private fun loadFeature(projectId: String, featureId: String): WizardFeature? {
+        // Same pattern as ScaffoldContextBuilder.loadWizardFeaturesByTitle but
+        // returns a single feature by id.
+        val wizardData = wizardService.getWizardData(projectId)
+        val featuresElement = wizardData.steps["FEATURES"]?.fields?.get("features") ?: return null
+        return runCatching {
+            json.decodeFromJsonElement<List<WizardFeature>>(featuresElement)
+                .firstOrNull { it.id == featureId }
+        }.getOrNull()
+    }
     private fun parseResponse(raw: String): List<AcceptanceCriterion> {
         val jsonStr = raw.replace("```json", "").replace("```", "").trim()
         val parsed = runCatching { json.decodeFromString<ProposalResponse>(jsonStr) }
@@ -438,7 +447,7 @@ acceptanceCriteria = wizardFeature?.acceptanceCriteria
 - **Backend (Kotlin):**
   - `AcceptanceCriteriaProposalAgentTest` — anonymous subclass, override `runAgent` mit fester JSON-Antwort, parse-Pfad inkl. `ProposalParseException` testen
   - `ScaffoldContextBuilderTest` — drei Pfade: Wizard-AC vorhanden, Wizard-AC leer, kein Wizard-Match
-  - `WizardFeatureGraphTest` (oder bestehender Domain-Test) — Deserialisierung alter JSON ohne `acceptanceCriteria`-Feld
+  - Domain-Test — Deserialisierung einer `WizardFeature`-JSON ohne `acceptanceCriteria`-Feld liefert `emptyList()` (im Plan-Schritt entscheiden, ob neue Test-Datei oder Erweiterung eines bestehenden Domain-Tests)
 - **Frontend:** kein Test-Runner konfiguriert → manuelle Browser-Verifikation gemäß `frontend/CLAUDE.md`. Test-Plan im Implementierungs-Plan dokumentieren
 
 ## Akzeptanzkriterien (für dieses Feature selbst)
