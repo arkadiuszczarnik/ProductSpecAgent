@@ -41,6 +41,11 @@ dependencies {
     implementation(platform("software.amazon.awssdk:bom:2.30.4"))
     implementation("software.amazon.awssdk:s3")
 
+    // JWT
+    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
+
     // Test
     testImplementation("com.squareup.okhttp3:mockwebserver3:5.3.2")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")

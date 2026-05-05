@@ -14,6 +14,14 @@ spring:
 cors:
   allowed-origins: "http://localhost:3000"
 
+auth:
+  jwt:
+    secret: ${AUTH_JWT_SECRET:}
+    expiry-seconds: 604800
+  cookie:
+    name: session
+    secure: ${AUTH_COOKIE_SECURE:true}
+
 ai:
   koog:
     openai:
