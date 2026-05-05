@@ -1,0 +1,19 @@
+redo:
+  modules:
+    - symfony7
+
+  properties:
+    project_name: "backend"
+    project_on_start: "clean:dist"
+    project_on_commit: "clean:dist"
+    project_on_update: "clean:dist"
+    project_on_install: "clean:dist"
+    docker_registry: "hub.netrtl.com"
+    docker_registry_namespace: "cvdt/product-spec-agent"
+    docker_build_file: "backend/Dockerfile"
+
+  branches:
+    main:
+      regex: "^main$"
+      docker_push:
+        - "{{ docker_tag_rolling_patch }}"
