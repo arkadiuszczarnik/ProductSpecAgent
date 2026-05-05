@@ -31,6 +31,9 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 | 32 | Pulumi AWS EKS + S3 Deployment | [32-pulumi-aws-eks-deployment.md](32-pulumi-aws-eks-deployment.md) | Feature 0, 31 | L |
 | 35 | Feature-Proposal nutzt Upload-Dokumente | [35-feature-proposal-with-uploads.md](35-feature-proposal-with-uploads.md) | Feature 22, 28 | S |
 | 42 | Login-Gate | [42-login-gate.md](42-login-gate.md) | Feature 0 | M |
+| 43a | shadcn Wizard-Forms (Phase 1) | [43a-shadcn-wizard-forms-done.md](43a-shadcn-wizard-forms-done.md) | Feature 6 | M |
+| 43b | shadcn Buttons (Phase 2) | _geplant_ | Feature 43a | M |
+| 43c | shadcn Dialoge & Selects (Phase 3) | _geplant_ | Feature 43a | M |
 
 ## Architecture Docs
 
