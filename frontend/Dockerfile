@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM harbor.eos.netrtl.com/docker/library/node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -6,7 +6,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-FROM node:22-alpine
+FROM harbor.eos.netrtl.com/docker/library/node:22-alpine AS prod
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

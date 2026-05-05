@@ -1,0 +1,29 @@
+default:
+  image: hub.netrtl.com/public/redo:1
+  tags:
+    - k8s-managed-devops
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+
+stages:
+  - build
+
+include:
+  - project: templates/ci/redo
+    file: /jobs/version-update.gitlab-ci.yml
+  - project: templates/ci/redo
+    file: /jobs/version-commit.gitlab-ci.yml
+
+docker-build:
+  stage: build
+  script:
+    - redo docker:build docker:push -Dproject_name=$PROJECT_DIR -Ddocker_build_ctx=$PROJECT_DIR -Ddocker_build_file=$PROJECT_DIR/Dockerfile
+  rules:
+    - if: $CI_COMMIT_BRANCH
+  parallel:
+    matrix:
+      - PROJECT_DIR: backend
+      - PROJECT_DIR: frontend
