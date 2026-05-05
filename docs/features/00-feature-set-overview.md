@@ -30,6 +30,7 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 | 31 | Project Storage auf S3 | [31-project-storage-s3.md](31-project-storage-s3.md) | Feature 0 | L |
 | 32 | Pulumi AWS EKS + S3 Deployment | [32-pulumi-aws-eks-deployment.md](32-pulumi-aws-eks-deployment.md) | Feature 0, 31 | L |
 | 35 | Feature-Proposal nutzt Upload-Dokumente | [35-feature-proposal-with-uploads.md](35-feature-proposal-with-uploads.md) | Feature 22, 28 | S |
+| 42 | Login-Gate | [42-login-gate.md](42-login-gate.md) | Feature 0 | M |
 
 ## Architecture Docs
 
