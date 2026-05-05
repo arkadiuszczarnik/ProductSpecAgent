@@ -1,5 +1,11 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(fn: (() => void) | null) {
+  onUnauthorized = fn;
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -16,12 +22,17 @@ export async function apiFetch<T>(
   options?: RequestInit
 ): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
     },
     ...options,
   });
+
+  if (res.status === 401) {
+    onUnauthorized?.();
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);
@@ -776,4 +787,33 @@ export async function completeDesignStep(projectId: string, locale: string): Pro
     { method: "POST", body: JSON.stringify({ locale }) },
   );
   return res;
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+export interface AuthMe {
+  userId: string;
+  email: string;
+}
+
+export async function authRegister(email: string, password: string): Promise<AuthMe> {
+  return apiFetch<AuthMe>("/api/v1/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function authLogin(email: string, password: string): Promise<AuthMe> {
+  return apiFetch<AuthMe>("/api/v1/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function authLogout(): Promise<void> {
+  await apiFetch<void>("/api/v1/auth/logout", { method: "POST" });
+}
+
+export async function authMe(): Promise<AuthMe> {
+  return apiFetch<AuthMe>("/api/v1/auth/me");
 }
