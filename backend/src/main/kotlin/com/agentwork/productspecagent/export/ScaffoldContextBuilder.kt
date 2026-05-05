@@ -64,7 +64,12 @@ class ScaffoldContextBuilder(
                 stories = stories.mapIndexed { si, s ->
                     StoryContext(si + 1, s.title, s.description)
                 },
-                acceptanceCriteria = subtasks.map { TaskContext(it.title, it.description) },
+                // Prefer wizard acceptance criteria (Feature 44) when available; fall back to
+                // story subtasks for backward compatibility with projects created before this feature.
+                acceptanceCriteria = wizardFeature?.acceptanceCriteria
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.map { TaskContext(it.title, it.description) }
+                    ?: subtasks.map { TaskContext(it.title, it.description) },
                 tasks = (stories + subtasks).map { TaskContext(it.title, it.description) },
                 scope = scopeLabel(wizardFeature?.scopes),
                 scopeFields = wizardFeature?.scopeFields ?: emptyMap(),
