@@ -1,0 +1,5 @@
+auth:
+  jwt:
+    secret: dev-secret-change-me-dev-secret-change-me-dev-secret
+  cookie:
+    secure: false
