@@ -78,6 +78,14 @@ class PromptRegistry {
             resourcePath = "/prompts/feature-proposal-system.md",
             validators = listOf(PromptValidator.NotBlank, PromptValidator.MaxLength(50_000)),
         ),
+        PromptDefinition(
+            id = "acceptance-criteria-proposal-system",
+            title = "Acceptance-Criteria-Proposal — System-Prompt",
+            description = "Rolle des Acceptance-Criteria-Agents (stakeholder-orientierte Done-Bedingungen pro Feature).",
+            agent = "AcceptanceCriteriaProposal",
+            resourcePath = "/prompts/acceptance-criteria-proposal-system.md",
+            validators = listOf(PromptValidator.NotBlank, PromptValidator.MaxLength(50_000)),
+        ),
     )
 
     fun byId(id: String): PromptDefinition =
