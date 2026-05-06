@@ -37,3 +37,6 @@ asset-bundles/*.zip
 
 # redo
 deploy-vars.env
+
+# pyton virtual env
+.venv
