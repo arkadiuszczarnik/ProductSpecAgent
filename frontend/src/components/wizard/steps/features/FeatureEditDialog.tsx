@@ -36,7 +36,8 @@ function snapshot(f: WizardFeature): DraftFeature {
     description: f.description,
     scopes: [...f.scopes],
     scopeFields: { ...f.scopeFields },
-    acceptanceCriteria: f.acceptanceCriteria.map((c) => ({ ...c })),
+    // Defensive: legacy WizardFeature JSON (pre-Feature-44) lacks the field.
+    acceptanceCriteria: (f.acceptanceCriteria ?? []).map((c) => ({ ...c })),
   };
 }
 

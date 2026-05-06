@@ -47,8 +47,15 @@ interface WizardState {
 // Atomic selectors — use with useWizardStore(useShallow(selectFeatures))
 // ---------------------------------------------------------------------------
 
-export const selectFeatures = (s: WizardState): WizardFeature[] =>
-  (s.data?.steps.FEATURES?.fields.features as WizardFeature[] | undefined) ?? [];
+export const selectFeatures = (s: WizardState): WizardFeature[] => {
+  const raw = (s.data?.steps.FEATURES?.fields.features as WizardFeature[] | undefined) ?? [];
+  // Backfill defaults for fields added in later features so legacy wizard.json
+  // (written before the field existed) doesn't crash consumers that expect arrays.
+  return raw.map((f) => ({
+    ...f,
+    acceptanceCriteria: f.acceptanceCriteria ?? [],
+  }));
+};
 
 export const selectEdges = (s: WizardState): WizardFeatureEdge[] =>
   (s.data?.steps.FEATURES?.fields.edges as WizardFeatureEdge[] | undefined) ?? [];
