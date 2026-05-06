@@ -40,7 +40,7 @@ agent:
       plan-generator: LARGE
       design-summary: MEDIUM
 app:
-  frontend-origin: ${APP_FRONTEND_ORIGIN:http://localhost:3000}
+  frontend-origin: ${APP_FRONTEND_ORIGIN:https://product-spec-agent-frontend.hackathon.netrtl.com}
   storage:
     bucket: ${S3_BUCKET:productspec-data}
     endpoint: ${S3_ENDPOINT:}
