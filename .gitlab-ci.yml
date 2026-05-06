@@ -14,7 +14,7 @@ variables:
 stages:
   - build
   - deploy-vars
-  - deploy-prod
+  - deploy-dev
 
 include:
   - project: templates/ci/redo
@@ -23,9 +23,9 @@ include:
     file: /jobs/version-commit.gitlab-ci.yml
   - component: gitlab.netrtl.com/templates/ci/component/argocd/deploy@0
     inputs:
-      step: deploy-prod
-      stage: deploy-prod
-      argocd_app_dir: apps/product-spec-agent
+      step: deploy-dev
+      stage: deploy-dev
+      argocd_app_dir: apps/productspecagent/dev
       argocd_app_values: values.yaml
       when: always
 

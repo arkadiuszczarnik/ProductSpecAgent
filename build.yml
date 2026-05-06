@@ -6,7 +6,7 @@ redo:
     project_on_update: "clean:dist"
     project_on_install: "clean:dist"
     docker_registry: "hub.netrtl.com"
-    docker_registry_namespace: "cvdt/hackathon/product-spec-agent"
+    docker_registry_namespace: "cvdt/hackathon/productspecagent"
     docker_build_file: "backend/Dockerfile"
     docker_build_ctx: "backend"
     app_backend_image_name: "{{ docker_tag(project_version, 'backend') }}"
