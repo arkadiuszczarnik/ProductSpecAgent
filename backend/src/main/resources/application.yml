@@ -21,6 +21,7 @@ auth:
   cookie:
     name: session
     secure: ${AUTH_COOKIE_SECURE:true}
+    domain: ${AUTH_COOKIE_DOMAIN:.hackathon.netrtl.com}
 
 ai:
   koog:

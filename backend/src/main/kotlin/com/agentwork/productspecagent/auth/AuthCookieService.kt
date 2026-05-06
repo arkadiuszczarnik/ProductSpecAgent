@@ -9,24 +9,24 @@ import org.springframework.stereotype.Service
 class AuthCookieService(private val props: AuthProperties) {
 
     fun setSessionCookie(response: HttpServletResponse, token: String) {
-        val cookie = ResponseCookie.from(props.cookie.name, token)
+        val builder = ResponseCookie.from(props.cookie.name, token)
             .httpOnly(true)
             .secure(props.cookie.secure)
             .sameSite("Lax")
             .path("/")
             .maxAge(props.jwt.expirySeconds)
-            .build()
-        response.addHeader("Set-Cookie", cookie.toString())
+        if (props.cookie.domain.isNotBlank()) builder.domain(props.cookie.domain)
+        response.addHeader("Set-Cookie", builder.build().toString())
     }
 
     fun clearSessionCookie(response: HttpServletResponse) {
-        val cookie = ResponseCookie.from(props.cookie.name, "")
+        val builder = ResponseCookie.from(props.cookie.name, "")
             .httpOnly(true)
             .secure(props.cookie.secure)
             .sameSite("Lax")
             .path("/")
             .maxAge(0)
-            .build()
-        response.addHeader("Set-Cookie", cookie.toString())
+        if (props.cookie.domain.isNotBlank()) builder.domain(props.cookie.domain)
+        response.addHeader("Set-Cookie", builder.build().toString())
     }
 }

@@ -14,5 +14,6 @@ data class AuthProperties(
     data class Cookie(
         val name: String = "session",
         val secure: Boolean = true,
+        val domain: String = "",
     )
 }
