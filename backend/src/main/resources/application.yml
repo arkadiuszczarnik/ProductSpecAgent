@@ -40,7 +40,7 @@ agent:
       plan-generator: LARGE
       design-summary: MEDIUM
 app:
-  frontend-origin: ${APP_FRONTEND_ORIGIN:https://productspecagentfrontend.hackathon.netrtl.com}
+  frontend-origin: ${APP_FRONTEND_ORIGIN:https://productspecagent-frontend.hackathon.netrtl.com}
   storage:
     bucket: ${S3_BUCKET:productspec-data}
     endpoint: ${S3_ENDPOINT:}
