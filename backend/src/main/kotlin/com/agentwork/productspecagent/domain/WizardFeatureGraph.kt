@@ -11,8 +11,7 @@ data class GraphPosition(val x: Double = 0.0, val y: Double = 0.0)
 @Serializable
 data class AcceptanceCriterion(
     val id: String,
-    val title: String,
-    val description: String = "",
+    val text: String,
 )
 
 @Serializable

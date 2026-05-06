@@ -1,6 +1,6 @@
 # Feature 44 — Akzeptanzkriterien im Feature-Edit-Modal — Done
 
-**Datum:** 2026-05-06
+**Datum:** 2026-05-06 (Schema-Vereinfachung am 2026-05-06)
 **Branch:** `feat/feature-acceptance-criteria`
 **Spec:** [`docs/features/44-feature-acceptance-criteria.md`](./44-feature-acceptance-criteria.md)
 **Design:** [`docs/superpowers/specs/2026-05-05-feature-acceptance-criteria-design.md`](../superpowers/specs/2026-05-05-feature-acceptance-criteria-design.md)
@@ -8,7 +8,9 @@
 
 ## Was umgesetzt wurde
 
-Akzeptanzkriterien können nun pro Feature im `FeatureEditDialog` gepflegt werden — als geordnete Liste von `AcceptanceCriterion(id, title, description)`-Einträgen mit Inline-Editing, Add/Remove, ↑/↓-Reorder und Enter-Shortcut. Ein „AC vorschlagen"-Button startet einen LLM-Agenten, der 3–6 stakeholder-orientierte Vorschläge per Append-Merge an die bestehende Liste anhängt. Der `ScaffoldContextBuilder` priorisiert Wizard-AC vor Story-Subtasks bei der Doc-Generierung; bestehende Projekte ohne das neue Feld bleiben rückwärtskompatibel.
+Akzeptanzkriterien können nun pro Feature im `FeatureEditDialog` gepflegt werden — als geordnete Liste von `AcceptanceCriterion(id, text)`-Einträgen (eine einzeilige Text-Zeile pro Kriterium, Beispiel: *„Aufruf von `/` ohne Cookie → automatisch redirect zu `/login`."*) mit Inline-Editing, Add/Remove, ↑/↓-Reorder und Enter-Shortcut. Ein „AC vorschlagen"-Button startet einen LLM-Agenten, der 3–6 stakeholder-orientierte Vorschläge per Append-Merge an die bestehende Liste anhängt. Der `ScaffoldContextBuilder` priorisiert Wizard-AC vor Story-Subtasks bei der Doc-Generierung; bestehende Projekte ohne das neue Feld bleiben rückwärtskompatibel.
+
+**Hinweis zur Schema-Iteration (2026-05-06):** Ursprünglich war das Modell `AcceptanceCriterion(id, title, description)`. Auf Wunsch des Users wurde es zu einem einzelnen `text`-Feld vereinfacht — Akzeptanzkriterien sind in der Praxis kurze Einzeiler ohne Bedarf für Title/Body-Trennung.
 
 **Backend (Kotlin/Spring):**
 - Neue `AcceptanceCriterion`-Domain-Klasse + `WizardFeature.acceptanceCriteria`-Feld (Default `emptyList()`, kotlinx-Serialization).

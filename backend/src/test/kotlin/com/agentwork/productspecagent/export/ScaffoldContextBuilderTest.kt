@@ -214,8 +214,8 @@ class ScaffoldContextBuilderTest {
             id = "f1",
             title = "Login",
             acceptanceCriteria = listOf(
-                AcceptanceCriterion(id = "ac1", title = "Wizard AC One", description = "from wizard"),
-                AcceptanceCriterion(id = "ac2", title = "Wizard AC Two", description = ""),
+                AcceptanceCriterion(id = "ac1", text = "Wizard AC One"),
+                AcceptanceCriterion(id = "ac2", text = "Wizard AC Two"),
             ),
         )
         seedWizardFeatures(listOf(wizardFeature))

@@ -38,8 +38,8 @@ open class AcceptanceCriteriaProposalAgent(
             if (feature.scopes.isNotEmpty()) appendLine("Scopes: ${feature.scopes.joinToString()}")
             appendLine()
             appendLine("Respond with EXACTLY this JSON format (no markdown, no explanation):")
-            appendLine("""{"criteria":[{"title":"...","description":"..."}]}""")
-            appendLine("Aim for 3–6 criteria. 'description' is optional (empty string allowed).")
+            appendLine("""{"criteria":[{"text":"..."}]}""")
+            appendLine("Aim for 3–6 criteria. Each 'text' is a single, self-contained Done condition (one sentence or short phrase).")
         }
         val raw = runAgent(prompt)
         return parseResponse(raw)
@@ -67,8 +67,7 @@ open class AcceptanceCriteriaProposalAgent(
         return parsed.criteria.map { c ->
             AcceptanceCriterion(
                 id = UUID.randomUUID().toString(),
-                title = c.title,
-                description = c.description ?: "",
+                text = c.text,
             )
         }
     }
@@ -77,5 +76,5 @@ open class AcceptanceCriteriaProposalAgent(
     private data class ProposalResponse(val criteria: List<CriterionDef> = emptyList())
 
     @Serializable
-    private data class CriterionDef(val title: String, val description: String? = null)
+    private data class CriterionDef(val text: String)
 }

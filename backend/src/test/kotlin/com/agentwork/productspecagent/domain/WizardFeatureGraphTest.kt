@@ -66,8 +66,8 @@ class WizardFeatureGraphTest {
             id = "f1",
             title = "Login",
             acceptanceCriteria = listOf(
-                AcceptanceCriterion(id = "ac1", title = "User can log in", description = "with valid creds"),
-                AcceptanceCriterion(id = "ac2", title = "Wrong password is rejected"),
+                AcceptanceCriterion(id = "ac1", text = "User can log in with valid credentials"),
+                AcceptanceCriterion(id = "ac2", text = "Wrong password is rejected with a clear message"),
             ),
         )
 
@@ -75,8 +75,7 @@ class WizardFeatureGraphTest {
         val decoded = json.decodeFromString<WizardFeature>(encoded)
 
         assertThat(decoded.acceptanceCriteria).hasSize(2)
-        assertThat(decoded.acceptanceCriteria[0].title).isEqualTo("User can log in")
-        assertThat(decoded.acceptanceCriteria[0].description).isEqualTo("with valid creds")
-        assertThat(decoded.acceptanceCriteria[1].description).isEmpty()
+        assertThat(decoded.acceptanceCriteria[0].text).isEqualTo("User can log in with valid credentials")
+        assertThat(decoded.acceptanceCriteria[1].text).isEqualTo("Wrong password is rejected with a clear message")
     }
 }

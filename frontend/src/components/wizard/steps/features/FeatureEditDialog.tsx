@@ -53,7 +53,7 @@ function equalDraft(a: DraftFeature, b: DraftFeature): boolean {
   for (let i = 0; i < a.acceptanceCriteria.length; i++) {
     const x = a.acceptanceCriteria[i];
     const y = b.acceptanceCriteria[i];
-    if (x.id !== y.id || x.title !== y.title || x.description !== y.description) return false;
+    if (x.id !== y.id || x.text !== y.text) return false;
   }
   return true;
 }
@@ -84,15 +84,14 @@ function AcceptanceCriteriaList({
     }
   }, [value]);
 
-  function patchItem(id: string, key: "title" | "description", val: string) {
-    onChange(value.map((c) => (c.id === id ? { ...c, [key]: val } : c)));
+  function patchText(id: string, val: string) {
+    onChange(value.map((c) => (c.id === id ? { ...c, text: val } : c)));
   }
 
   function appendNew(afterId?: string) {
     const newItem: AcceptanceCriterion = {
       id: crypto.randomUUID(),
-      title: "",
-      description: "",
+      text: "",
     };
     if (!afterId) {
       onChange([...value, newItem]);
@@ -146,33 +145,24 @@ function AcceptanceCriteriaList({
         {value.map((c, idx) => (
           <div
             key={c.id}
-            className="border border-border rounded-md p-3 space-y-2 bg-muted/20"
+            className="flex items-start gap-2 border border-border rounded-md p-2 bg-muted/20"
           >
-            <div>
-              <Label htmlFor={`ac-title-${c.id}`} className="text-xs">Titel</Label>
-              <Input
-                id={`ac-title-${c.id}`}
-                ref={(el: HTMLInputElement | null) => { inputRefs.current[c.id] = el; }}
-                value={c.title}
-                onChange={(e) => patchItem(c.id, "title", e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    appendNew(c.id);
-                  }
-                }}
-              />
-            </div>
-            <div>
-              <Label htmlFor={`ac-desc-${c.id}`} className="text-xs">Beschreibung (optional)</Label>
-              <Textarea
-                id={`ac-desc-${c.id}`}
-                rows={2}
-                value={c.description}
-                onChange={(e) => patchItem(c.id, "description", e.target.value)}
-              />
-            </div>
-            <div className="flex justify-end gap-1">
+            <Input
+              id={`ac-text-${c.id}`}
+              aria-label={`Akzeptanzkriterium ${idx + 1}`}
+              ref={(el: HTMLInputElement | null) => { inputRefs.current[c.id] = el; }}
+              value={c.text}
+              onChange={(e) => patchText(c.id, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  appendNew(c.id);
+                }
+              }}
+              className="flex-1"
+              placeholder="z. B. Aufruf von / ohne Cookie → automatisch redirect zu /login"
+            />
+            <div className="flex shrink-0 items-center gap-1">
               <Button
                 type="button"
                 variant="ghost"
@@ -310,8 +300,8 @@ export function FeatureEditDialog({
   function handleSave() {
     if (!draft) return;
     const cleanedAC = draft.acceptanceCriteria
-      .map((c) => ({ ...c, title: c.title.trim(), description: c.description.trim() }))
-      .filter((c) => c.title.length > 0);
+      .map((c) => ({ ...c, text: c.text.trim() }))
+      .filter((c) => c.text.length > 0);
     onSave({
       title: draft.title,
       description: draft.description,

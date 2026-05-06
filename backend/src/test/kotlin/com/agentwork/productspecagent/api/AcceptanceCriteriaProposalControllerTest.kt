@@ -38,8 +38,8 @@ class AcceptanceCriteriaProposalControllerTest {
                         "f-parse-error" -> throw ProposalParseException("bad JSON from LLM")
                         "f-missing" -> throw IllegalArgumentException("Feature f-missing not found")
                         else -> listOf(
-                            AcceptanceCriterion(id = "ac1", title = "User can log in", description = "with valid creds"),
-                            AcceptanceCriterion(id = "ac2", title = "Wrong password rejected"),
+                            AcceptanceCriterion(id = "ac1", text = "User can log in with valid credentials"),
+                            AcceptanceCriterion(id = "ac2", text = "Wrong password is rejected with a clear message"),
                         )
                     }
                 }
@@ -55,9 +55,8 @@ class AcceptanceCriteriaProposalControllerTest {
 
         mockMvc.perform(post("/api/v1/projects/$projectId/features/f-1/acceptance-criteria/propose"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].title").value("User can log in"))
-            .andExpect(jsonPath("$[0].description").value("with valid creds"))
-            .andExpect(jsonPath("$[1].title").value("Wrong password rejected"))
+            .andExpect(jsonPath("$[0].text").value("User can log in with valid credentials"))
+            .andExpect(jsonPath("$[1].text").value("Wrong password is rejected with a clear message"))
     }
 
     @Test

@@ -63,8 +63,7 @@ export interface GraphPosition { x: number; y: number }
 
 export interface AcceptanceCriterion {
   id: string;
-  title: string;
-  description: string;
+  text: string;
 }
 
 export interface WizardFeature {

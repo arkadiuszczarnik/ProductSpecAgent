@@ -54,8 +54,8 @@ class AcceptanceCriteriaProposalAgentTest {
         ) {
             override suspend fun runAgent(prompt: String): String = """
                 {"criteria":[
-                  {"title":"User can log in","description":"with valid creds"},
-                  {"title":"Wrong password rejected"}
+                  {"text":"User can log in with valid credentials"},
+                  {"text":"Wrong password is rejected with a clear message"}
                 ]}
             """
         }
@@ -64,10 +64,8 @@ class AcceptanceCriteriaProposalAgentTest {
 
         assertThat(criteria).hasSize(2)
         assertThat(criteria[0].id).isNotBlank()
-        assertThat(criteria[0].title).isEqualTo("User can log in")
-        assertThat(criteria[0].description).isEqualTo("with valid creds")
-        assertThat(criteria[1].title).isEqualTo("Wrong password rejected")
-        assertThat(criteria[1].description).isEmpty()
+        assertThat(criteria[0].text).isEqualTo("User can log in with valid credentials")
+        assertThat(criteria[1].text).isEqualTo("Wrong password is rejected with a clear message")
         // UUIDs are unique per criterion
         assertThat(criteria[0].id).isNotEqualTo(criteria[1].id)
     }
