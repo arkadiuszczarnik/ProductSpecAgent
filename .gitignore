@@ -35,4 +35,5 @@ s3-creds.txt
 # Asset bundles (zips are build artifacts of build-bundles.sh)
 asset-bundles/*.zip
 
+# redo
 deploy-vars.env
