@@ -16,7 +16,7 @@ interface Props {
   projectId: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://product-spec-agent-backend.hackathon.netrtl.com";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://productspecagentbackend.hackathon.netrtl.com";
 
 export function DesignForm({ projectId }: Props) {
   const { bundle, loading, uploading, error, loadBundle, uploadBundle, deleteBundle } = useDesignBundleStore();

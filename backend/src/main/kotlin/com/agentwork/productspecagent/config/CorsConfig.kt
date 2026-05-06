@@ -18,8 +18,8 @@ class CorsConfig(private val corsProperties: CorsProperties) {
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration()
-                // configuration.allowedOrigins = corsProperties.allowedOrigins
-        configuration.allowedOriginPatterns = listOf("*")
+        configuration.allowedOrigins = corsProperties.allowedOrigins
+       // configuration.allowedOriginPatterns = listOf("*")
         configuration.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
         configuration.allowedHeaders = listOf("*")
         configuration.allowCredentials = true
