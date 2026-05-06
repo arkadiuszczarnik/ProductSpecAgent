@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,20 +13,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import type { FeatureScope, WizardFeature } from "@/lib/api";
+import type { AcceptanceCriterion, FeatureScope, WizardFeature } from "@/lib/api";
+import { proposeAcceptanceCriteria } from "@/lib/api";
 import { SCOPE_FIELD_LABELS, SCOPE_FIELDS_BY_SCOPE } from "@/lib/step-field-labels";
 
 interface FeatureEditDialogProps {
   feature: WizardFeature | null;
   allowedScopes: FeatureScope[];
   open: boolean;
+  projectId: string;
   onClose: () => void;
   onSave: (patch: Partial<WizardFeature>) => void;
   onDelete: () => void;
 }
 
 type DraftFeature = Pick<WizardFeature,
-  "title" | "description" | "scopes" | "scopeFields">;
+  "title" | "description" | "scopes" | "scopeFields" | "acceptanceCriteria">;
 
 function snapshot(f: WizardFeature): DraftFeature {
   return {
@@ -34,6 +36,8 @@ function snapshot(f: WizardFeature): DraftFeature {
     description: f.description,
     scopes: [...f.scopes],
     scopeFields: { ...f.scopeFields },
+    // Defensive: legacy WizardFeature JSON (pre-Feature-44) lacks the field.
+    acceptanceCriteria: (f.acceptanceCriteria ?? []).map((c) => ({ ...c })),
   };
 }
 
@@ -45,13 +49,172 @@ function equalDraft(a: DraftFeature, b: DraftFeature): boolean {
   const bk = Object.keys(b.scopeFields);
   if (ak.length !== bk.length) return false;
   for (const k of ak) if (a.scopeFields[k] !== b.scopeFields[k]) return false;
+  if (a.acceptanceCriteria.length !== b.acceptanceCriteria.length) return false;
+  for (let i = 0; i < a.acceptanceCriteria.length; i++) {
+    const x = a.acceptanceCriteria[i];
+    const y = b.acceptanceCriteria[i];
+    if (x.id !== y.id || x.text !== y.text) return false;
+  }
   return true;
+}
+
+interface AcceptanceCriteriaListProps {
+  value: AcceptanceCriterion[];
+  onChange: (next: AcceptanceCriterion[]) => void;
+  onPropose: () => void;
+  isProposing: boolean;
+  proposeError: string | null;
+}
+
+function AcceptanceCriteriaList({
+  value,
+  onChange,
+  onPropose,
+  isProposing,
+  proposeError,
+}: AcceptanceCriteriaListProps) {
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const focusIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const id = focusIdRef.current;
+    if (id && inputRefs.current[id]) {
+      inputRefs.current[id]?.focus();
+      focusIdRef.current = null;
+    }
+  }, [value]);
+
+  function patchText(id: string, val: string) {
+    onChange(value.map((c) => (c.id === id ? { ...c, text: val } : c)));
+  }
+
+  function appendNew(afterId?: string) {
+    const newItem: AcceptanceCriterion = {
+      id: crypto.randomUUID(),
+      text: "",
+    };
+    if (!afterId) {
+      onChange([...value, newItem]);
+    } else {
+      const idx = value.findIndex((c) => c.id === afterId);
+      const next = [...value];
+      next.splice(idx + 1, 0, newItem);
+      onChange(next);
+    }
+    focusIdRef.current = newItem.id;
+  }
+
+  function remove(id: string) {
+    onChange(value.filter((c) => c.id !== id));
+  }
+
+  function move(id: string, direction: -1 | 1) {
+    const idx = value.findIndex((c) => c.id === id);
+    const target = idx + direction;
+    if (target < 0 || target >= value.length) return;
+    const next = [...value];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    onChange(next);
+  }
+
+  return (
+    <section className="border-t pt-4 mt-2">
+      <div className="flex items-center justify-between mb-3">
+        <Label>Akzeptanzkriterien</Label>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onPropose}
+          disabled={isProposing}
+        >
+          {isProposing ? (
+            <Loader2 className="animate-spin mr-1" size={14} />
+          ) : (
+            <Sparkles className="mr-1" size={14} />
+          )}
+          {isProposing ? "Generiere..." : "AC vorschlagen"}
+        </Button>
+      </div>
+
+      {proposeError && (
+        <p className="text-xs text-destructive mb-2">{proposeError}</p>
+      )}
+
+      <div className="space-y-3">
+        {value.map((c, idx) => (
+          <div
+            key={c.id}
+            className="flex items-start gap-2 border border-border rounded-md p-2 bg-muted/20"
+          >
+            <Input
+              id={`ac-text-${c.id}`}
+              aria-label={`Akzeptanzkriterium ${idx + 1}`}
+              ref={(el: HTMLInputElement | null) => { inputRefs.current[c.id] = el; }}
+              value={c.text}
+              onChange={(e) => patchText(c.id, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  appendNew(c.id);
+                }
+              }}
+              className="flex-1"
+              placeholder="z. B. Aufruf von / ohne Cookie → automatisch redirect zu /login"
+            />
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => move(c.id, -1)}
+                disabled={idx === 0}
+                aria-label="Nach oben"
+              >
+                <ChevronUp size={14} />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => move(c.id, 1)}
+                disabled={idx === value.length - 1}
+                aria-label="Nach unten"
+              >
+                <ChevronDown size={14} />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => remove(c.id)}
+                aria-label="Entfernen"
+              >
+                <Trash2 size={14} />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="mt-3"
+        onClick={() => appendNew()}
+      >
+        <Plus size={14} className="mr-1" /> Akzeptanzkriterium hinzufügen
+      </Button>
+    </section>
+  );
 }
 
 export function FeatureEditDialog({
   feature,
   allowedScopes,
   open,
+  projectId,
   onClose,
   onSave,
   onDelete,
@@ -63,7 +226,6 @@ export function FeatureEditDialog({
     if (open && feature) {
       const snap = snapshot(feature);
       initialRef.current = snap;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft(snap);
     }
     if (!open) {
@@ -81,6 +243,23 @@ export function FeatureEditDialog({
       .filter((s) => draft.scopes.includes(s))
       .map((scope) => ({ scope, fields: SCOPE_FIELDS_BY_SCOPE[scope] }));
   }, [draft, allowedScopes]);
+
+  const [isProposing, setIsProposing] = useState(false);
+  const [proposeError, setProposeError] = useState<string | null>(null);
+
+  async function handlePropose() {
+    if (!feature || !draft) return;
+    setIsProposing(true);
+    setProposeError(null);
+    try {
+      const proposed = await proposeAcceptanceCriteria(projectId, feature.id);
+      patch("acceptanceCriteria", [...draft.acceptanceCriteria, ...proposed]);
+    } catch (e) {
+      setProposeError(e instanceof Error ? e.message : "Vorschlag fehlgeschlagen");
+    } finally {
+      setIsProposing(false);
+    }
+  }
 
   if (!draft) {
     return (
@@ -120,11 +299,15 @@ export function FeatureEditDialog({
 
   function handleSave() {
     if (!draft) return;
+    const cleanedAC = draft.acceptanceCriteria
+      .map((c) => ({ ...c, text: c.text.trim() }))
+      .filter((c) => c.text.length > 0);
     onSave({
       title: draft.title,
       description: draft.description,
       scopes: draft.scopes,
       scopeFields: draft.scopeFields,
+      acceptanceCriteria: cleanedAC,
     });
     onClose();
   }
@@ -211,6 +394,14 @@ export function FeatureEditDialog({
             ))}
           </div>
         </div>
+
+        <AcceptanceCriteriaList
+          value={draft.acceptanceCriteria}
+          onChange={(next) => patch("acceptanceCriteria", next)}
+          onPropose={handlePropose}
+          isProposing={isProposing}
+          proposeError={proposeError}
+        />
 
         <DialogFooter className="flex flex-row justify-between sm:justify-between">
           <Button variant="ghost" onClick={handleDelete}>

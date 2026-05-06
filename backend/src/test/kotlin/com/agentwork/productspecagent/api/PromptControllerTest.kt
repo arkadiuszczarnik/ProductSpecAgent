@@ -34,10 +34,10 @@ class PromptControllerTest {
     }
 
     @Test
-    fun `GET prompts returns six items with isOverridden flags`() {
+    fun `GET prompts returns seven items with isOverridden flags`() {
         mockMvc.perform(get("/api/v1/prompts"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(6))
+            .andExpect(jsonPath("$.length()").value(7))
             .andExpect(jsonPath("$[?(@.id == 'idea-base')]").exists())
             .andExpect(jsonPath("$[?(@.id == 'idea-base')].isOverridden").value(false))
             .andExpect(jsonPath("$[?(@.id == 'decision-system')].agent").value("Decision"))

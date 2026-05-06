@@ -205,4 +205,103 @@ class ScaffoldContextBuilderTest {
         assertThat(ctx.features[0].scope).isEqualTo("Core")
         assertThat(ctx.features[0].scopeFields).isEmpty()
     }
+
+    // ── Acceptance-Criteria-Fallback Tests (Feature 44) ──────────────────────
+
+    @Test
+    fun `acceptance criteria from wizard feature override story subtasks when present`() {
+        val wizardFeature = WizardFeature(
+            id = "f1",
+            title = "Login",
+            acceptanceCriteria = listOf(
+                AcceptanceCriterion(id = "ac1", text = "Wizard AC One"),
+                AcceptanceCriterion(id = "ac2", text = "Wizard AC Two"),
+            ),
+        )
+        seedWizardFeatures(listOf(wizardFeature))
+
+        val now = Instant.now().toString()
+        val epic = SpecTask(
+            id = "e1", projectId = projectId, type = TaskType.EPIC, title = "Login",
+            estimate = "M", priority = 0, specSection = FlowStepType.FEATURES,
+            createdAt = now, updatedAt = now,
+        )
+        val story = SpecTask(
+            id = "s1", projectId = projectId, parentId = "e1", type = TaskType.STORY,
+            title = "Story", estimate = "S", priority = 0, specSection = FlowStepType.FEATURES,
+            createdAt = now, updatedAt = now,
+        )
+        val subtask = SpecTask(
+            id = "t1", projectId = projectId, parentId = "s1", type = TaskType.TASK,
+            title = "Should NOT appear as AC", estimate = "S", priority = 0,
+            specSection = FlowStepType.FEATURES, createdAt = now, updatedAt = now,
+        )
+        mockTasks(listOf(epic, story, subtask))
+
+        val ctx = builder.build(projectId)
+
+        assertThat(ctx.features[0].acceptanceCriteria).hasSize(2)
+        assertThat(ctx.features[0].acceptanceCriteria[0].title).isEqualTo("Wizard AC One")
+        assertThat(ctx.features[0].acceptanceCriteria[1].title).isEqualTo("Wizard AC Two")
+    }
+
+    @Test
+    fun `empty wizard acceptance criteria fall back to story subtasks`() {
+        val wizardFeature = WizardFeature(
+            id = "f1",
+            title = "Login",
+            acceptanceCriteria = emptyList(),
+        )
+        seedWizardFeatures(listOf(wizardFeature))
+
+        val now = Instant.now().toString()
+        val epic = SpecTask(
+            id = "e1", projectId = projectId, type = TaskType.EPIC, title = "Login",
+            estimate = "M", priority = 0, specSection = FlowStepType.FEATURES,
+            createdAt = now, updatedAt = now,
+        )
+        val story = SpecTask(
+            id = "s1", projectId = projectId, parentId = "e1", type = TaskType.STORY,
+            title = "Story", estimate = "S", priority = 0, specSection = FlowStepType.FEATURES,
+            createdAt = now, updatedAt = now,
+        )
+        val subtask = SpecTask(
+            id = "t1", projectId = projectId, parentId = "s1", type = TaskType.TASK,
+            title = "Subtask AC", estimate = "S", priority = 0,
+            specSection = FlowStepType.FEATURES, createdAt = now, updatedAt = now,
+        )
+        mockTasks(listOf(epic, story, subtask))
+
+        val ctx = builder.build(projectId)
+
+        assertThat(ctx.features[0].acceptanceCriteria).hasSize(1)
+        assertThat(ctx.features[0].acceptanceCriteria[0].title).isEqualTo("Subtask AC")
+    }
+
+    @Test
+    fun `no wizard feature match falls back to story subtasks`() {
+        // No seedWizardFeatures call: builder built without WizardService
+        val now = Instant.now().toString()
+        val epic = SpecTask(
+            id = "e1", projectId = projectId, type = TaskType.EPIC, title = "Login",
+            estimate = "M", priority = 0, specSection = FlowStepType.FEATURES,
+            createdAt = now, updatedAt = now,
+        )
+        val story = SpecTask(
+            id = "s1", projectId = projectId, parentId = "e1", type = TaskType.STORY,
+            title = "Story", estimate = "S", priority = 0, specSection = FlowStepType.FEATURES,
+            createdAt = now, updatedAt = now,
+        )
+        val subtask = SpecTask(
+            id = "t1", projectId = projectId, parentId = "s1", type = TaskType.TASK,
+            title = "Legacy Subtask AC", estimate = "S", priority = 0,
+            specSection = FlowStepType.FEATURES, createdAt = now, updatedAt = now,
+        )
+        mockTasks(listOf(epic, story, subtask))
+
+        val ctx = builder.build(projectId)
+
+        assertThat(ctx.features[0].acceptanceCriteria).hasSize(1)
+        assertThat(ctx.features[0].acceptanceCriteria[0].title).isEqualTo("Legacy Subtask AC")
+    }
 }

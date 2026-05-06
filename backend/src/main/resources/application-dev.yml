@@ -1,3 +1,6 @@
+app:
+  frontend-origin: ${APP_FRONTEND_ORIGIN:http://localhost:3000}
+
 auth:
   jwt:
     secret: dev-secret-change-me-dev-secret-change-me-dev-secret

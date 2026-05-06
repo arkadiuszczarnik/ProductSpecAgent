@@ -7,11 +7,12 @@ import org.junit.jupiter.api.Assertions.assertEquals
 class PromptRegistryTest {
 
     @Test
-    fun `registry contains exactly the six expected prompts`() {
+    fun `registry contains exactly the seven expected prompts`() {
         val ids = PromptRegistry().definitions.map { it.id }.toSet()
         assertEquals(
             setOf("idea-base", "idea-marker-reminder", "idea-step-IDEA",
-                  "decision-system", "plan-system", "feature-proposal-system"),
+                  "decision-system", "plan-system", "feature-proposal-system",
+                  "acceptance-criteria-proposal-system"),
             ids,
         )
     }
