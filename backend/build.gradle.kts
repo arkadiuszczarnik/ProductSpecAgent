@@ -72,4 +72,7 @@ tasks.processResources {
     from("../asset-bundles/living-sync-reporter-bundle") {
         into("asset-bundles/living-sync-reporter-bundle")
     }
+    from("../asset-bundles/product-spec-sync-bundle") {
+        into("asset-bundles/product-spec-sync-bundle")
+    }
 }

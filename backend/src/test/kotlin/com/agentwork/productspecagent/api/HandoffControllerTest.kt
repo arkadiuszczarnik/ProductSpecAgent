@@ -44,17 +44,7 @@ class HandoffControllerTest {
     }
 
     @Test
-    fun `POST preview with codex format returns format codex`() {
-        val pid = createProject()
-
-        mockMvc.perform(post("/api/v1/projects/$pid/handoff/preview?format=codex"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.format").value("codex"))
-            .andExpect(jsonPath("$.agentsMd").isNotEmpty)
-    }
-
-    @Test
-    fun `POST preview includes Living Sync reporting instructions`() {
+    fun `POST preview claudeMd uses neutral handoff template`() {
         val pid = createProject()
 
         val result = mockMvc.perform(post("/api/v1/projects/$pid/handoff/preview"))
@@ -62,13 +52,18 @@ class HandoffControllerTest {
             .andReturn()
 
         val body = result.response.contentAsString
-        assertTrue(body.contains("Living-Sync"), "Preview should mention Living-Sync reporting")
-        assertTrue(body.contains("/mcp"), "Preview should include MCP endpoint")
-        assertTrue(body.contains("/api/v1/projects/$pid/living-sync/mcp"), "Preview should include project-specific Living-Sync endpoint")
-        assertTrue(body.contains(".asset-bundles/skills/global.living-sync-reporter/living-sync-reporter"), "Preview should mention neutral Living Sync skill")
-        assertTrue(body.contains(".claude/settings.json"), "Preview should mention hook settings")
-        assertTrue(body.contains(".claude/living-sync.json"), "Preview should mention Living Sync config")
-        assertTrue(body.contains("living-sync-reporter --help"), "Preview should mention manual reporter usage")
+        assertTrue(body.contains("## How to Sync This Project"), "Preview should include neutral handoff sync section")
+        assertFalse(body.contains("## Living-Sync Reporting"), "Neutral handoff preview should not use claude-specific template")
+    }
+
+    @Test
+    fun `POST preview with codex format returns format codex`() {
+        val pid = createProject()
+
+        mockMvc.perform(post("/api/v1/projects/$pid/handoff/preview?format=codex"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.format").value("codex"))
+            .andExpect(jsonPath("$.agentsMd").isNotEmpty)
     }
 
     @Test
@@ -137,7 +132,7 @@ class HandoffControllerTest {
     }
 
     @Test
-    fun `POST export embeds project name sync URL and behavioral guidelines into CLAUDE md`() {
+    fun `POST export embeds neutral handoff template into CLAUDE md`() {
         val pid = createProject()
 
         val result = mockMvc.perform(
@@ -161,14 +156,7 @@ class HandoffControllerTest {
             claudeContent.contains("/handoff/handoff.zip"),
             "CLAUDE.md should embed sync URL pointing at the GET endpoint"
         )
-        assertTrue(
-            claudeContent.contains("### 1. Think Before Coding"),
-            "CLAUDE.md should contain Behavioral Guidelines section 1"
-        )
-        assertTrue(
-            claudeContent.contains("### 4. Goal-Driven Execution"),
-            "CLAUDE.md should contain Behavioral Guidelines section 4"
-        )
+        assertFalse(claudeContent.contains("## Living-Sync Reporting"), "CLAUDE.md should use neutral handoff template")
     }
 
     @Test
@@ -256,6 +244,24 @@ class HandoffControllerTest {
         assertTrue(settings.contains(".asset-bundles/skills/global.living-sync-reporter"), "Hooks should call the neutral asset-bundle reporter")
         assertZipSymlink(zipBytes, ".claude/skills", "../.asset-bundles/skills")
         assertZipSymlink(zipBytes, ".agents/skills", "../.asset-bundles/skills")
+    }
+
+    @Test
+    fun `GET handoff zip embeds Product Spec Sync asset bundle`() {
+        val pid = createProject()
+
+        val result = mockMvc.perform(get("/api/v1/projects/$pid/handoff/handoff.zip"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+        val skill = readZipEntry(zipBytes) { it == ".asset-bundles/skills/global.product-spec-sync/product-spec-sync/SKILL.md" }
+            ?: error("Product Spec Sync skill not found in handoff ZIP")
+
+        assertTrue(skill.contains("How to Sync This Project"), "Skill should include sync instructions")
+        assertTrue(skill.contains("Product-Spec-Agent"), "Skill should mention Product-Spec-Agent")
+        assertTrue(skill.contains("curl -L -o handoff.zip"), "Skill should include the sync command")
+        assertFalse(skill.contains("{{{syncUrl}}}"), "Static skill should not contain Mustache placeholders")
     }
 
     private fun assertZipSymlink(zipBytes: ByteArray, name: String, target: String) {

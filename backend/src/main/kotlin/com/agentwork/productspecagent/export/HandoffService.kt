@@ -84,6 +84,7 @@ class HandoffService(
             zip.addEntry("${entryPrefix}.claude/settings.json", generateLivingSyncSettings())
             zip.addEntry("${entryPrefix}.claude/living-sync.json", generateLivingSyncConfig(livingSyncBaseUrl, mcpUrl))
             zip.addLivingSyncAssetBundle(entryPrefix)
+            zip.addProductSpecSyncAssetBundle(entryPrefix)
             symlinkEntries += zip.addToolSymlinks(entryPrefix)
         }
 
@@ -91,7 +92,7 @@ class HandoffService(
     }
 
     private fun generateClaudeMd(projectName: String, syncUrl: String, livingSyncBaseUrl: String, mcpUrl: String): String {
-        return render("claude.md.mustache", handoffContext(projectName, "claude-code", livingSyncBaseUrl, mcpUrl, syncUrl))
+        return render("handoff.md.mustache", handoffContext(projectName, "claude-code", livingSyncBaseUrl, mcpUrl, syncUrl))
     }
 
     private fun generateAgentsMd(project: Project, format: String, livingSyncBaseUrl: String, mcpUrl: String): String =
@@ -214,6 +215,13 @@ class HandoffService(
         for (resourceName in binaryFiles) {
             addEntry("$zipPrefix/$resourceName", resourceBytes("$resourcePrefix/$resourceName"))
         }
+    }
+
+    private fun ZipOutputStream.addProductSpecSyncAssetBundle(entryPrefix: String) {
+        val bundleId = "global.product-spec-sync"
+        val resourcePath = "asset-bundles/product-spec-sync-bundle/skills/product-spec-sync/SKILL.md"
+        val entryName = "${entryPrefix}.asset-bundles/skills/$bundleId/product-spec-sync/SKILL.md"
+        addEntry(entryName, resourceText(resourcePath))
     }
 
     private fun ZipOutputStream.addToolSymlinks(entryPrefix: String): List<String> {

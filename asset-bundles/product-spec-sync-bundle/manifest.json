@@ -1,0 +1,9 @@
+{
+  "id": "global.product-spec-sync",
+  "scope": "GLOBAL",
+  "version": "1.0.0",
+  "title": "Product Spec Sync",
+  "description": "Skill fuer das Synchronisieren eines Handoff-Projekts mit dem Product-Spec-Agent.",
+  "createdAt": "2026-05-07T00:00:00Z",
+  "updatedAt": "2026-05-07T00:00:00Z"
+}
