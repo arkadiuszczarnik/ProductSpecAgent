@@ -39,7 +39,7 @@ export function BundleDetail() {
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span>v{m.version}</span>
           <span>·</span>
-          <span>{m.step.toLowerCase()}.{m.field}.{m.value}</span>
+          <span>{m.scope === "GLOBAL" ? "global" : `${m.step?.toLowerCase()}.${m.field}.${m.value}`}</span>
           <span>·</span>
           <span>updated {m.updatedAt}</span>
         </div>

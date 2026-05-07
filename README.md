@@ -30,3 +30,7 @@ Für dein Produkt würden sich als Kern-Features besonders anbieten:
 6.	Beautiful UI: visuelle, attraktive Oberfläche mit gutem Überblick über Entscheidungen, Specs und nächste Schritte.
 7.	Consistency Checks: Prüfung, ob Ziele, Anforderungen, User Stories und Tasks zueinander passen.
 8.	Agent-ready Project Handoff: sauber strukturierte Dateien für den Start der Entwicklung mit AI-Coding-Agents.
+
+
+### Mitwirkende
+- Arek Czarnik

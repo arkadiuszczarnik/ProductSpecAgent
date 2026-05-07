@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, Loader2, Scale, MessageSquare, HelpCircle, Layers, Download, ShieldCheck, Bot, FolderTree, FileText } from "lucide-react";
+import { Activity, ArrowLeft, ChevronRight, Loader2, Scale, MessageSquare, HelpCircle, Layers, Download, ShieldCheck, Bot, FolderTree, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExportDialog } from "@/components/export/ExportDialog";
 import { HandoffDialog } from "@/components/handoff/HandoffDialog";
@@ -17,6 +17,7 @@ import { useDesignBundleStore } from "@/lib/stores/design-bundle-store";
 import { TaskTree } from "@/components/tasks/TaskTree";
 import { CheckResultsPanel } from "@/components/checks/CheckResultsPanel";
 import { DocumentsPanel } from "@/components/documents/DocumentsPanel";
+import { LivingSyncPanel } from "@/components/living-sync/LivingSyncPanel";
 import { GraphMeshToggle } from "@/components/workspace/GraphMeshToggle";
 import { ExplorerPanel } from "@/components/explorer/ExplorerPanel";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
@@ -41,7 +42,7 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
   const [showExplorer, setShowExplorer] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showHandoff, setShowHandoff] = useState(false);
-  const [rightTab, setRightTab] = useState<"chat" | "decisions" | "clarifications" | "tasks" | "checks" | "documents">("chat");
+  const [rightTab, setRightTab] = useState<"chat" | "decisions" | "clarifications" | "tasks" | "checks" | "documents" | "living-sync">("chat");
   const { decisions, loadDecisions: loadDecs, reset: resetDecs } = useDecisionStore();
   const pendingCount = decisions.filter((d) => d.status === "PENDING").length;
   const { clarifications: clars, loadClarifications: loadClars, reset: resetClars } = useClarificationStore();
@@ -197,6 +198,15 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
             >
               <FileText size={13} /> Documents
             </button>
+            <button
+              onClick={() => setRightTab("living-sync")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors",
+                rightTab === "living-sync" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Activity size={13} /> Sync
+            </button>
           </div>
           {/* Tab content */}
           <div className="flex-1 overflow-hidden">
@@ -210,8 +220,10 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
               <TaskTree projectId={id} />
             ) : rightTab === "checks" ? (
               <CheckResultsPanel projectId={id} />
-            ) : (
+            ) : rightTab === "documents" ? (
               <DocumentsPanel projectId={id} />
+            ) : (
+              <LivingSyncPanel projectId={id} />
             )}
           </div>
           </div>

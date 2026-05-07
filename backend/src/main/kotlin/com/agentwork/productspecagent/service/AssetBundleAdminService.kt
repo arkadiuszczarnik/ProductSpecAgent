@@ -12,7 +12,7 @@ class AssetBundleAdminService(
     fun upload(zipBytes: ByteArray): AssetBundleUploadResult {
         val extracted = extractor.extract(zipBytes)
         // Clean-wipe before write: ensures stale files from previous version are gone
-        storage.delete(extracted.manifest.step, extracted.manifest.field, extracted.manifest.value)
+        storage.deleteById(extracted.manifest.id)
         storage.writeBundle(extracted.manifest, extracted.files)
         return AssetBundleUploadResult(extracted.manifest, extracted.files.size)
     }

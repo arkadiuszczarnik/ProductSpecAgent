@@ -6,8 +6,9 @@ import { BundleUpload } from "./BundleUpload";
 import { cn } from "@/lib/utils";
 import type { StepType } from "@/lib/api";
 
-const STEP_OPTIONS: Array<{ value: StepType | "ALL"; label: string }> = [
+const STEP_OPTIONS: Array<{ value: StepType | "GLOBAL" | "ALL"; label: string }> = [
   { value: "ALL", label: "Alle Steps" },
+  { value: "GLOBAL", label: "Global" },
   { value: "BACKEND", label: "Backend" },
   { value: "FRONTEND", label: "Frontend" },
   { value: "ARCHITECTURE", label: "Architecture" },
@@ -16,7 +17,11 @@ const STEP_OPTIONS: Array<{ value: StepType | "ALL"; label: string }> = [
 export function BundleList() {
   const { bundles, selectedBundleId, filterStep, loading, setFilter, select } = useAssetBundleStore();
 
-  const visible = filterStep === "ALL" ? bundles : bundles.filter((b) => b.step === filterStep);
+  const visible = filterStep === "ALL"
+    ? bundles
+    : filterStep === "GLOBAL"
+      ? bundles.filter((b) => b.scope === "GLOBAL")
+      : bundles.filter((b) => b.step === filterStep);
 
   return (
     <div className="flex h-full flex-col">
@@ -24,7 +29,7 @@ export function BundleList() {
         <BundleUpload />
         <select
           value={filterStep}
-          onChange={(e) => setFilter(e.target.value as StepType | "ALL")}
+          onChange={(e) => setFilter(e.target.value as StepType | "GLOBAL" | "ALL")}
           className="w-full text-xs rounded-md border bg-background px-2 py-1.5"
         >
           {STEP_OPTIONS.map((o) => (
@@ -50,7 +55,7 @@ export function BundleList() {
           >
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Package size={12} />
-              <span>{b.step.toLowerCase()}.{b.field}.{b.value}</span>
+              <span>{bundleLabel(b)}</span>
             </div>
             <div className="font-medium text-sm mt-1">{b.title}</div>
             <div className="text-xs text-muted-foreground mt-0.5">{b.fileCount} Dateien · v{b.version}</div>
@@ -59,4 +64,9 @@ export function BundleList() {
       </div>
     </div>
   );
+}
+
+function bundleLabel(bundle: { scope: string; step: StepType | null; field: string | null; value: string | null; id: string }) {
+  if (bundle.scope === "GLOBAL") return "global";
+  return `${bundle.step?.toLowerCase()}.${bundle.field}.${bundle.value}`;
 }

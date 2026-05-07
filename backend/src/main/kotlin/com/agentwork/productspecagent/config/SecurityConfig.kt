@@ -4,6 +4,7 @@ import com.agentwork.productspecagent.auth.JwtAuthenticationFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
@@ -28,6 +29,9 @@ class SecurityConfig(private val jwtAuthenticationFilter: JwtAuthenticationFilte
                 auth
                     .requestMatchers("/api/health").permitAll()
                     .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/logout").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/projects/*/handoff/handoff.zip").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/projects/*/living-sync/mcp/**").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/mcp").permitAll()
                     .anyRequest().authenticated()
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)

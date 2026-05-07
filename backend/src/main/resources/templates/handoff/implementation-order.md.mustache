@@ -1,0 +1,19 @@
+# Implementation Order
+
+{{#hasTasks}}
+{{#epics}}
+## {{title}}
+
+{{#stories}}
+### {{title}}
+
+{{#tasks}}
+{{number}}. **{{title}}** ({{estimate}}) — {{description}}
+{{/tasks}}
+
+{{/stories}}
+{{/epics}}
+{{/hasTasks}}
+{{^hasTasks}}
+No tasks defined yet.
+{{/hasTasks}}

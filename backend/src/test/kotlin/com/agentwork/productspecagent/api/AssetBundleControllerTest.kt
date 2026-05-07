@@ -1,6 +1,7 @@
 package com.agentwork.productspecagent.api
 
 import com.agentwork.productspecagent.domain.AssetBundleManifest
+import com.agentwork.productspecagent.domain.AssetBundleScope
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.storage.ObjectStore
 import kotlinx.serialization.encodeToString
@@ -35,6 +36,22 @@ class AssetBundleControllerTest {
             id = id, step = step, field = field, value = value,
             version = "1.0.0", title = "T", description = "D",
             createdAt = "2026-04-29T12:00:00Z", updatedAt = "2026-04-29T12:00:00Z",
+        )
+        objectStore.put("asset-bundles/$id/manifest.json", json.encodeToString(m).toByteArray())
+        files.forEach { (rel, content) ->
+            objectStore.put("asset-bundles/$id/$rel", content.toByteArray())
+        }
+    }
+
+    private fun putGlobalBundle(id: String, files: Map<String, String> = emptyMap()) {
+        val m = AssetBundleManifest(
+            id = id,
+            scope = AssetBundleScope.GLOBAL,
+            version = "1.0.0",
+            title = "Global Bundle",
+            description = "Always included",
+            createdAt = "2026-05-07T00:00:00Z",
+            updatedAt = "2026-05-07T00:00:00Z",
         )
         objectStore.put("asset-bundles/$id/manifest.json", json.encodeToString(m).toByteArray())
         files.forEach { (rel, content) ->
@@ -81,6 +98,29 @@ class AssetBundleControllerTest {
         mockMvc.perform(get("/api/v1/asset-bundles/BACKEND/framework/Nonexistent"))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.error").value("NOT_FOUND"))
+    }
+
+    @Test
+    fun `GET asset-bundle detail by id returns global bundle`() {
+        putGlobalBundle("global.living-sync-reporter", files = mapOf("skills/x/SKILL.md" to "a"))
+
+        mockMvc.perform(get("/api/v1/asset-bundles/by-id/global.living-sync-reporter"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.manifest.id").value("global.living-sync-reporter"))
+            .andExpect(jsonPath("$.manifest.scope").value("GLOBAL"))
+            .andExpect(jsonPath("$.manifest.step").doesNotExist())
+            .andExpect(jsonPath("$.files[0].relativePath").value("skills/x/SKILL.md"))
+    }
+
+    @Test
+    fun `DELETE asset-bundle by id deletes global bundle`() {
+        putGlobalBundle("global.living-sync-reporter", files = mapOf("skills/x/SKILL.md" to "a"))
+
+        mockMvc.perform(delete("/api/v1/asset-bundles/by-id/global.living-sync-reporter"))
+            .andExpect(status().isNoContent)
+
+        mockMvc.perform(get("/api/v1/asset-bundles/by-id/global.living-sync-reporter"))
+            .andExpect(status().isNotFound)
     }
 
     @Test

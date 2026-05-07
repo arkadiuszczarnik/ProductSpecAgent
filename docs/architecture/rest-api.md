@@ -54,6 +54,18 @@ RESTful API mit Prefix `/api/v1/`. JSON Request/Response Bodies.
 | POST | `/api/v1/projects/{id}/export` | Git-Repo Export |
 | POST | `/api/v1/projects/{id}/handoff/preview` | Handoff-Preview |
 | POST | `/api/v1/projects/{id}/handoff/export` | Handoff Export |
+| GET | `/api/v1/projects/{id}/handoff/handoff.zip` | Öffentliche Handoff-ZIP für Coding Agents ohne Auth |
+
+### Living Sync
+| Method | Endpoint | Beschreibung |
+|--------|----------|-------------|
+| POST | `/mcp` | Öffentlicher stateless JSON-RPC MCP Endpoint mit Living-Sync Tools ohne Auth |
+| GET | `/api/v1/projects/{id}/living-sync` | Living-Sync Summary fuer Feature-Fortschritt, Tests, Tokens, Code-Aenderungen und Notes |
+| POST | `/api/v1/projects/{id}/living-sync/mcp/report-feature-progress` | Coding Agent meldet Feature-Fortschritt |
+| POST | `/api/v1/projects/{id}/living-sync/mcp/report-test-run` | Coding Agent meldet Testlauf |
+| POST | `/api/v1/projects/{id}/living-sync/mcp/report-token-usage` | Coding Agent meldet Tokenverbrauch |
+| POST | `/api/v1/projects/{id}/living-sync/mcp/report-code-changes` | Coding Agent meldet Dateien und optionale Commits |
+| POST | `/api/v1/projects/{id}/living-sync/mcp/report-sync-note` | Coding Agent meldet Blocker, Abweichungen oder technische Schulden |
 
 ### System
 | Method | Endpoint | Beschreibung |

@@ -1,6 +1,8 @@
 package com.agentwork.productspecagent.service
 
 import com.agentwork.productspecagent.domain.FlowStepType
+import com.agentwork.productspecagent.domain.AssetBundleManifest
+import com.agentwork.productspecagent.domain.AssetBundleScope
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -40,6 +42,52 @@ class AssetBundleZipExtractorTest {
         val result = extractor.extract(zip)
 
         assertEquals(setOf("skills/a/b/c/deep.md", "agents/agent.md"), result.files.keys)
+    }
+
+    @Test
+    fun `extract accepts global manifest without step field value triple`() {
+        val zip = buildZip(
+            manifest = AssetBundleManifest(
+                id = "global.living-sync-reporter",
+                scope = AssetBundleScope.GLOBAL,
+                version = "1.0.0",
+                title = "Living Sync Reporter",
+                description = "Always included.",
+                createdAt = "2026-05-07T00:00:00Z",
+                updatedAt = "2026-05-07T00:00:00Z",
+            ),
+            files = mapOf("skills/living-sync/SKILL.md" to "skill body".toByteArray()),
+        )
+
+        val result = extractor.extract(zip)
+
+        assertEquals(AssetBundleScope.GLOBAL, result.manifest.scope)
+        assertEquals("global.living-sync-reporter", result.manifest.id)
+        assertNull(result.manifest.step)
+        assertNull(result.manifest.field)
+        assertNull(result.manifest.value)
+    }
+
+    @Test
+    fun `extract accepts zip with single enclosing folder`() {
+        val manifest = sampleManifest(
+            scope = AssetBundleScope.GLOBAL,
+            id = "global.living-sync-reporter",
+            title = "Living Sync Reporter",
+            description = "Always included.",
+        )
+        val zip = buildZip(
+            manifest = null,
+            rawExtras = mapOf(
+                "living-sync-reporter-bundle/manifest.json" to kotlinx.serialization.json.Json.encodeToString(AssetBundleManifest.serializer(), manifest).toByteArray(),
+                "living-sync-reporter-bundle/skills/living-sync-reporter/SKILL.md" to "skill body".toByteArray(),
+            ),
+        )
+
+        val result = extractor.extract(zip)
+
+        assertEquals("global.living-sync-reporter", result.manifest.id)
+        assertEquals(setOf("skills/living-sync-reporter/SKILL.md"), result.files.keys)
     }
 
     // ── Validation tests (Task 3) ─────────────────────────────────────────────
@@ -143,6 +191,7 @@ class AssetBundleZipExtractorTest {
                 ".DS_Store" to "junk".toByteArray(),
                 "__MACOSX/foo" to "junk".toByteArray(),
                 "skills/x/.DS_Store" to "junk".toByteArray(),
+                "skills/x/scripts/__pycache__/tool.cpython-312.pyc" to "junk".toByteArray(),
                 "Thumbs.db" to "junk".toByteArray(),
             )
         )

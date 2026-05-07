@@ -63,7 +63,7 @@ class AssetBundleExporterZipTest {
         val zipBytes = runWriteToZip(exporter, "myapp", bundles)
         val entries = zipEntries(zipBytes)
 
-        assertEquals(setOf("myapp/.claude/skills/backend.framework.spring-boot/api/SKILL.md"), entries.keys)
+        assertEquals(setOf("myapp/.asset-bundles/skills/backend.framework.spring-boot/api/SKILL.md"), entries.keys)
         assertEquals("content", entries.values.first().toString(Charsets.UTF_8))
     }
 
@@ -89,9 +89,9 @@ class AssetBundleExporterZipTest {
 
         val entries = zipEntries(runWriteToZip(exporter, "myapp", bundles))
 
-        assertTrue(entries.containsKey("myapp/.claude/skills/backend.framework.spring-boot/s.md"))
-        assertTrue(entries.containsKey("myapp/.claude/commands/backend.framework.spring-boot/c.md"))
-        assertTrue(entries.containsKey("myapp/.claude/agents/backend.framework.spring-boot/a.md"))
+        assertTrue(entries.containsKey("myapp/.asset-bundles/skills/backend.framework.spring-boot/s.md"))
+        assertTrue(entries.containsKey("myapp/.asset-bundles/commands/backend.framework.spring-boot/c.md"))
+        assertTrue(entries.containsKey("myapp/.asset-bundles/agents/backend.framework.spring-boot/a.md"))
     }
 
     @Test
@@ -116,8 +116,8 @@ class AssetBundleExporterZipTest {
 
         val entries = zipEntries(runWriteToZip(exporter, "myapp", bundles))
 
-        assertEquals("from-ktor", entries["myapp/.claude/skills/backend.framework.ktor/api-design.md"]?.toString(Charsets.UTF_8))
-        assertEquals("from-spring", entries["myapp/.claude/skills/backend.framework.spring-boot/api-design.md"]?.toString(Charsets.UTF_8))
+        assertEquals("from-ktor", entries["myapp/.asset-bundles/skills/backend.framework.ktor/api-design.md"]?.toString(Charsets.UTF_8))
+        assertEquals("from-spring", entries["myapp/.asset-bundles/skills/backend.framework.spring-boot/api-design.md"]?.toString(Charsets.UTF_8))
     }
 
     @Test
@@ -141,7 +141,7 @@ class AssetBundleExporterZipTest {
 
         val entries = zipEntries(runWriteToZip(exporter, "myapp", bundles))
 
-        assertTrue(entries.containsKey("myapp/.claude/skills/backend.framework.spring-boot/ok.md"))
+        assertTrue(entries.containsKey("myapp/.asset-bundles/skills/backend.framework.spring-boot/ok.md"))
         assertFalse(entries.keys.any { it.contains("rogue") })
     }
 
@@ -166,7 +166,7 @@ class AssetBundleExporterZipTest {
 
         val entries = zipEntries(runWriteToZip(exporter, "myapp", bundles))
 
-        assertTrue(entries.containsKey("myapp/.claude/skills/backend.framework.spring-boot/ok.md"))
+        assertTrue(entries.containsKey("myapp/.asset-bundles/skills/backend.framework.spring-boot/ok.md"))
         assertFalse(entries.keys.any { it.contains("..") || it.contains("/etc/passwd") })
     }
 
@@ -191,5 +191,34 @@ class AssetBundleExporterZipTest {
         val entries = zipEntries(runWriteToZip(exporter, "myapp", listOf(bundle)))
 
         assertTrue(entries.isEmpty(), "expected no entries, got: ${entries.keys}")
+    }
+
+    @Test
+    fun `writeToolLinksToZip writes Claude and Codex symlinks to neutral asset bundle folders`() {
+        val (exporter, _) = newExporter()
+        val baos = ByteArrayOutputStream()
+        val symlinks = mutableListOf<String>()
+
+        ZipOutputStream(baos).use { zip -> symlinks += exporter.writeToolLinksToZip(zip, "myapp") }
+        val zipBytes = ZipSymlinkSupport.patchSymlinks(baos.toByteArray(), symlinks.toSet())
+
+        val links = mutableMapOf<String, String>()
+        ZipInputStream(ByteArrayInputStream(zipBytes)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                val mode = ZipSymlinkSupport.centralDirectoryUnixMode(zipBytes, entry.name)
+                if (mode != null && (mode and 0xF000) == 0xA000) {
+                    links[entry.name] = zis.readBytes().toString(Charsets.UTF_8)
+                }
+                entry = zis.nextEntry
+            }
+        }
+
+        assertEquals("../.asset-bundles/skills", links["myapp/.claude/skills"])
+        assertEquals("../.asset-bundles/commands", links["myapp/.claude/commands"])
+        assertEquals("../.asset-bundles/agents", links["myapp/.claude/agents"])
+        assertEquals("../.asset-bundles/skills", links["myapp/.agents/skills"])
+        assertEquals("../.asset-bundles/commands", links["myapp/.agents/commands"])
+        assertEquals("../.asset-bundles/agents", links["myapp/.agents/agents"])
     }
 }

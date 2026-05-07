@@ -67,3 +67,9 @@ kotlin {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+tasks.processResources {
+    from("../asset-bundles/living-sync-reporter-bundle") {
+        into("asset-bundles/living-sync-reporter-bundle")
+    }
+}

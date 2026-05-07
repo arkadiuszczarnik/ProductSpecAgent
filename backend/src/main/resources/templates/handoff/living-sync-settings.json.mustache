@@ -1,0 +1,44 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PROJECT_DIR:-$PWD}/.asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/bin/living-sync-reporter\" session-start"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PROJECT_DIR:-$PWD}/.asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/bin/living-sync-reporter\" post-tool-use"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PROJECT_DIR:-$PWD}/.asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/bin/living-sync-reporter\" code-change"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PROJECT_DIR:-$PWD}/.asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/bin/living-sync-reporter\" stop"
+          }
+        ]
+      }
+    ]
+  }
+}

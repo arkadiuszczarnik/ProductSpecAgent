@@ -17,6 +17,14 @@ for dir in "${bundles[@]}"; do
   zipfile="${name}.zip"
 
   rm -f "$zipfile"
-  zip -r -q "$zipfile" "$name" -x "*.DS_Store"
+  (
+    cd "$name"
+    zip -r -q "../$zipfile" . \
+      -x "*.DS_Store" \
+      -x "*/.cache/*" \
+      -x "*/__pycache__/*" \
+      -x "*.pyc" \
+      -x "skills/living-sync-reporter/src/*"
+  )
   echo "Erzeugt: $zipfile"
 done

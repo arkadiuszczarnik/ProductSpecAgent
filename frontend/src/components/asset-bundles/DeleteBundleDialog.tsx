@@ -36,7 +36,7 @@ export function DeleteBundleDialog({ manifest, onClose }: Props) {
     setDeleting(true);
     setErr(null);
     try {
-      await deleteBundle(manifest.step, manifest.field, manifest.value);
+      await deleteBundle(manifest.id);
       onClose();
     } catch (e) {
       setErr((e as Error).message);

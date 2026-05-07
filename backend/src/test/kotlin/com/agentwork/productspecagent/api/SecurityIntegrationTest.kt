@@ -1,5 +1,6 @@
 package com.agentwork.productspecagent.api
 
+import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.storage.S3TestSupport
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -11,6 +12,8 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.junit.jupiter.Testcontainers
 
@@ -20,6 +23,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 class SecurityIntegrationTest : S3TestSupport() {
 
     @Autowired lateinit var mvc: MockMvc
+    @Autowired lateinit var projectService: ProjectService
 
     companion object {
         @JvmStatic
@@ -46,6 +50,56 @@ class SecurityIntegrationTest : S3TestSupport() {
     @Test
     fun `projects endpoint without cookie returns 401`() {
         mvc.perform(get("/api/v1/projects")).andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `handoff zip endpoint accessible without auth`() {
+        val projectId = projectService.createProject("Public Handoff").project.id
+
+        val response = mvc.perform(get("/api/v1/projects/$projectId/handoff/handoff.zip"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.parseMediaType("application/zip")))
+            .andReturn()
+            .response
+
+        assert(response.contentAsByteArray.isNotEmpty()) {
+            "Expected handoff zip content"
+        }
+    }
+
+    @Test
+    fun `mcp endpoint accessible without auth`() {
+        mvc.perform(
+            post("/mcp")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"jsonrpc":"2.0","id":1,"method":"tools/list"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.result.tools[0].name").value("get_project_sync_context"))
+    }
+
+    @Test
+    fun `living sync reporting endpoint accepts handoff agent payload without auth`() {
+        val projectId = projectService.createProject("Living Sync Report").project.id
+
+        mvc.perform(
+            post("/api/v1/projects/$projectId/living-sync/mcp/report-feature-progress")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "feature": "01-user-accounts-workspace-setup",
+                      "status": "started",
+                      "message": "Feature 01 implementation started."
+                    }
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.type").value("FEATURE_PROGRESS"))
+            .andExpect(jsonPath("$.featureId").value("01-user-accounts-workspace-setup"))
+            .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.summary").value("Feature 01 implementation started."))
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.agentwork.productspecagent.api
 
 import com.agentwork.productspecagent.domain.AssetBundleFile
 import com.agentwork.productspecagent.domain.AssetBundleManifest
+import com.agentwork.productspecagent.domain.AssetBundleScope
 import com.agentwork.productspecagent.domain.AssetBundleUploadResult
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.assetBundleId
@@ -29,9 +30,10 @@ import java.nio.charset.StandardCharsets
 
 data class AssetBundleListItem(
     val id: String,
-    val step: FlowStepType,
-    val field: String,
-    val value: String,
+    val scope: AssetBundleScope,
+    val step: FlowStepType?,
+    val field: String?,
+    val value: String?,
     val version: String,
     val title: String,
     val description: String,
@@ -53,9 +55,10 @@ class AssetBundleController(
     @GetMapping
     fun list(): List<AssetBundleListItem> =
         storage.listAll().map { manifest ->
-            val bundle = storage.find(manifest.step, manifest.field, manifest.value)
+            val bundle = storage.findById(manifest.id)
             AssetBundleListItem(
                 id = manifest.id,
+                scope = manifest.scope,
                 step = manifest.step,
                 field = manifest.field,
                 value = manifest.value,
@@ -65,6 +68,12 @@ class AssetBundleController(
                 fileCount = bundle?.files?.size ?: 0,
             )
         }
+
+    @GetMapping("/by-id/{id}")
+    fun detailById(@PathVariable id: String): AssetBundleDetail {
+        val bundle = storage.findById(id) ?: throw AssetBundleNotFoundException(id)
+        return AssetBundleDetail(manifest = bundle.manifest, files = bundle.files)
+    }
 
     @GetMapping("/{step}/{field}/{value}")
     fun detail(
@@ -93,6 +102,29 @@ class AssetBundleController(
         storage.delete(step, field, value)
     }
 
+    @DeleteMapping("/by-id/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteById(@PathVariable id: String) {
+        storage.findById(id) ?: throw AssetBundleNotFoundException(id)
+        storage.deleteById(id)
+    }
+
+    @GetMapping("/by-id/{id}/files/**")
+    fun getFileById(
+        @PathVariable id: String,
+        request: HttpServletRequest,
+    ): ResponseEntity<ByteArray> {
+        val rawSuffix = request.requestURI.substringAfter("/api/v1/asset-bundles/by-id/$id/files/", "")
+        val relativePath = validateRelativePath(URLDecoder.decode(rawSuffix, StandardCharsets.UTF_8))
+
+        storage.findById(id) ?: throw AssetBundleNotFoundException(id)
+
+        val bytes = storage.loadFileBytesById(id, relativePath)
+            ?: throw BundleFileNotFoundException(id, relativePath)
+
+        return fileResponse(relativePath, bytes)
+    }
+
     @GetMapping("/{step}/{field}/{value}/files/**")
     fun getFile(
         @PathVariable step: FlowStepType,
@@ -110,19 +142,27 @@ class AssetBundleController(
             // Fallback for clients that don't URL-encode `+` etc.
             uri.substringAfter("/api/v1/asset-bundles/${step.name}/$field/$value/files/", "")
         }
-        val relativePath = URLDecoder.decode(rawSuffix, StandardCharsets.UTF_8)
-        if (relativePath.contains("../") || relativePath.contains("..\\") ||
-            relativePath.startsWith("/") || relativePath.startsWith("\\") ||
-            relativePath.isEmpty()
-        ) {
-            throw IllegalBundleEntryException(relativePath, "path traversal blocked")
-        }
+        val relativePath = validateRelativePath(URLDecoder.decode(rawSuffix, StandardCharsets.UTF_8))
 
         storage.find(step, field, value) ?: throw AssetBundleNotFoundException(assetBundleId(step, field, value))
 
         val bytes = storage.loadFileBytes(step, field, value, relativePath)
             ?: throw BundleFileNotFoundException(assetBundleId(step, field, value), relativePath)
 
+        return fileResponse(relativePath, bytes)
+    }
+
+    private fun validateRelativePath(relativePath: String): String {
+        if (relativePath.contains("../") || relativePath.contains("..\\") ||
+            relativePath.startsWith("/") || relativePath.startsWith("\\") ||
+            relativePath.isEmpty()
+        ) {
+            throw IllegalBundleEntryException(relativePath, "path traversal blocked")
+        }
+        return relativePath
+    }
+
+    private fun fileResponse(relativePath: String, bytes: ByteArray): ResponseEntity<ByteArray> {
         val contentType = contentTypeForExt(relativePath)
         val headers = HttpHeaders().apply {
             this.contentType = MediaType.parseMediaType(contentType)

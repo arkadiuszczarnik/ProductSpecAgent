@@ -57,6 +57,7 @@ export S3_REGION="us-east-1"
 
 export AUTH_JWT_SECRET="${AUTH_JWT_SECRET:-dev-secret-change-me-dev-secret-change-me-dev-secret}"
 export AUTH_COOKIE_SECURE="${AUTH_COOKIE_SECURE:-false}"
+export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-dev}"
 
 echo "=== Starting Backend (Spring Boot) ==="
 cd "$ROOT_DIR/backend"

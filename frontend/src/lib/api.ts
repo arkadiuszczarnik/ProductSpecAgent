@@ -280,11 +280,71 @@ export interface HandoffPreview {
 }
 
 export interface HandoffExportRequest {
-  format?: string;
   claudeMd?: string;
   agentsMd?: string;
   implementationOrder?: string;
   syncUrl?: string;
+}
+
+// ─── Living Sync Types ──────────────────────────────────────────────────────
+
+export type LivingSyncFeatureStatus = "PLANNED" | "IN_PROGRESS" | "BLOCKED" | "DONE";
+export type LivingSyncEventType = "FEATURE_PROGRESS" | "TEST_RUN" | "TOKEN_USAGE" | "CODE_CHANGES" | "SYNC_NOTE";
+
+export interface LivingSyncEvent {
+  id: string;
+  projectId: string;
+  type: LivingSyncEventType;
+  featureId: string | null;
+  taskId: string | null;
+  agentName: string | null;
+  model: string | null;
+  status: string | null;
+  summary: string;
+  evidence: string[];
+  files: string[];
+  commits: string[];
+  testCommand: string | null;
+  testsPassed: number | null;
+  testsFailed: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+  createdAt: string;
+}
+
+export interface LivingSyncFeatureSummary {
+  featureId: string;
+  status: LivingSyncFeatureStatus;
+  summary: string;
+  updatedAt: string;
+}
+
+export interface LivingSyncTestSummary {
+  totalRuns: number;
+  passed: number;
+  failed: number;
+  lastStatus: string | null;
+  lastCommand: string | null;
+  updatedAt: string | null;
+}
+
+export interface LivingSyncTokenSummary {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
+export interface LivingSyncSummary {
+  projectId: string;
+  features: LivingSyncFeatureSummary[];
+  tests: LivingSyncTestSummary;
+  tokens: LivingSyncTokenSummary;
+  changedFiles: string[];
+  commits: string[];
+  notes: LivingSyncEvent[];
+  recentEvents: LivingSyncEvent[];
+  updatedAt: string | null;
 }
 
 // ─── API Endpoints ──────────────────────────────────────────────────────────
@@ -417,8 +477,12 @@ export async function getCheckResults(projectId: string): Promise<CheckReport> {
   return apiFetch<CheckReport>(`/api/v1/projects/${projectId}/checks/results`);
 }
 
-export async function getHandoffPreview(projectId: string, format: string = "claude-code"): Promise<HandoffPreview> {
-  return apiFetch<HandoffPreview>(`/api/v1/projects/${projectId}/handoff/preview?format=${format}`, { method: "POST" });
+export async function getHandoffPreview(projectId: string): Promise<HandoffPreview> {
+  return apiFetch<HandoffPreview>(`/api/v1/projects/${projectId}/handoff/preview`, { method: "POST" });
+}
+
+export async function getLivingSyncSummary(projectId: string): Promise<LivingSyncSummary> {
+  return apiFetch<LivingSyncSummary>(`/api/v1/projects/${projectId}/living-sync`);
 }
 
 export async function exportHandoff(projectId: string, request: HandoffExportRequest = {}): Promise<Blob> {
@@ -584,9 +648,10 @@ export async function deleteDocument(projectId: string, documentId: string): Pro
 
 export interface AssetBundleManifest {
   id: string;
-  step: StepType;
-  field: string;
-  value: string;
+  scope: "MATCHED" | "GLOBAL";
+  step: StepType | null;
+  field: string | null;
+  value: string | null;
   version: string;
   title: string;
   description: string;
@@ -602,9 +667,10 @@ export interface AssetBundleFile {
 
 export interface AssetBundleListItem {
   id: string;
-  step: StepType;
-  field: string;
-  value: string;
+  scope: "MATCHED" | "GLOBAL";
+  step: StepType | null;
+  field: string | null;
+  value: string | null;
   version: string;
   title: string;
   description: string;
@@ -634,6 +700,10 @@ export async function getAssetBundle(
 ): Promise<AssetBundleDetail> {
   const path = `/api/v1/asset-bundles/${step}/${field}/${encodeURIComponent(value)}`;
   return apiFetch<AssetBundleDetail>(path);
+}
+
+export async function getAssetBundleById(id: string): Promise<AssetBundleDetail> {
+  return apiFetch<AssetBundleDetail>(`/api/v1/asset-bundles/by-id/${encodeURIComponent(id)}`);
 }
 
 export async function uploadAssetBundle(file: File): Promise<AssetBundleUploadResult> {
@@ -666,6 +736,16 @@ export async function deleteAssetBundle(
   }
 }
 
+export async function deleteAssetBundleById(id: string): Promise<void> {
+  const path = `/api/v1/asset-bundles/by-id/${encodeURIComponent(id)}`;
+  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE", credentials: "include" });
+  if (res.status === 401) onUnauthorized?.();
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message ?? body.error ?? `Delete failed: ${res.status}`);
+  }
+}
+
 export async function fetchAssetBundleFile(
   step: StepType,
   field: string,
@@ -674,6 +754,12 @@ export async function fetchAssetBundleFile(
 ): Promise<Response> {
   const encodedPath = relativePath.split("/").map(encodeURIComponent).join("/");
   const path = `/api/v1/asset-bundles/${step}/${field}/${encodeURIComponent(value)}/files/${encodedPath}`;
+  return fetch(`${API_BASE}${path}`, { credentials: "include" });
+}
+
+export async function fetchAssetBundleFileById(id: string, relativePath: string): Promise<Response> {
+  const encodedPath = relativePath.split("/").map(encodeURIComponent).join("/");
+  const path = `/api/v1/asset-bundles/by-id/${encodeURIComponent(id)}/files/${encodedPath}`;
   return fetch(`${API_BASE}${path}`, { credentials: "include" });
 }
 

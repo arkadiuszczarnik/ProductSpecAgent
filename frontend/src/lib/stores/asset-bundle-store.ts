@@ -2,9 +2,12 @@ import { create } from "zustand";
 import {
   listAssetBundles,
   getAssetBundle,
+  getAssetBundleById,
   uploadAssetBundle,
   deleteAssetBundle,
+  deleteAssetBundleById,
   fetchAssetBundleFile,
+  fetchAssetBundleFileById,
   type AssetBundleListItem,
   type AssetBundleDetail,
   type StepType,
@@ -31,14 +34,14 @@ interface AssetBundleState {
   loading: boolean;
   uploading: boolean;
   error: string | null;
-  filterStep: StepType | "ALL";
+  filterStep: StepType | "GLOBAL" | "ALL";
 
   load: () => Promise<void>;
-  setFilter: (step: StepType | "ALL") => void;
+  setFilter: (step: StepType | "GLOBAL" | "ALL") => void;
   select: (id: string | null) => Promise<void>;
   selectFile: (relativePath: string | null) => Promise<void>;
   upload: (file: File) => Promise<void>;
-  delete: (step: StepType, field: string, value: string) => Promise<void>;
+  delete: (id: string) => Promise<void>;
   clearError: () => void;
 
   // Coverage-View
@@ -84,7 +87,9 @@ export const useAssetBundleStore = create<AssetBundleState>((set, get) => ({
     if (!bundle) return;
     set({ selectedBundleId: id, selectedBundle: null, selectedFilePath: null, loadedFile: null });
     try {
-      const detail = await getAssetBundle(bundle.step, bundle.field, bundle.value);
+      const detail = bundle.scope === "GLOBAL"
+        ? await getAssetBundleById(bundle.id)
+        : await getAssetBundle(bundle.step as StepType, bundle.field as string, bundle.value as string);
       set({ selectedBundle: detail });
     } catch (e) {
       set({ error: (e as Error).message });
@@ -106,12 +111,14 @@ export const useAssetBundleStore = create<AssetBundleState>((set, get) => ({
 
     set({ selectedFilePath: relativePath, loadedFile: null });
     try {
-      const res = await fetchAssetBundleFile(
-        bundle.manifest.step,
-        bundle.manifest.field,
-        bundle.manifest.value,
-        relativePath,
-      );
+      const res = bundle.manifest.scope === "GLOBAL"
+        ? await fetchAssetBundleFileById(bundle.manifest.id, relativePath)
+        : await fetchAssetBundleFile(
+            bundle.manifest.step as StepType,
+            bundle.manifest.field as string,
+            bundle.manifest.value as string,
+            relativePath,
+          );
       if (!res.ok) throw new Error(`Load failed: ${res.status}`);
 
       const ct = fileEntry.contentType;
@@ -144,10 +151,16 @@ export const useAssetBundleStore = create<AssetBundleState>((set, get) => ({
     }
   },
 
-  async delete(step, field, value) {
+  async delete(id) {
     set({ error: null });
     try {
-      await deleteAssetBundle(step, field, value);
+      const bundle = get().bundles.find((b) => b.id === id) ?? get().selectedBundle?.manifest;
+      if (!bundle) throw new Error("Bundle not found");
+      if (bundle.scope === "GLOBAL") {
+        await deleteAssetBundleById(bundle.id);
+      } else {
+        await deleteAssetBundle(bundle.step as StepType, bundle.field as string, bundle.value as string);
+      }
       const bundles = await listAssetBundles();
       set({ bundles, selectedBundleId: null, selectedBundle: null, selectedFilePath: null, loadedFile: null });
     } catch (e) {

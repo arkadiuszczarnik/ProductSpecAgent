@@ -1,6 +1,7 @@
 package com.agentwork.productspecagent.service
 
 import com.agentwork.productspecagent.domain.AssetBundleManifest
+import com.agentwork.productspecagent.domain.AssetBundleScope
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.assetBundleId
 import kotlinx.serialization.encodeToString
@@ -12,6 +13,7 @@ import java.util.zip.ZipOutputStream
 private val json = Json { ignoreUnknownKeys = true }
 
 fun sampleManifest(
+    scope: AssetBundleScope = AssetBundleScope.MATCHED,
     step: FlowStepType = FlowStepType.BACKEND,
     field: String = "framework",
     value: String = "Kotlin+Spring",
@@ -20,7 +22,7 @@ fun sampleManifest(
     description: String = "Skills für Spring",
     version: String = "1.0.0",
 ) = AssetBundleManifest(
-    id = id, step = step, field = field, value = value,
+    id = id, scope = scope, step = step, field = field, value = value,
     version = version, title = title, description = description,
     createdAt = "2026-04-29T12:00:00Z",
     updatedAt = "2026-04-29T12:00:00Z",

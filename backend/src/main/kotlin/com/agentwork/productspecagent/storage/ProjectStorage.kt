@@ -23,6 +23,7 @@ class ProjectStorage(private val objectStore: ObjectStore) {
     private fun flowStateKey(id: String) = "projects/$id/flow-state.json"
     private fun wizardKey(id: String) = "projects/$id/wizard.json"
     private fun specKey(id: String, fileName: String) = "projects/$id/spec/$fileName"
+    private fun specPrefix(id: String) = "projects/$id/spec/"
     private fun docsKey(id: String, relativePath: String) = "projects/$id/$relativePath"
     private fun docsPrefix(id: String) = "projects/$id/docs/"
 
@@ -79,6 +80,17 @@ class ProjectStorage(private val objectStore: ObjectStore) {
 
     fun loadSpecStep(projectId: String, fileName: String): String? =
         objectStore.get(specKey(projectId, fileName))?.toString(Charsets.UTF_8)
+
+    fun listSpecFiles(projectId: String): List<Pair<String, ByteArray>> {
+        val specPrefix = specPrefix(projectId)
+        val projectPrefix = projectPrefix(projectId)
+        return objectStore.listKeys(specPrefix)
+            .map { key ->
+                val rel = key.removePrefix(projectPrefix)
+                val bytes = objectStore.get(key) ?: ByteArray(0)
+                rel to bytes
+            }
+    }
 
     fun saveDocsFile(projectId: String, relativePath: String, content: String) {
         objectStore.put(docsKey(projectId, relativePath), content.toByteArray())

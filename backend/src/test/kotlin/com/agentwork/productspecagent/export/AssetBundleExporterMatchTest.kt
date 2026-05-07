@@ -1,6 +1,8 @@
 package com.agentwork.productspecagent.export
 
 import com.agentwork.productspecagent.domain.FlowStepType
+import com.agentwork.productspecagent.domain.AssetBundleManifest
+import com.agentwork.productspecagent.domain.AssetBundleScope
 import com.agentwork.productspecagent.domain.WizardData
 import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.service.sampleManifest
@@ -61,6 +63,27 @@ class AssetBundleExporterMatchTest {
         val (exporter, _) = newExporter()
         val wizardData = WizardData(projectId = "p1")
         assertTrue(exporter.matchedBundles(wizardData).isEmpty())
+    }
+
+    @Test
+    fun `matchedBundles always includes global bundles`() {
+        val (exporter, storage) = newExporter()
+        storage.writeBundle(
+            AssetBundleManifest(
+                id = "global.living-sync-reporter",
+                scope = AssetBundleScope.GLOBAL,
+                version = "1.0.0",
+                title = "Living Sync Reporter",
+                description = "Always included.",
+                createdAt = "2026-05-07T00:00:00Z",
+                updatedAt = "2026-05-07T00:00:00Z",
+            ),
+            mapOf("skills/living-sync/SKILL.md" to "skill".toByteArray()),
+        )
+
+        val result = exporter.matchedBundles(WizardData(projectId = "p1"))
+
+        assertEquals(listOf("global.living-sync-reporter"), result.map { it.manifest.id })
     }
 
     @Test

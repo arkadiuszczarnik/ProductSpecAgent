@@ -1,8 +1,71 @@
-app:
-  frontend-origin: ${APP_FRONTEND_ORIGIN:http://localhost:3000}
+server:
+  port: 8080
+
+spring:
+  application:
+    name: product-spec-agent
+  jackson:
+    default-property-inclusion: always
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+
+cors:
+  allowed-origins: "http://localhost:3000"
 
 auth:
   jwt:
-    secret: dev-secret-change-me-dev-secret-change-me-dev-secret
+    secret: ${AUTH_JWT_SECRET:dev-secret-change-me-dev-secret-change-me-dev-secret}
+    expiry-seconds: 604800
   cookie:
-    secure: false
+    name: session
+    secure: ${AUTH_COOKIE_SECURE:false}
+    domain: ${AUTH_COOKIE_DOMAIN:}
+
+ai:
+  koog:
+    openai:
+      api-key: ${OPENAI_API_KEY:not-set}
+
+agent:
+  models:
+    tiers:
+      SMALL: "gpt-5.4-nano"
+      MEDIUM: "gpt-5.4-mini"
+      LARGE: "gpt-5-2"
+    defaults:
+      idea-to-spec: LARGE
+      decision: MEDIUM
+      feature-proposal: MEDIUM
+      plan-generator: LARGE
+      design-summary: MEDIUM
+app:
+  frontend-origin: ${APP_FRONTEND_ORIGIN:http://localhost:3000}
+  storage:
+    bucket: ${S3_BUCKET:productspec-data}
+    endpoint: ${S3_ENDPOINT:}
+    region: ${S3_REGION:us-east-1}
+    access-key: ${S3_ACCESS_KEY:}
+    secret-key: ${S3_SECRET_KEY:}
+    path-style-access: ${S3_PATH_STYLE:false}
+
+graphmesh:
+  enabled: ${GRAPHMESH_ENABLED:false}
+  url: ${GRAPHMESH_URL:http://localhost:8083/graphql}
+  request-timeout: 30s
+
+feature-proposal:
+  uploads:
+    max-bytes-per-file: ${FEATURE_PROPOSAL_UPLOAD_MAX_BYTES_PER_FILE:102400}
+    max-bytes-total: ${FEATURE_PROPOSAL_UPLOAD_MAX_BYTES_TOTAL:512000}
+
+design:
+  bundle:
+    max-zip-bytes: ${DESIGN_BUNDLE_MAX_ZIP_BYTES:5242880}
+    max-extracted-bytes: ${DESIGN_BUNDLE_MAX_EXTRACTED_BYTES:10485760}
+    max-files: ${DESIGN_BUNDLE_MAX_FILES:500}
+    max-file-bytes: ${DESIGN_BUNDLE_MAX_FILE_BYTES:5242880}
+    summary-max-file-bytes: ${DESIGN_BUNDLE_SUMMARY_MAX_FILE_BYTES:51200}
+    summary-max-total-bytes: ${DESIGN_BUNDLE_SUMMARY_MAX_TOTAL_BYTES:204800}
+    summary-max-jsx-files: ${DESIGN_BUNDLE_SUMMARY_MAX_JSX_FILES:5}

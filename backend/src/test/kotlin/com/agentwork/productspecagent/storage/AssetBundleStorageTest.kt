@@ -1,6 +1,7 @@
 package com.agentwork.productspecagent.storage
 
 import com.agentwork.productspecagent.domain.AssetBundleManifest
+import com.agentwork.productspecagent.domain.AssetBundleScope
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.assetBundleId
 import kotlinx.serialization.encodeToString
@@ -289,5 +290,28 @@ class AssetBundleStorageTest {
         val storage = newStorage(newStore())
         val result = storage.loadFileBytes(FlowStepType.BACKEND, "framework", "Kotlin+Spring", "skills/x.md")
         assertNull(result)
+    }
+
+    @Test
+    fun `findById returns global bundle with files`() {
+        val store = newStore()
+        val storage = newStorage(store)
+        val m = AssetBundleManifest(
+            id = "global.living-sync-reporter",
+            scope = AssetBundleScope.GLOBAL,
+            version = "1.0.0",
+            title = "Living Sync Reporter",
+            description = "Always included.",
+            createdAt = "2026-05-07T00:00:00Z",
+            updatedAt = "2026-05-07T00:00:00Z",
+        )
+        storage.writeBundle(m, mapOf("skills/living-sync/SKILL.md" to "skill".toByteArray()))
+
+        val bundle = storage.findById("global.living-sync-reporter")
+
+        assertNotNull(bundle)
+        assertEquals(AssetBundleScope.GLOBAL, bundle!!.manifest.scope)
+        assertEquals("skills/living-sync/SKILL.md", bundle.files.single().relativePath)
+        assertEquals("skill", storage.loadFileBytesById("global.living-sync-reporter", "skills/living-sync/SKILL.md")!!.toString(Charsets.UTF_8))
     }
 }

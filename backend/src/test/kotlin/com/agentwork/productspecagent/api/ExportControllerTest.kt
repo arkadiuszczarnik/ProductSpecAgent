@@ -24,6 +24,7 @@ class ExportControllerTest {
     @Autowired lateinit var uploadStorage: com.agentwork.productspecagent.storage.UploadStorage
     @Autowired lateinit var assetBundleStorage: com.agentwork.productspecagent.storage.AssetBundleStorage
     @Autowired lateinit var wizardService: com.agentwork.productspecagent.service.WizardService
+    @Autowired lateinit var projectService: com.agentwork.productspecagent.service.ProjectService
 
     private val createdProjectIds = mutableListOf<String>()
 
@@ -142,6 +143,29 @@ class ExportControllerTest {
     }
 
     @Test
+    fun `POST export ZIP includes raw spec directory files`() {
+        val pid = createProject()
+        projectService.saveSpecFile(pid, "problem.md", "# Problem\n\nRaw problem spec.")
+
+        val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val entries = mutableMapOf<String, String>()
+        ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                entries[entry.name] = zis.readBytes().toString(Charsets.UTF_8)
+                entry = zis.nextEntry
+            }
+        }
+
+        val specEntry = entries.entries.firstOrNull { it.key.endsWith("/spec/problem.md") }
+        assertNotNull(specEntry, "ZIP should contain raw spec/problem.md, got: ${entries.keys}")
+        assertEquals("# Problem\n\nRaw problem spec.", specEntry.value)
+    }
+
+    @Test
     fun `POST export bundles uploads under docs-uploads`() {
         val pid = createProject()
         uploadStorage.save(pid, "d1", "a.pdf", "application/pdf", byteArrayOf(1, 2, 3), "2026-04-27T10:00:00Z")
@@ -184,6 +208,7 @@ class ExportControllerTest {
 
         assertNotNull(readme, "README.md should exist in ZIP")
         assertTrue(readme!!.contains("`docs/SPEC.md`"), "README should reference docs/SPEC.md, got: $readme")
+        assertTrue(readme.contains("`spec/`"), "README should reference raw spec/")
         assertTrue(readme.contains("`docs/PLAN.md`"), "README should reference docs/PLAN.md")
         assertTrue(readme.contains("`docs/decisions/`"), "README should reference docs/decisions/")
         assertTrue(readme.contains("`docs/clarifications/`"), "README should reference docs/clarifications/")
@@ -237,11 +262,11 @@ class ExportControllerTest {
             }
         }
 
-        // Bundle file under namespaced .claude path
+        // Bundle file under neutral asset-bundles path
         val skillKey = entries.keys.firstOrNull {
-            it.endsWith(".claude/skills/backend.framework.spring-boot/api-design/SKILL.md")
+            it.endsWith(".asset-bundles/skills/backend.framework.spring-boot/api-design/SKILL.md")
         }
-        assertNotNull(skillKey, "expected bundle file under .claude/skills/backend.framework.spring-boot/, got: ${entries.keys}")
+        assertNotNull(skillKey, "expected bundle file under .asset-bundles/skills/backend.framework.spring-boot/, got: ${entries.keys}")
         assertEquals("# API Design", entries[skillKey]?.toString(Charsets.UTF_8))
 
         // README mentions the bundle

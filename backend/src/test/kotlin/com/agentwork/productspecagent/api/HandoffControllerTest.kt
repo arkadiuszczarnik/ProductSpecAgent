@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import java.io.ByteArrayInputStream
 import java.util.zip.ZipInputStream
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @SpringBootTest
@@ -20,6 +21,7 @@ import kotlin.test.assertTrue
 class HandoffControllerTest {
 
     @Autowired lateinit var mockMvc: MockMvc
+    @Autowired lateinit var projectService: com.agentwork.productspecagent.service.ProjectService
 
     private fun createProject(): String {
         val result = mockMvc.perform(
@@ -49,6 +51,24 @@ class HandoffControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.format").value("codex"))
             .andExpect(jsonPath("$.agentsMd").isNotEmpty)
+    }
+
+    @Test
+    fun `POST preview includes Living Sync reporting instructions`() {
+        val pid = createProject()
+
+        val result = mockMvc.perform(post("/api/v1/projects/$pid/handoff/preview"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val body = result.response.contentAsString
+        assertTrue(body.contains("Living-Sync"), "Preview should mention Living-Sync reporting")
+        assertTrue(body.contains("/mcp"), "Preview should include MCP endpoint")
+        assertTrue(body.contains("/api/v1/projects/$pid/living-sync/mcp"), "Preview should include project-specific Living-Sync endpoint")
+        assertTrue(body.contains(".asset-bundles/skills/global.living-sync-reporter/living-sync-reporter"), "Preview should mention neutral Living Sync skill")
+        assertTrue(body.contains(".claude/settings.json"), "Preview should mention hook settings")
+        assertTrue(body.contains(".claude/living-sync.json"), "Preview should mention Living Sync config")
+        assertTrue(body.contains("living-sync-reporter --help"), "Preview should mention manual reporter usage")
     }
 
     @Test
@@ -176,6 +196,7 @@ class HandoffControllerTest {
     @Test
     fun `GET handoff zip serves a flat ZIP without slug prefix`() {
         val pid = createProject()
+        projectService.saveSpecFile(pid, "problem.md", "# Problem\n\nRaw handoff spec.")
 
         val result = mockMvc.perform(get("/api/v1/projects/$pid/handoff/handoff.zip"))
             .andExpect(status().isOk())
@@ -194,10 +215,63 @@ class HandoffControllerTest {
         assertTrue(entries.contains("CLAUDE.md"), "CLAUDE.md should be at root, got: $entries")
         assertTrue(entries.contains("AGENTS.md"), "AGENTS.md should be at root, got: $entries")
         assertTrue(entries.contains("implementation-order.md"), "implementation-order.md should be at root, got: $entries")
+        assertTrue(entries.contains("spec/problem.md"), "Raw spec file should be under spec/, got: $entries")
         assertTrue(
             entries.none { it.startsWith("handoff-test/") },
             "No entry should be under the slug folder, got: $entries"
         )
+    }
+
+    @Test
+    fun `GET handoff zip embeds Living Sync asset bundle plus dynamic config`() {
+        val pid = createProject()
+
+        val result = mockMvc.perform(get("/api/v1/projects/$pid/handoff/handoff.zip"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+        val skill = readZipEntry(zipBytes) { it == ".asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/SKILL.md" }
+            ?: error("Living Sync skill not found in handoff ZIP")
+        val launcher = readZipEntry(zipBytes) { it == ".asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/bin/living-sync-reporter" }
+            ?: error("Living Sync launcher not found in handoff ZIP")
+        val windowsLauncher = readZipEntry(zipBytes) { it == ".asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/bin/living-sync-reporter.cmd" }
+            ?: error("Living Sync Windows launcher not found in handoff ZIP")
+        val linuxBinary = readZipEntry(zipBytes) { it == ".asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/bin/linux-amd64/living-sync-reporter.gz" }
+            ?: error("Living Sync Linux binary not found in handoff ZIP")
+        val config = readZipEntry(zipBytes) { it == ".claude/living-sync.json" }
+            ?: error("Living Sync config not found in handoff ZIP")
+        val settings = readZipEntry(zipBytes) { it == ".claude/settings.json" }
+            ?: error("Claude settings not found in handoff ZIP")
+
+        assertTrue(skill.contains("living-sync-reporter"), "Skill should define the Living Sync reporter")
+        assertFalse(skill.contains("/api/v1/projects/$pid/living-sync/mcp"), "Skill should stay static and not embed project-specific endpoint")
+        assertTrue(config.contains("/api/v1/projects/$pid/living-sync/mcp"), "Config should embed project-specific endpoint")
+        assertTrue(launcher.contains("uname -s"), "Launcher should detect Unix OS")
+        assertTrue(launcher.contains("gzip -dc"), "Launcher should expand compressed Unix binary")
+        assertTrue(windowsLauncher.contains("windows-amd64"), "Windows launcher should select Windows binary")
+        assertTrue(linuxBinary.isNotEmpty(), "Linux binary should be bundled")
+        assertTrue(settings.contains("\"PostToolUse\""), "Settings should configure PostToolUse hooks")
+        assertTrue(settings.contains("\"Stop\""), "Settings should configure Stop hooks")
+        assertTrue(settings.contains(".asset-bundles/skills/global.living-sync-reporter"), "Hooks should call the neutral asset-bundle reporter")
+        assertZipSymlink(zipBytes, ".claude/skills", "../.asset-bundles/skills")
+        assertZipSymlink(zipBytes, ".agents/skills", "../.asset-bundles/skills")
+    }
+
+    private fun assertZipSymlink(zipBytes: ByteArray, name: String, target: String) {
+        ZipInputStream(ByteArrayInputStream(zipBytes)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (entry.name == name) {
+                    val mode = com.agentwork.productspecagent.export.ZipSymlinkSupport.centralDirectoryUnixMode(zipBytes, name)
+                    assertTrue(mode != null && (mode and 0xF000) == 0xA000, "$name should be a symlink")
+                    assertTrue(zis.readBytes().toString(Charsets.UTF_8) == target, "$name should point to $target")
+                    return
+                }
+                entry = zis.nextEntry
+            }
+        }
+        error("Symlink $name not found in handoff ZIP")
     }
 
     private fun readZipEntry(zipBytes: ByteArray, predicate: (String) -> Boolean): String? {

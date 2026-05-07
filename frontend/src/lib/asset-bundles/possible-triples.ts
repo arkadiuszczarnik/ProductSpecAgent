@@ -73,6 +73,7 @@ export function buildManifestStub(triple: BundleTriple, now: Date): AssetBundleM
   const iso = now.toISOString();
   return {
     id: bundleId(triple.step, triple.field, triple.value),
+    scope: "MATCHED",
     step: triple.step as StepType,
     field: triple.field,
     value: triple.value,

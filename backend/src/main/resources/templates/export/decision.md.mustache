@@ -1,0 +1,24 @@
+---
+status: {{status}}
+step: {{step}}
+created: {{createdAt}}
+{{#resolvedAt}}resolved: {{resolvedAt}}
+{{/resolvedAt}}---
+
+# {{title}}
+
+## Options
+{{#options}}
+### {{label}}{{#recommended}} ⭐ Recommended{{/recommended}}
+**Pros:** {{pros}}
+**Cons:** {{cons}}
+
+{{/options}}
+## Recommendation
+{{recommendation}}
+{{#resolved}}
+
+## Decision
+**Chosen:** {{chosen}}
+**Rationale:** {{rationale}}
+{{/resolved}}

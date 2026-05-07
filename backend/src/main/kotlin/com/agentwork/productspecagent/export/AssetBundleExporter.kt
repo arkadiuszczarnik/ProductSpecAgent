@@ -2,18 +2,23 @@ package com.agentwork.productspecagent.export
 
 import com.agentwork.productspecagent.domain.AssetBundleFile
 import com.agentwork.productspecagent.domain.AssetBundleManifest
+import com.agentwork.productspecagent.domain.AssetBundleScope
 import com.agentwork.productspecagent.domain.WizardData
 import com.agentwork.productspecagent.domain.assetBundleSlug
 import com.agentwork.productspecagent.storage.AssetBundleStorage
+import com.github.mustachejava.DefaultMustacheFactory
+import com.github.mustachejava.MustacheFactory
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.io.StringWriter
 import java.nio.file.Paths
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import com.agentwork.productspecagent.export.ZipSymlinkSupport.addSymlinkEntry
 
 data class MatchedBundle(
     val manifest: AssetBundleManifest,
@@ -24,6 +29,7 @@ data class MatchedBundle(
 class AssetBundleExporter(private val storage: AssetBundleStorage) {
 
     private val log = LoggerFactory.getLogger(AssetBundleExporter::class.java)
+    private val mf: MustacheFactory = DefaultMustacheFactory("templates/export")
 
     fun matchedBundles(wizardData: WizardData): List<MatchedBundle> {
         val manifests = try {
@@ -34,19 +40,23 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
         }
 
         val matched = manifests.filter { m ->
-            val raw = wizardData.steps[m.step.name]?.fields?.get(m.field) ?: return@filter false
+            if (m.scope == AssetBundleScope.GLOBAL) return@filter true
+            val step = m.step ?: return@filter false
+            val field = m.field ?: return@filter false
+            val value = m.value ?: return@filter false
+            val raw = wizardData.steps[step.name]?.fields?.get(field) ?: return@filter false
             val candidates: Set<String> = when (raw) {
                 is JsonArray -> raw.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.toSet()
                 is JsonPrimitive -> if (raw is JsonNull) emptySet() else setOf(raw.content)
                 else -> emptySet()
             }
-            val bundleSlug = assetBundleSlug(m.value)
+            val bundleSlug = assetBundleSlug(value)
             candidates.any { assetBundleSlug(it) == bundleSlug }
         }
 
         return matched.mapNotNull { m ->
             try {
-                val bundle = storage.find(m.step, m.field, m.value)
+                val bundle = storage.findById(m.id)
                 if (bundle == null) {
                     log.warn("Bundle '{}' disappeared between listAll and find — skipping", m.id)
                     null
@@ -76,23 +86,35 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
                     continue
                 }
 
-                val bytes = storage.loadFileBytes(
-                    bundle.manifest.step,
-                    bundle.manifest.field,
-                    bundle.manifest.value,
-                    file.relativePath,
-                )
+                val bytes = storage.loadFileBytesById(bundle.manifest.id, file.relativePath)
                 if (bytes == null) {
                     log.warn("loadFileBytes returned null for {}/{} — skipping file", bundle.manifest.id, file.relativePath)
                     continue
                 }
 
-                val entryName = "$prefix/.claude/$type/${bundle.manifest.id}/$rest"
+                val entryName = "$prefix/.asset-bundles/$type/${bundle.manifest.id}/$rest"
                 zip.putNextEntry(ZipEntry(entryName))
                 zip.write(bytes)
                 zip.closeEntry()
             }
         }
+    }
+
+    fun writeToolLinksToZip(zip: ZipOutputStream, prefix: String): List<String> {
+        val root = prefix.trimEnd('/')
+        val base = if (root.isBlank()) "" else "$root/"
+        val links = mapOf(
+            "${base}.claude/skills" to "../.asset-bundles/skills",
+            "${base}.claude/commands" to "../.asset-bundles/commands",
+            "${base}.claude/agents" to "../.asset-bundles/agents",
+            "${base}.agents/skills" to "../.asset-bundles/skills",
+            "${base}.agents/commands" to "../.asset-bundles/commands",
+            "${base}.agents/agents" to "../.asset-bundles/agents",
+        )
+        for ((name, target) in links) {
+            zip.addSymlinkEntry(name, target)
+        }
+        return links.keys.toList()
     }
 
     private fun isSuspiciousPath(relativePath: String): Boolean {
@@ -109,20 +131,30 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
     fun renderReadmeSection(bundles: List<MatchedBundle>): String {
         if (bundles.isEmpty()) return ""
 
-        val sorted = bundles.sortedBy { it.manifest.id }
-        return buildString {
-            appendLine()
-            appendLine("## Included Asset Bundles")
-            appendLine()
-            appendLine("The following Claude Code asset bundles were merged into `.claude/` based on your wizard choices:")
-            appendLine()
-            for (b in sorted) {
-                val m = b.manifest
-                appendLine("- **${m.title}** (`${m.id}` v${m.version}) — matched on `${m.step.name}.${m.field} = ${m.value}`")
-                if (m.description.isNotBlank()) {
-                    appendLine("  ${m.description}")
-                }
-            }
-        }
+        return render(
+            "asset-bundles-readme-section.md.mustache",
+            mapOf(
+                "bundles" to bundles.sortedBy { it.manifest.id }.map { bundle ->
+                    val manifest = bundle.manifest
+                    mapOf(
+                        "title" to manifest.title,
+                        "id" to manifest.id,
+                        "version" to manifest.version,
+                        "scope" to manifest.scope.name,
+                        "step" to manifest.step?.name,
+                        "field" to manifest.field,
+                        "value" to manifest.value,
+                        "description" to manifest.description.ifBlank { null },
+                    )
+                },
+            ),
+        )
+    }
+
+    private fun render(templatePath: String, scope: Any): String {
+        val mustache = mf.compile(templatePath)
+        val writer = StringWriter()
+        mustache.execute(writer, scope).flush()
+        return writer.toString()
     }
 }

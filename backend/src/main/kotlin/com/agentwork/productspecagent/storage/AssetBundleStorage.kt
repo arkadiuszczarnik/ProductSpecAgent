@@ -26,6 +26,10 @@ class AssetBundleStorage(private val objectStore: ObjectStore) {
 
     fun find(step: FlowStepType, field: String, value: String): AssetBundle? {
         val id = assetBundleId(step, field, value)
+        return findById(id)
+    }
+
+    fun findById(id: String): AssetBundle? {
         val bundlePrefix = "$rootPrefix$id/"
         val manifest = readManifestByKey("${bundlePrefix}manifest.json") ?: return null
         warnIfIdMismatch(id, manifest)
@@ -87,11 +91,19 @@ class AssetBundleStorage(private val objectStore: ObjectStore) {
 
     fun delete(step: FlowStepType, field: String, value: String) {
         val id = assetBundleId(step, field, value)
+        deleteById(id)
+    }
+
+    fun deleteById(id: String) {
         objectStore.deletePrefix("$rootPrefix$id/")
     }
 
     fun loadFileBytes(step: FlowStepType, field: String, value: String, relativePath: String): ByteArray? {
         val id = assetBundleId(step, field, value)
+        return loadFileBytesById(id, relativePath)
+    }
+
+    fun loadFileBytesById(id: String, relativePath: String): ByteArray? {
         return objectStore.get("$rootPrefix$id/$relativePath")
     }
 

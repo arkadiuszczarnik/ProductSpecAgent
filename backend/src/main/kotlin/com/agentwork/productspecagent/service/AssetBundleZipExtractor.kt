@@ -1,6 +1,7 @@
 package com.agentwork.productspecagent.service
 
 import com.agentwork.productspecagent.domain.AssetBundleManifest
+import com.agentwork.productspecagent.domain.AssetBundleScope
 import com.agentwork.productspecagent.domain.ExtractedBundle
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.assetBundleId
@@ -23,7 +24,7 @@ class AssetBundleZipExtractor {
     private val allowedTopLevelFolders = setOf("skills", "commands", "agents")
 
     fun extract(bytes: ByteArray): ExtractedBundle {
-        val rawFiles = readZip(bytes)
+        val rawFiles = normalizeSingleRootFolder(readZip(bytes))
         val manifestBytes = rawFiles.remove("manifest.json")
             ?: throw MissingManifestException("manifest.json must be at the ZIP root")
         val manifest = parseManifest(manifestBytes)
@@ -98,7 +99,33 @@ class AssetBundleZipExtractor {
         if (name.endsWith("desktop.ini")) return true
         val lastSegment = name.substringAfterLast('/')
         if (lastSegment.startsWith("._")) return true
+        if (lastSegment.endsWith(".pyc")) return true
+        if (name.replace('\\', '/').split('/').any { it == "__pycache__" }) return true
         return false
+    }
+
+    private fun normalizeSingleRootFolder(files: MutableMap<String, ByteArray>): MutableMap<String, ByteArray> {
+        if (files.containsKey("manifest.json")) return files
+
+        val rootFolders = files.keys
+            .filter { "/" in it }
+            .map { it.substringBefore('/') }
+            .toSet()
+
+        if (rootFolders.size != 1) return files
+
+        val rootFolder = rootFolders.single()
+        if (rootFolder in allowedTopLevelFolders) return files
+        if (!files.containsKey("$rootFolder/manifest.json")) return files
+
+        val normalized = LinkedHashMap<String, ByteArray>()
+        files.forEach { (path, bytes) ->
+            val stripped = path.removePrefix("$rootFolder/")
+            if (stripped.isNotBlank()) {
+                normalized[stripped] = bytes
+            }
+        }
+        return normalized
     }
 
     private fun validatePath(name: String) {
@@ -118,9 +145,18 @@ class AssetBundleZipExtractor {
     }
 
     private fun validateManifest(m: AssetBundleManifest) {
-        if (m.step !in allowedSteps) throw UnsupportedStepException(m.step)
-        val expectedId = assetBundleId(m.step, m.field, m.value)
-        if (m.id != expectedId) throw ManifestIdMismatchException(expected = expectedId, actual = m.id)
+        if (m.id.isBlank()) throw InvalidManifestException("Required field empty: id")
+        if (m.id.contains("/") || m.id.contains("\\") || m.id.contains("..")) {
+            throw InvalidManifestException("Invalid id: ${m.id}")
+        }
+        if (m.scope == AssetBundleScope.MATCHED) {
+            val step = m.step ?: throw InvalidManifestException("Required field empty: step")
+            val field = m.field ?: throw InvalidManifestException("Required field empty: field")
+            val value = m.value ?: throw InvalidManifestException("Required field empty: value")
+            if (step !in allowedSteps) throw UnsupportedStepException(step)
+            val expectedId = assetBundleId(step, field, value)
+            if (m.id != expectedId) throw ManifestIdMismatchException(expected = expectedId, actual = m.id)
+        }
         if (m.title.isBlank()) throw InvalidManifestException("Required field empty: title")
         if (m.description.isBlank()) throw InvalidManifestException("Required field empty: description")
         if (m.version.isBlank()) throw InvalidManifestException("Required field empty: version")

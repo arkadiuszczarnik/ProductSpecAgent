@@ -53,6 +53,7 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 | 43b | shadcn Buttons (Phase 2) | _geplant_ | Feature 43a | M |
 | 43c | shadcn Dialoge & Selects (Phase 3) | _geplant_ | Feature 43a | M |
 | 44 | Akzeptanzkriterien im Feature-Edit-Modal | [44-feature-acceptance-criteria-done.md](44-feature-acceptance-criteria-done.md) | Feature 22, 36 | M |
+| 45 | Living-Sync via MCP | [45-living-sync-mcp-done.md](45-living-sync-mcp-done.md) | Feature 8, 30, 31, 44 | L |
 
 ## Architecture Docs
 
