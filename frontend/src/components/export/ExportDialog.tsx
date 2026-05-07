@@ -64,7 +64,7 @@ export function ExportDialog({ projectId, projectName, open, onClose }: ExportDi
             <input type="checkbox" checked={true} disabled className="accent-primary" />
             <div>
               <span className="text-sm font-medium">Specification</span>
-              <p className="text-xs text-muted-foreground">SPEC.md, README.md, .gitignore</p>
+              <p className="text-xs text-muted-foreground">SPEC.md, README.md, CLAUDE.md, AGENTS.md, .gitignore</p>
             </div>
           </label>
           <label className="flex items-center gap-3 rounded-md border px-3 py-2.5 opacity-70 cursor-not-allowed transition-colors">

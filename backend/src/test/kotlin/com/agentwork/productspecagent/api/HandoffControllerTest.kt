@@ -91,10 +91,10 @@ class HandoffControllerTest {
             }
         }
 
-        assertTrue(entries.any { it.endsWith("CLAUDE.md") }, "ZIP should contain CLAUDE.md, got: $entries")
-        assertTrue(entries.any { it.endsWith("AGENTS.md") }, "ZIP should contain AGENTS.md, got: $entries")
-        assertTrue(entries.any { it.endsWith("implementation-order.md") }, "ZIP should contain implementation-order.md, got: $entries")
-        assertTrue(entries.any { it.endsWith("README.md") }, "ZIP should contain README.md, got: $entries")
+        assertTrue(entries.contains("CLAUDE.md"), "ZIP should contain CLAUDE.md at root, got: $entries")
+        assertTrue(entries.contains("AGENTS.md"), "ZIP should contain AGENTS.md at root, got: $entries")
+        assertTrue(entries.contains("implementation-order.md"), "ZIP should contain implementation-order.md at root, got: $entries")
+        assertTrue(entries.contains("README.md"), "ZIP should contain README.md at root, got: $entries")
     }
 
     @Test

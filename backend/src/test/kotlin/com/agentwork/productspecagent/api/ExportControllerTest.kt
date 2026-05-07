@@ -96,6 +96,40 @@ class ExportControllerTest {
     }
 
     @Test
+    fun `POST export includes agent handoff markdowns`() {
+        val pid = createProject()
+
+        val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val entries = mutableMapOf<String, String>()
+        ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                entries[entry.name] = zis.readBytes().toString(Charsets.UTF_8)
+                entry = zis.nextEntry
+            }
+        }
+
+        val claudeMd = entries.entries.firstOrNull { it.key.endsWith("/CLAUDE.md") }
+        val agentsMd = entries.entries.firstOrNull { it.key.endsWith("/AGENTS.md") }
+        val implementationOrder = entries.entries.firstOrNull { it.key.endsWith("/implementation-order.md") }
+
+        assertNotNull(claudeMd, "ZIP should contain CLAUDE.md, got: ${entries.keys}")
+        assertNotNull(agentsMd, "ZIP should contain AGENTS.md, got: ${entries.keys}")
+        assertNotNull(implementationOrder, "ZIP should contain implementation-order.md, got: ${entries.keys}")
+        assertTrue(
+            claudeMd.value.contains("/api/v1/projects/$pid/handoff/handoff.zip"),
+            "CLAUDE.md should contain handoff sync URL, got:\n${claudeMd.value}"
+        )
+        assertTrue(
+            agentsMd.value.contains("## How to Sync This Project"),
+            "AGENTS.md should use the neutral handoff markdown, got:\n${agentsMd.value}"
+        )
+    }
+
+    @Test
     fun `POST export without body uses defaults`() {
         val pid = createProject()
 

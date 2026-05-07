@@ -36,7 +36,7 @@ class HandoffController(
         val project = projectService.getProject(projectId).project
         val slug = project.name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
         val syncUrl = buildSyncUrl(projectId)
-        val zipBytes = handoffService.exportHandoff(projectId, request ?: HandoffExportRequest(), syncUrl)
+        val zipBytes = handoffService.exportHandoff(projectId, request ?: HandoffExportRequest(), syncUrl, flat = true)
 
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$slug-handoff.zip\"")

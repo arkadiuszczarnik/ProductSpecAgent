@@ -20,12 +20,24 @@ class ExportService(
     private val assetBundleExporter: AssetBundleExporter,
 ) {
     private val mf: MustacheFactory = DefaultMustacheFactory("templates/export")
+    private val handoffMf: MustacheFactory = DefaultMustacheFactory("templates/handoff")
 
-    fun exportProject(projectId: String, request: ExportRequest = ExportRequest()): ByteArray {
+    fun exportProject(
+        projectId: String,
+        request: ExportRequest = ExportRequest(),
+        handoffSyncUrl: String? = null,
+        includeHandoffFiles: Boolean = false,
+    ): ByteArray {
         val projectResponse = projectService.getProject(projectId)
         val project = projectResponse.project
         val flowState = projectResponse.flowState
         val prefix = project.name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
+        val syncUrl = if (includeHandoffFiles) {
+            require(!handoffSyncUrl.isNullOrBlank()) { "handoffSyncUrl is required when includeHandoffFiles is true" }
+            handoffSyncUrl
+        } else {
+            null
+        }
 
         val wizardData = wizardService.getWizardData(projectId)
         val matchedBundles = assetBundleExporter.matchedBundles(wizardData)
@@ -35,6 +47,13 @@ class ExportService(
         ZipOutputStream(baos).use { zip ->
             // README.md
             zip.addEntry("$prefix/README.md", generateReadme(project, flowState, matchedBundles))
+
+            if (includeHandoffFiles) {
+                val handoffMarkdown = generateHandoffMarkdown(project.name, requireNotNull(syncUrl))
+                zip.addEntry("$prefix/CLAUDE.md", handoffMarkdown)
+                zip.addEntry("$prefix/AGENTS.md", handoffMarkdown)
+                zip.addEntry("$prefix/implementation-order.md", generateImplementationOrder(taskService.listTasks(projectId)))
+            }
 
             // SPEC.md — combine all spec steps
             zip.addEntry("$prefix/docs/SPEC.md", generateSpec(projectId, flowState))
@@ -212,8 +231,51 @@ class ExportService(
             ),
         )
 
+    private fun generateHandoffMarkdown(projectName: String, syncUrl: String): String =
+        renderHandoff(
+            "handoff.md.mustache",
+            mapOf(
+                "projectName" to projectName,
+                "syncUrl" to syncUrl,
+            ),
+        )
+
+    private fun generateImplementationOrder(tasks: List<SpecTask>): String {
+        val epics = tasks.filter { it.type == TaskType.EPIC }.sortedBy { it.priority }
+        var taskNumber = 1
+        val context = mapOf(
+            "hasTasks" to epics.isNotEmpty(),
+            "epics" to epics.map { epic ->
+                mapOf(
+                    "title" to epic.title,
+                    "stories" to tasks.filter { it.parentId == epic.id }.sortedBy { it.priority }.map { story ->
+                        mapOf(
+                            "title" to story.title,
+                            "tasks" to tasks.filter { it.parentId == story.id }.sortedBy { it.priority }.map { task ->
+                                mapOf(
+                                    "number" to taskNumber++,
+                                    "title" to task.title,
+                                    "estimate" to task.estimate,
+                                    "description" to task.description,
+                                )
+                            },
+                        )
+                    },
+                )
+            },
+        )
+        return renderHandoff("implementation-order.md.mustache", context)
+    }
+
     private fun render(templatePath: String, scope: Any): String {
         val mustache = mf.compile(templatePath)
+        val writer = StringWriter()
+        mustache.execute(writer, scope).flush()
+        return writer.toString()
+    }
+
+    private fun renderHandoff(templatePath: String, scope: Any): String {
+        val mustache = handoffMf.compile(templatePath)
         val writer = StringWriter()
         mustache.execute(writer, scope).flush()
         return writer.toString()

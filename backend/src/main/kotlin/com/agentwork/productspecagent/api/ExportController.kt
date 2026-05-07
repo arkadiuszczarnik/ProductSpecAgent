@@ -7,6 +7,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}")
@@ -22,11 +23,22 @@ class ExportController(
     ): ResponseEntity<ByteArray> {
         val project = projectService.getProject(projectId).project
         val slug = project.name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
-        val zipBytes = exportService.exportProject(projectId, request ?: ExportRequest())
+        val zipBytes = exportService.exportProject(
+            projectId = projectId,
+            request = request ?: ExportRequest(),
+            handoffSyncUrl = buildHandoffSyncUrl(projectId),
+            includeHandoffFiles = true,
+        )
 
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$slug.zip\"")
             .contentType(MediaType.parseMediaType("application/zip"))
             .body(zipBytes)
     }
+
+    private fun buildHandoffSyncUrl(projectId: String): String =
+        ServletUriComponentsBuilder.fromCurrentContextPath()
+            .path("/api/v1/projects/{projectId}/handoff/handoff.zip")
+            .buildAndExpand(projectId)
+            .toUriString()
 }
