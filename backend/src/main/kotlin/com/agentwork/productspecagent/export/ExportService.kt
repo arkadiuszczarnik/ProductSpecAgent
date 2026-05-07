@@ -25,19 +25,12 @@ class ExportService(
     fun exportProject(
         projectId: String,
         request: ExportRequest = ExportRequest(),
-        handoffSyncUrl: String? = null,
-        includeHandoffFiles: Boolean = false,
+        includeAgentTemplateFiles: Boolean = false,
     ): ByteArray {
         val projectResponse = projectService.getProject(projectId)
         val project = projectResponse.project
         val flowState = projectResponse.flowState
         val prefix = project.name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
-        val syncUrl = if (includeHandoffFiles) {
-            require(!handoffSyncUrl.isNullOrBlank()) { "handoffSyncUrl is required when includeHandoffFiles is true" }
-            handoffSyncUrl
-        } else {
-            null
-        }
 
         val wizardData = wizardService.getWizardData(projectId)
         val matchedBundles = assetBundleExporter.matchedBundles(wizardData)
@@ -48,11 +41,10 @@ class ExportService(
             // README.md
             zip.addEntry("$prefix/README.md", generateReadme(project, flowState, matchedBundles))
 
-            if (includeHandoffFiles) {
-                val handoffMarkdown = generateHandoffMarkdown(project.name, requireNotNull(syncUrl))
-                zip.addEntry("$prefix/CLAUDE.md", handoffMarkdown)
-                zip.addEntry("$prefix/AGENTS.md", handoffMarkdown)
-                zip.addEntry("$prefix/implementation-order.md", generateImplementationOrder(taskService.listTasks(projectId)))
+            if (includeAgentTemplateFiles) {
+                val agentTemplateMarkdown = generateAgentTemplateMarkdown()
+                zip.addEntry("$prefix/CLAUDE.md", agentTemplateMarkdown)
+                zip.addEntry("$prefix/AGENTS.md", agentTemplateMarkdown)
             }
 
             // SPEC.md — combine all spec steps
@@ -231,41 +223,11 @@ class ExportService(
             ),
         )
 
-    private fun generateHandoffMarkdown(projectName: String, syncUrl: String): String =
+    private fun generateAgentTemplateMarkdown(): String =
         renderHandoff(
-            "handoff.md.mustache",
-            mapOf(
-                "projectName" to projectName,
-                "syncUrl" to syncUrl,
-            ),
+            "agent-template.md.mustache",
+            emptyMap<String, Any>(),
         )
-
-    private fun generateImplementationOrder(tasks: List<SpecTask>): String {
-        val epics = tasks.filter { it.type == TaskType.EPIC }.sortedBy { it.priority }
-        var taskNumber = 1
-        val context = mapOf(
-            "hasTasks" to epics.isNotEmpty(),
-            "epics" to epics.map { epic ->
-                mapOf(
-                    "title" to epic.title,
-                    "stories" to tasks.filter { it.parentId == epic.id }.sortedBy { it.priority }.map { story ->
-                        mapOf(
-                            "title" to story.title,
-                            "tasks" to tasks.filter { it.parentId == story.id }.sortedBy { it.priority }.map { task ->
-                                mapOf(
-                                    "number" to taskNumber++,
-                                    "title" to task.title,
-                                    "estimate" to task.estimate,
-                                    "description" to task.description,
-                                )
-                            },
-                        )
-                    },
-                )
-            },
-        )
-        return renderHandoff("implementation-order.md.mustache", context)
-    }
 
     private fun render(templatePath: String, scope: Any): String {
         val mustache = mf.compile(templatePath)

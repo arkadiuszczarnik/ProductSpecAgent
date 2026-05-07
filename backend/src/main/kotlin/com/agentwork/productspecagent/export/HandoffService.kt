@@ -96,7 +96,7 @@ class HandoffService(
     }
 
     private fun generateAgentsMd(project: Project, format: String, livingSyncBaseUrl: String, mcpUrl: String): String =
-        render("agents.md.mustache", handoffContext(project.name, format, livingSyncBaseUrl, mcpUrl))
+        render("agent-template.md.mustache", handoffContext(project.name, format, livingSyncBaseUrl, mcpUrl))
 
     private fun livingSyncBaseUrl(syncUrl: String): String =
         syncUrl.removeSuffix("/handoff/handoff.zip") + "/living-sync/mcp"

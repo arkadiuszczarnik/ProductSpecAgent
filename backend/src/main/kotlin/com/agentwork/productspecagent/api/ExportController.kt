@@ -7,7 +7,6 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}")
@@ -26,8 +25,7 @@ class ExportController(
         val zipBytes = exportService.exportProject(
             projectId = projectId,
             request = request ?: ExportRequest(),
-            handoffSyncUrl = buildHandoffSyncUrl(projectId),
-            includeHandoffFiles = true,
+            includeAgentTemplateFiles = true,
         )
 
         return ResponseEntity.ok()
@@ -35,10 +33,4 @@ class ExportController(
             .contentType(MediaType.parseMediaType("application/zip"))
             .body(zipBytes)
     }
-
-    private fun buildHandoffSyncUrl(projectId: String): String =
-        ServletUriComponentsBuilder.fromCurrentContextPath()
-            .path("/api/v1/projects/{projectId}/handoff/handoff.zip")
-            .buildAndExpand(projectId)
-            .toUriString()
 }

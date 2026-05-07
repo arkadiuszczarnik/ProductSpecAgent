@@ -96,7 +96,7 @@ class ExportControllerTest {
     }
 
     @Test
-    fun `POST export includes agent handoff markdowns`() {
+    fun `POST export includes agent handoff markdowns without implementation order`() {
         val pid = createProject()
 
         val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))
@@ -118,14 +118,18 @@ class ExportControllerTest {
 
         assertNotNull(claudeMd, "ZIP should contain CLAUDE.md, got: ${entries.keys}")
         assertNotNull(agentsMd, "ZIP should contain AGENTS.md, got: ${entries.keys}")
-        assertNotNull(implementationOrder, "ZIP should contain implementation-order.md, got: ${entries.keys}")
+        kotlin.test.assertNull(implementationOrder, "ZIP should not contain implementation-order.md, got: ${entries.keys}")
         assertTrue(
-            claudeMd.value.contains("/api/v1/projects/$pid/handoff/handoff.zip"),
-            "CLAUDE.md should contain handoff sync URL, got:\n${claudeMd.value}"
+            claudeMd.value.contains("## Guidelines"),
+            "CLAUDE.md should use agent-template.md.mustache, got:\n${claudeMd.value}"
         )
         assertTrue(
-            agentsMd.value.contains("## How to Sync This Project"),
-            "AGENTS.md should use the neutral handoff markdown, got:\n${agentsMd.value}"
+            agentsMd.value.contains("## Guidelines"),
+            "AGENTS.md should use agent-template.md.mustache, got:\n${agentsMd.value}"
+        )
+        assertTrue(
+            !claudeMd.value.contains("## How to Sync This Project"),
+            "CLAUDE.md should not use handoff.md.mustache, got:\n${claudeMd.value}"
         )
     }
 
