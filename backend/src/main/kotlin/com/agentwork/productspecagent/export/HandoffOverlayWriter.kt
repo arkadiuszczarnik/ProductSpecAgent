@@ -14,8 +14,8 @@ class HandoffOverlayWriter(
         writer.addText("CLAUDE.md", preview.claudeMd)
         writer.addText("AGENTS.md", preview.agentsMd)
         writer.addText("implementation-order.md", preview.implementationOrder)
-        writer.addText(".claude/settings.json", handoffContentFactory.livingSyncSettings())
-        writer.addText(".claude/living-sync.json", handoffContentFactory.livingSyncConfig(preview.syncUrl))
+        writer.addText(".asset-bundles/settings.json", handoffContentFactory.livingSyncSettings())
+        writer.addText(".asset-bundles/living-sync.json", handoffContentFactory.livingSyncConfig(preview.syncUrl))
         writeEmbeddedSyncBundles(writer)
         writeToolSymlinks(writer)
     }
@@ -64,12 +64,8 @@ class HandoffOverlayWriter(
         ).forEach { writer.addDirectory(it) }
 
         val links = mapOf(
-            ".claude/skills" to "../.asset-bundles/skills",
-            ".claude/commands" to "../.asset-bundles/commands",
-            ".claude/agents" to "../.asset-bundles/agents",
-            ".agents/skills" to "../.asset-bundles/skills",
-            ".agents/commands" to "../.asset-bundles/commands",
-            ".agents/agents" to "../.asset-bundles/agents",
+            ".claude" to ".asset-bundles",
+            ".agents" to ".asset-bundles",
         )
         for ((name, target) in links) {
             writer.addSymlink(name, target)

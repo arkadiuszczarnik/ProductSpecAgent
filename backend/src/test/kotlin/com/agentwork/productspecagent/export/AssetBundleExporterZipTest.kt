@@ -218,11 +218,9 @@ class AssetBundleExporterZipTest {
         assertTrue(entries.containsKey("myapp/.asset-bundles/skills/"))
         assertTrue(entries.containsKey("myapp/.asset-bundles/commands/"))
         assertTrue(entries.containsKey("myapp/.asset-bundles/agents/"))
-        assertEquals("../.asset-bundles/skills", links["myapp/.claude/skills"])
-        assertEquals("../.asset-bundles/commands", links["myapp/.claude/commands"])
-        assertEquals("../.asset-bundles/agents", links["myapp/.claude/agents"])
-        assertEquals("../.asset-bundles/skills", links["myapp/.agents/skills"])
-        assertEquals("../.asset-bundles/commands", links["myapp/.agents/commands"])
-        assertEquals("../.asset-bundles/agents", links["myapp/.agents/agents"])
+        assertEquals(".asset-bundles", links["myapp/.claude"])
+        assertEquals(".asset-bundles", links["myapp/.agents"])
+        assertFalse(links.containsKey("myapp/.claude/skills"))
+        assertFalse(links.containsKey("myapp/.agents/skills"))
     }
 }

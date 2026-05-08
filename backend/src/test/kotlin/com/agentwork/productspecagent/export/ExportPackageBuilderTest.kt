@@ -49,11 +49,12 @@ class ExportPackageBuilderTest {
             "CLAUDE.md",
             "AGENTS.md",
             "implementation-order.md",
-            ".claude/settings.json",
-            ".claude/living-sync.json",
+            ".asset-bundles/settings.json",
+            ".asset-bundles/living-sync.json",
             ".asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/SKILL.md",
             ".asset-bundles/skills/global.product-spec-sync/product-spec-sync/SKILL.md",
         )
+        assertThat(entries.keys).doesNotContain(".claude/settings.json", ".claude/living-sync.json")
         assertThat(entries.keys.none { it.startsWith("handoff-app/") }).isTrue()
     }
 

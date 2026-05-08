@@ -135,12 +135,8 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
         }
 
         val links = mapOf(
-            "${base}.claude/skills" to "../.asset-bundles/skills",
-            "${base}.claude/commands" to "../.asset-bundles/commands",
-            "${base}.claude/agents" to "../.asset-bundles/agents",
-            "${base}.agents/skills" to "../.asset-bundles/skills",
-            "${base}.agents/commands" to "../.asset-bundles/commands",
-            "${base}.agents/agents" to "../.asset-bundles/agents",
+            "${base}.claude" to ".asset-bundles",
+            "${base}.agents" to ".asset-bundles",
         )
         for ((name, target) in links) {
             zip.addSymlinkEntry(name, target)
@@ -156,12 +152,8 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
         ).forEach { writer.addDirectory(it) }
 
         val links = mapOf(
-            ".claude/skills" to "../.asset-bundles/skills",
-            ".claude/commands" to "../.asset-bundles/commands",
-            ".claude/agents" to "../.asset-bundles/agents",
-            ".agents/skills" to "../.asset-bundles/skills",
-            ".agents/commands" to "../.asset-bundles/commands",
-            ".agents/agents" to "../.asset-bundles/agents",
+            ".claude" to ".asset-bundles",
+            ".agents" to ".asset-bundles",
         )
         for ((name, target) in links) {
             writer.addSymlink(name, target)

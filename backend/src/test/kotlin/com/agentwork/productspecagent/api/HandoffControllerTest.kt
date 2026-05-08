@@ -305,9 +305,9 @@ class HandoffControllerTest {
             ?: error("Living Sync Windows launcher not found in handoff ZIP")
         val linuxBinary = readZipEntry(zipBytes) { it == ".asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/bin/linux-amd64/living-sync-reporter.gz" }
             ?: error("Living Sync Linux binary not found in handoff ZIP")
-        val config = readZipEntry(zipBytes) { it == ".claude/living-sync.json" }
+        val config = readZipEntry(zipBytes) { it == ".asset-bundles/living-sync.json" }
             ?: error("Living Sync config not found in handoff ZIP")
-        val settings = readZipEntry(zipBytes) { it == ".claude/settings.json" }
+        val settings = readZipEntry(zipBytes) { it == ".asset-bundles/settings.json" }
             ?: error("Claude settings not found in handoff ZIP")
 
         assertTrue(skill.contains("living-sync-reporter"), "Skill should define the Living Sync reporter")
@@ -320,12 +320,12 @@ class HandoffControllerTest {
         assertTrue(settings.contains("\"PostToolUse\""), "Settings should configure PostToolUse hooks")
         assertTrue(settings.contains("\"Stop\""), "Settings should configure Stop hooks")
         assertTrue(settings.contains(".asset-bundles/skills/global.living-sync-reporter"), "Hooks should call the neutral asset-bundle reporter")
-        assertZipSymlink(zipBytes, ".claude/skills", "../.asset-bundles/skills")
-        assertZipSymlink(zipBytes, ".claude/commands", "../.asset-bundles/commands")
-        assertZipSymlink(zipBytes, ".claude/agents", "../.asset-bundles/agents")
-        assertZipSymlink(zipBytes, ".agents/skills", "../.asset-bundles/skills")
-        assertZipSymlink(zipBytes, ".agents/commands", "../.asset-bundles/commands")
-        assertZipSymlink(zipBytes, ".agents/agents", "../.asset-bundles/agents")
+        assertFalse(hasZipEntry(zipBytes, ".claude/settings.json"), "settings.json should live under .asset-bundles")
+        assertFalse(hasZipEntry(zipBytes, ".claude/living-sync.json"), "living-sync.json should live under .asset-bundles")
+        assertZipSymlink(zipBytes, ".claude", ".asset-bundles")
+        assertZipSymlink(zipBytes, ".agents", ".asset-bundles")
+        assertFalse(hasZipEntry(zipBytes, ".claude/skills"), "Handoff ZIP should not contain nested .claude tool symlinks")
+        assertFalse(hasZipEntry(zipBytes, ".agents/skills"), "Handoff ZIP should not contain nested .agents tool symlinks")
         assertZipDirectory(zipBytes, ".asset-bundles/skills/")
         assertZipDirectory(zipBytes, ".asset-bundles/commands/")
         assertZipDirectory(zipBytes, ".asset-bundles/agents/")
@@ -374,6 +374,17 @@ class HandoffControllerTest {
             }
         }
         error("Directory $name not found in handoff ZIP")
+    }
+
+    private fun hasZipEntry(zipBytes: ByteArray, name: String): Boolean {
+        ZipInputStream(ByteArrayInputStream(zipBytes)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (entry.name == name) return true
+                entry = zis.nextEntry
+            }
+        }
+        return false
     }
 
     private fun readZipEntry(zipBytes: ByteArray, predicate: (String) -> Boolean): String? {
