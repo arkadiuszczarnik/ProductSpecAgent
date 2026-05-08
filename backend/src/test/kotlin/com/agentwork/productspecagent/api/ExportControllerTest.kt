@@ -181,9 +181,10 @@ class ExportControllerTest {
     }
 
     @Test
-    fun `POST export ZIP includes raw spec directory files`() {
+    fun `POST export ZIP includes only spec md from spec directory`() {
         val pid = createProject()
         projectService.saveSpecFile(pid, "problem.md", "# Problem\n\nRaw problem spec.")
+        projectService.saveSpecFile(pid, "spec.md", "# Product Spec\n\nClean summary.")
 
         val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))
             .andExpect(status().isOk())
@@ -198,9 +199,12 @@ class ExportControllerTest {
             }
         }
 
-        val specEntry = entries.entries.firstOrNull { it.key.endsWith("/spec/problem.md") }
-        assertNotNull(specEntry, "ZIP should contain raw spec/problem.md, got: ${entries.keys}")
-        assertEquals("# Problem\n\nRaw problem spec.", specEntry.value)
+        val rawStepEntry = entries.entries.firstOrNull { it.key.endsWith("/spec/problem.md") }
+        kotlin.test.assertNull(rawStepEntry, "ZIP should not contain raw step specs, got: ${entries.keys}")
+
+        val specEntry = entries.entries.firstOrNull { it.key.endsWith("/spec/spec.md") }
+        assertNotNull(specEntry, "ZIP should contain spec/spec.md, got: ${entries.keys}")
+        assertEquals("# Product Spec\n\nClean summary.", specEntry.value)
     }
 
     @Test
@@ -246,7 +250,7 @@ class ExportControllerTest {
 
         assertNotNull(readme, "README.md should exist in ZIP")
         assertTrue(readme!!.contains("`docs/SPEC.md`"), "README should reference docs/SPEC.md, got: $readme")
-        assertTrue(readme.contains("`spec/`"), "README should reference raw spec/")
+        assertTrue(readme.contains("`spec/spec.md`"), "README should reference final spec.md")
         assertTrue(readme.contains("`docs/PLAN.md`"), "README should reference docs/PLAN.md")
         assertTrue(readme.contains("`docs/decisions/`"), "README should reference docs/decisions/")
         assertTrue(readme.contains("`docs/clarifications/`"), "README should reference docs/clarifications/")

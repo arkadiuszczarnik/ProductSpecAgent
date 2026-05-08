@@ -207,6 +207,7 @@ class HandoffControllerTest {
     fun `GET handoff zip serves a flat ZIP without slug prefix`() {
         val pid = createProject()
         projectService.saveSpecFile(pid, "problem.md", "# Problem\n\nRaw handoff spec.")
+        projectService.saveSpecFile(pid, "spec.md", "# Product Spec\n\nClean handoff spec.")
 
         val result = mockMvc.perform(get("/api/v1/projects/$pid/handoff/handoff.zip"))
             .andExpect(status().isOk())
@@ -225,7 +226,8 @@ class HandoffControllerTest {
         assertTrue(entries.contains("CLAUDE.md"), "CLAUDE.md should be at root, got: $entries")
         assertTrue(entries.contains("AGENTS.md"), "AGENTS.md should be at root, got: $entries")
         assertTrue(entries.contains("implementation-order.md"), "implementation-order.md should be at root, got: $entries")
-        assertTrue(entries.contains("spec/problem.md"), "Raw spec file should be under spec/, got: $entries")
+        assertTrue(entries.contains("spec/spec.md"), "Final spec should be under spec/, got: $entries")
+        assertFalse(entries.contains("spec/problem.md"), "Raw step spec should not be exported, got: $entries")
         assertTrue(
             entries.none { it.startsWith("handoff-test/") },
             "No entry should be under the slug folder, got: $entries"

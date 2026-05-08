@@ -9,6 +9,7 @@ import com.agentwork.productspecagent.domain.ProductCategory
 import com.agentwork.productspecagent.domain.WizardClientActionDto
 import com.agentwork.productspecagent.domain.WizardCreatedArtifacts
 import com.agentwork.productspecagent.domain.WizardProgressionView
+import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.domain.WizardStepView
 import com.agentwork.productspecagent.domain.emptyWizardProgressionView
 import org.slf4j.LoggerFactory
@@ -152,13 +153,17 @@ class WizardStepCompletionService(
             flowState.copy(steps = updatedSteps, currentStep = nextStep ?: command.step),
         )
 
-        val fileName = stepName.lowercase() + ".md"
-        val title = stepName.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }
-        val fieldsMarkdown = command.fields.entries.joinToString("\n") { "- **${it.key}**: ${it.value}" }
-        projectService.saveSpecFile(command.projectId, fileName, "# $title\n\n$fieldsMarkdown")
+        wizardService.saveStepData(
+            command.projectId,
+            stepName,
+            WizardStepData(
+                fields = command.fields.mapValues { (_, value) -> WizardMarkdown.toJsonElement(value) },
+                completedAt = now,
+            ),
+        )
 
         if (isLastStep) {
-            val fullContext = contextBuilder.buildWizardContext(wizardData, stepName, command.fields)
+            val fullContext = contextBuilder.buildContext(command.projectId)
             val summaryPrompt = buildString {
                 appendLine("Based on all the information gathered in the wizard steps below, generate a complete product specification summary in markdown format.")
                 appendLine("Include sections for: Product Overview, Problem, Target Audience, Scope, MVP, and any technical decisions made.")
@@ -168,6 +173,8 @@ class WizardStepCompletionService(
             val summarySystemPrompt = "$baseSystemPrompt\n\n$localeInstruction"
             val specContent = completionAgent.respond(summarySystemPrompt, summaryPrompt)
             projectService.saveSpecFile(command.projectId, "spec.md", specContent)
+        } else {
+            projectService.regenerateDocsScaffold(command.projectId)
         }
 
         val progression = snapshotFor(command.projectId)
@@ -305,7 +312,7 @@ class WizardStepCompletionService(
                 appendLine("2. Is the primary audience concrete (not 'everyone' or 'users')?")
                 appendLine("3. Are the pain points tied to the stated audience and problem?")
                 appendLine()
-                appendLine("The generated problem.md spec should document problem, audience, and pain points together in one coherent section.")
+                appendLine("The generated problem section should document problem, audience, and pain points together in one coherent section.")
                 appendLine("If the audience is too broad or a strategic choice is needed (e.g., B2B vs B2C), use [DECISION_NEEDED].")
                 appendLine("If there are contradictions or missing aspects, use [CLARIFICATION_NEEDED].")
                 appendLine("Be encouraging and constructive.")

@@ -72,7 +72,7 @@ class WizardStepCompletionServiceTest {
     }
 
     @Test
-    fun `complete IDEA advances flow writes step spec and captures prompts`() = runBlocking {
+    fun `complete IDEA advances flow without writing step spec and captures prompts`() = runBlocking {
         val project = projectService.createProject("Test")
         val agent = CapturingWizardAgent("Looks good.")
         val completion = createCompletion(agent)
@@ -108,9 +108,8 @@ class WizardStepCompletionServiceTest {
         assertThat(flowState.steps.first { it.stepType == FlowStepType.PROBLEM }.status)
             .isEqualTo(FlowStepStatus.IN_PROGRESS)
 
-        assertThat(projectService.readSpecFile(project.project.id, "idea.md"))
-            .contains("# Idea")
-            .contains("- **productName**: MeinTool")
+        assertThat(projectService.readSpecFile(project.project.id, "idea.md")).isNull()
+        assertThat(projectService.listSpecFiles(project.project.id)).isEmpty()
 
         assertThat(agent.calls).hasSize(1)
         assertThat(agent.calls.single().systemPrompt)
@@ -195,6 +194,8 @@ class WizardStepCompletionServiceTest {
         assertThat(clarificationService.listClarifications(project.project.id)).isEmpty()
         assertThat(projectService.readSpecFile(project.project.id, "spec.md"))
             .isEqualTo("# Product Specification\n\nDone.")
+        assertThat(projectService.listSpecFiles(project.project.id).map { it.first })
+            .containsExactly("spec/spec.md")
         assertThat(agent.calls).hasSize(2)
         for (call in agent.calls) {
             assertThat(call.userPrompt).doesNotContain("MANDATORY OUTPUT REQUIREMENT")

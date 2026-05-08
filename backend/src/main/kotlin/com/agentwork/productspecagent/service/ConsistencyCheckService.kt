@@ -69,24 +69,7 @@ class ConsistencyCheckService(
             ))
         }
 
-        // 5. Empty spec steps
-        val flowState = projectService.getFlowState(projectId)
-        for (step in flowState.steps) {
-            if (step.status == FlowStepStatus.COMPLETED) {
-                val fileName = step.stepType.name.lowercase() + ".md"
-                val content = projectService.readSpecFile(projectId, fileName)
-                if (content.isNullOrBlank()) {
-                    results.add(CheckResult(
-                        id = nextId(), severity = CheckSeverity.ERROR,
-                        category = "empty-spec",
-                        message = "Step '${step.stepType.name}' is marked completed but has no content.",
-                        suggestedFix = "Re-run the spec flow for this step."
-                    ))
-                }
-            }
-        }
-
-        // 6. Tasks without description
+        // 5. Tasks without description
         for (task in tasks) {
             if (task.description.isBlank()) {
                 results.add(CheckResult(

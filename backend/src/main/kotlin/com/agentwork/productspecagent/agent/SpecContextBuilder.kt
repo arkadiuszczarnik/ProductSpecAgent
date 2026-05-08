@@ -6,6 +6,7 @@ import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.WizardData
 import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.WizardMarkdown
 import com.agentwork.productspecagent.service.WizardFeatureInput
 import com.agentwork.productspecagent.service.WizardFeatureParser
 import com.agentwork.productspecagent.service.WizardService
@@ -25,8 +26,18 @@ open class SpecContextBuilder(
 
         val completedSteps = flowState.steps
             .filter { it.status == FlowStepStatus.COMPLETED }
+        val wizardData = wizardService?.getWizardData(projectId)
 
         val stepSummaries = completedSteps.mapNotNull { step ->
+            val wizardContent = wizardData
+                ?.steps
+                ?.get(step.stepType.name)
+                ?.fields
+                ?.let { WizardMarkdown.renderStep(step.stepType.name, it) }
+            if (wizardContent != null) {
+                return@mapNotNull "### ${step.stepType.name}\n$wizardContent"
+            }
+
             val fileName = step.stepType.name.lowercase() + ".md"
             val content = projectService.readSpecFile(projectId, fileName)
             if (content != null) "### ${step.stepType.name}\n$content" else null
@@ -91,12 +102,13 @@ open class SpecContextBuilder(
     open fun buildProposalContext(projectId: String): String {
         val svc = wizardService ?: throw IllegalStateException("WizardService not available")
         val sb = StringBuilder()
-        listOf("idea.md", "problem.md", "target_audience.md", "mvp.md").forEach { f ->
-            projectService.readSpecFile(projectId, f)?.let {
-                sb.appendLine("## $f").appendLine(it).appendLine()
-            }
-        }
         val wizardData = svc.getWizardData(projectId)
+        listOf(FlowStepType.IDEA, FlowStepType.PROBLEM, FlowStepType.MVP).forEach { step ->
+            wizardData.steps[step.name]
+                ?.fields
+                ?.let { WizardMarkdown.renderStep(step.name, it) }
+                ?.let { sb.appendLine("## ${step.name}").appendLine(it).appendLine() }
+        }
         val category = wizardData.steps["IDEA"]?.fields?.get("category")
             ?.let { runCatching { it.jsonPrimitive.content }.getOrNull() } ?: "—"
         sb.appendLine("Category: $category")

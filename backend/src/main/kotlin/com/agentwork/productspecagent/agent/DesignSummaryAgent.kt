@@ -2,7 +2,6 @@ package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.config.DesignBundleProperties
 import com.agentwork.productspecagent.domain.DesignBundle
-import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.storage.DesignBundleStorage
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Component
 @Component
 open class DesignSummaryAgent(
     private val storage: DesignBundleStorage,
-    private val projectService: ProjectService,
     private val props: DesignBundleProperties,
     private val koogRunner: KoogAgentRunner? = null,
 ) {
@@ -35,10 +33,10 @@ open class DesignSummaryAgent(
         structure shown in the user prompt.
     """.trimIndent()
 
-    open fun summarize(projectId: String) {
+    open fun summarize(projectId: String): String? {
         val bundle = storage.get(projectId) ?: run {
             log.warn("summarize called but no bundle exists for project $projectId")
-            return
+            return null
         }
 
         val content = try {
@@ -50,7 +48,7 @@ open class DesignSummaryAgent(
             fallbackContent(bundle)
         }
 
-        projectService.saveSpecFile(projectId, "design.md", content)
+        return content
     }
 
     // Overridden by tests (via anonymous subclass); production path delegates to KoogAgentRunner.

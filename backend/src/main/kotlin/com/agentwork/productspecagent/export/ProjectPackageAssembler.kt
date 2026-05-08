@@ -12,6 +12,7 @@ import com.agentwork.productspecagent.service.ClarificationService
 import com.agentwork.productspecagent.service.DecisionService
 import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.service.TaskService
+import com.agentwork.productspecagent.service.WizardMarkdown
 import com.agentwork.productspecagent.service.WizardService
 import com.github.mustachejava.DefaultMustacheFactory
 import com.github.mustachejava.MustacheFactory
@@ -53,7 +54,7 @@ class ProjectPackageAssembler(
 
         writer.addText("docs/SPEC.md", generateSpec(projectId, flowState))
 
-        for ((relativePath, content) in projectService.listSpecFiles(projectId)) {
+        for ((relativePath, content) in projectService.listSpecFiles(projectId).filter { it.first == "spec/spec.md" }) {
             writer.addBytes(relativePath, content)
         }
 
@@ -122,11 +123,14 @@ class ProjectPackageAssembler(
         val autoSpec = projectService.readSpecFile(projectId, "spec.md")
         if (autoSpec != null) {
             sections.add(mapOf("content" to autoSpec))
+            return render("spec.md.mustache", mapOf("sections" to sections))
         }
 
+        val wizardData = wizardService.getWizardData(projectId)
         for (step in flowState.steps) {
-            val fileName = step.stepType.name.lowercase() + ".md"
-            val content = projectService.readSpecFile(projectId, fileName)
+            val content = wizardData.steps[step.stepType.name]
+                ?.fields
+                ?.let { WizardMarkdown.renderStep(step.stepType.name, it) }
             if (content != null) {
                 sections.add(mapOf("content" to content))
             }

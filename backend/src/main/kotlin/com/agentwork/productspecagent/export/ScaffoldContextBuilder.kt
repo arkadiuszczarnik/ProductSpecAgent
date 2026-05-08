@@ -20,9 +20,20 @@ class ScaffoldContextBuilder(
         return if (content.isNullOrBlank()) null else content
     }
 
+    private fun readNonBlankStep(projectId: String, wizardData: WizardData, step: FlowStepType): String? {
+        val wizardContent = wizardData.steps[step.name]
+            ?.fields
+            ?.let { WizardMarkdown.renderStep(step.name, it) }
+            ?.trim()
+        if (!wizardContent.isNullOrBlank()) return wizardContent
+
+        return readNonBlankSpec(projectId, "${step.name.lowercase()}.md")
+    }
+
     fun build(projectId: String): ScaffoldContext {
         val projectResp = projectService.getProject(projectId)
         val project = projectResp.project
+        val wizardData = wizardService?.getWizardData(projectId) ?: WizardData(projectId)
         val tasks = taskService.listTasks(projectId)
         val decisions = decisionService.listDecisions(projectId)
 
@@ -88,12 +99,12 @@ class ScaffoldContextBuilder(
                 )
             }
 
-        val mvpContent = readNonBlankSpec(projectId, "mvp.md")
-        val problemContent = readNonBlankSpec(projectId, "problem.md")
+        val mvpContent = readNonBlankStep(projectId, wizardData, FlowStepType.MVP)
+        val problemContent = readNonBlankStep(projectId, wizardData, FlowStepType.PROBLEM)
         val targetAudienceContent = readNonBlankSpec(projectId, "target_audience.md")
-        val architectureContent = readNonBlankSpec(projectId, "architecture.md")
-        val backendContent = readNonBlankSpec(projectId, "backend.md")
-        val frontendContent = readNonBlankSpec(projectId, "frontend.md")
+        val architectureContent = readNonBlankStep(projectId, wizardData, FlowStepType.ARCHITECTURE)
+        val backendContent = readNonBlankStep(projectId, wizardData, FlowStepType.BACKEND)
+        val frontendContent = readNonBlankStep(projectId, wizardData, FlowStepType.FRONTEND)
 
         return ScaffoldContext(
             projectName = project.name,
