@@ -39,29 +39,31 @@ function NavItem({ href, icon, label, active }: NavItemProps) {
 
 function IconRail() {
   const pathname = usePathname();
+  const isWorkspace = pathname?.startsWith("/projects/") && pathname !== "/projects/new";
 
   return (
     <aside className="flex h-screen w-14 shrink-0 flex-col items-center bg-sidebar py-3 gap-1">
       <Link
         href="/projects"
-        className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-white mb-2"
+        className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground mb-2 shadow-sm"
+        aria-label="Spec Agent Dashboard"
       >
         <Sparkles size={16} />
       </Link>
 
-      <div className="h-px w-6 bg-zinc-700 mb-1" />
+      <div className="h-px w-6 bg-sidebar-border mb-1" />
 
       <nav className="flex flex-col items-center gap-1 flex-1">
         <NavItem
           href="/projects"
           icon={<FolderKanban size={20} />}
-          label="Projects"
+          label="Projekte"
           active={pathname === "/projects"}
         />
         <NavItem
           href="/projects/new"
           icon={<Plus size={20} />}
-          label="New Project"
+          label="Neues Projekt"
           active={pathname === "/projects/new"}
         />
         <NavItem
@@ -87,8 +89,10 @@ function IconRail() {
       <div className="flex flex-col items-center gap-1">
         <LogoutButton />
         <button
+          onClick={() => window.dispatchEvent(new CustomEvent("spec-agent:toggle-project-options"))}
           className="flex h-10 w-10 items-center justify-center rounded-lg text-sidebar-foreground hover:text-zinc-200 transition-colors duration-150"
-          title="Settings"
+          title={isWorkspace ? "Projekt-Optionen" : "Einstellungen"}
+          aria-label={isWorkspace ? "Projekt-Optionen" : "Einstellungen"}
         >
           <Settings size={20} />
         </button>

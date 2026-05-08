@@ -32,52 +32,61 @@ export function DocumentsPanel({ projectId }: Props) {
   };
 
   return (
-    <div className="flex h-full flex-col p-3 gap-3">
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
-        onClick={() => fileInputRef.current?.click()}
-        className={cn(
-          "border-2 border-dashed rounded-md p-4 text-center cursor-pointer text-xs text-muted-foreground transition-colors",
-          dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-        )}
-      >
-        <Upload size={16} className="mx-auto mb-1.5" />
-        {uploading ? "Uploading..." : "PDF, Markdown oder Text hier ablegen oder klicken"}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.md,.txt,application/pdf,text/markdown,text/plain"
-          className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
-        />
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-2 border-b px-4 py-3">
+        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <FileText size={15} />
+        </div>
+        <span className="text-sm font-semibold text-foreground">Documents</span>
       </div>
 
-      {error && <div className="text-xs text-destructive">{error}</div>}
+      <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+          onClick={() => fileInputRef.current?.click()}
+          className={cn(
+            "border-2 border-dashed rounded-md p-4 text-center cursor-pointer text-xs text-muted-foreground transition-colors",
+            dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+          )}
+        >
+          <Upload size={16} className="mx-auto mb-1.5" />
+          {uploading ? "Uploading..." : "PDF, Markdown oder Text hier ablegen oder klicken"}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.md,.txt,application/pdf,text/markdown,text/plain"
+            className="hidden"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+        </div>
 
-      <div className="flex-1 overflow-y-auto space-y-1">
-        {loading && documents.length === 0 && <div className="text-xs text-muted-foreground">Lade...</div>}
-        {!loading && documents.length === 0 && <div className="text-xs text-muted-foreground">Noch keine Dokumente.</div>}
-        {documents.map((doc) => (
-          <div key={doc.id} className="flex items-center gap-2 rounded-md border border-border p-2">
-            <FileText size={14} className="shrink-0 text-muted-foreground" />
-            <div className="flex-1 min-w-0">
-              <div className="text-xs truncate">{doc.title}</div>
-              <div className="text-[10px] text-muted-foreground">{new Date(doc.createdAt).toLocaleString("de-DE")}</div>
+        {error && <div className="text-xs text-destructive">{error}</div>}
+
+        <div className="flex-1 overflow-y-auto space-y-1">
+          {loading && documents.length === 0 && <div className="text-xs text-muted-foreground">Lade...</div>}
+          {!loading && documents.length === 0 && <div className="text-xs text-muted-foreground">Noch keine Dokumente.</div>}
+          {documents.map((doc) => (
+            <div key={doc.id} className="flex items-center gap-2 rounded-md border border-border p-2">
+              <FileText size={14} className="shrink-0 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs truncate">{doc.title}</div>
+                <div className="text-[10px] text-muted-foreground">{new Date(doc.createdAt).toLocaleString("de-DE")}</div>
+              </div>
+              <span className={cn("rounded-full px-2 py-0.5 text-[10px]", STATE_STYLES[doc.state])}>
+                {doc.state === "LOCAL" ? "Lokal" : doc.state}
+              </span>
+              <button
+                onClick={() => deleteDocument(projectId, doc.id)}
+                className="text-muted-foreground hover:text-destructive transition-colors"
+                title="Löschen"
+              >
+                <Trash2 size={13} />
+              </button>
             </div>
-            <span className={cn("rounded-full px-2 py-0.5 text-[10px]", STATE_STYLES[doc.state])}>
-              {doc.state === "LOCAL" ? "Lokal" : doc.state}
-            </span>
-            <button
-              onClick={() => deleteDocument(projectId, doc.id)}
-              className="text-muted-foreground hover:text-destructive transition-colors"
-              title="Löschen"
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

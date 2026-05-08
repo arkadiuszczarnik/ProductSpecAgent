@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { Activity, ArrowLeft, ChevronRight, Loader2, Scale, MessageSquare, HelpCircle, Layers, Download, ShieldCheck, Bot, FolderTree, FileText } from "lucide-react";
+import { Activity, ArrowLeft, ChevronLeft, ChevronRight, Loader2, Scale, MessageSquare, HelpCircle, Layers, Download, ShieldCheck, Bot, FolderTree, FileText, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExportDialog } from "@/components/export/ExportDialog";
 import { HandoffDialog } from "@/components/handoff/HandoffDialog";
@@ -18,7 +18,7 @@ import { TaskTree } from "@/components/tasks/TaskTree";
 import { CheckResultsPanel } from "@/components/checks/CheckResultsPanel";
 import { DocumentsPanel } from "@/components/documents/DocumentsPanel";
 import { LivingSyncPanel } from "@/components/living-sync/LivingSyncPanel";
-import { GraphMeshToggle } from "@/components/workspace/GraphMeshToggle";
+import { GraphMeshSettings } from "@/components/workspace/GraphMeshToggle";
 import { ExplorerPanel } from "@/components/explorer/ExplorerPanel";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { WizardForm } from "@/components/wizard/WizardForm";
@@ -42,6 +42,8 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
   const [showExplorer, setShowExplorer] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showHandoff, setShowHandoff] = useState(false);
+  const [showProjectOptions, setShowProjectOptions] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [rightTab, setRightTab] = useState<"chat" | "decisions" | "clarifications" | "tasks" | "checks" | "documents" | "living-sync">("chat");
   const { decisions, loadDecisions: loadDecs, reset: resetDecs } = useDecisionStore();
   const pendingCount = decisions.filter((d) => d.status === "PENDING").length;
@@ -65,6 +67,21 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
     useDesignBundleStore.getState().loadBundle(id);
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    function onToggleOptions() {
+      setShowProjectOptions((open) => !open);
+    }
+    function onEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowProjectOptions(false);
+    }
+    window.addEventListener("spec-agent:toggle-project-options", onToggleOptions);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      window.removeEventListener("spec-agent:toggle-project-options", onToggleOptions);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, []);
+
   const { width: sidebarWidth, isDragging, handleProps } = useResizable({
     initialWidth: 600,
     minWidth: 280,
@@ -83,31 +100,57 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 bg-background">
         <p className="text-sm text-destructive">{projectError}</p>
-        <Link href="/projects" className="text-sm text-primary hover:underline">Back to Projects</Link>
+        <Link href="/projects" className="text-sm text-primary hover:underline">Zurueck zu Projekten</Link>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col bg-background overflow-hidden">
-      <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-2.5">
-        <Link href="/projects" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft size={14} />
-          Projects
-        </Link>
-        <ChevronRight size={14} className="text-muted-foreground" />
-        <span className="text-sm font-medium truncate max-w-xs">{project?.name ?? "..."}</span>
-        <div className="ml-auto flex items-center gap-2">
-          {project && <GraphMeshToggle project={project} onProjectUpdate={setProject} />}
-          <Button variant="ghost" size="sm" onClick={() => setShowExplorer(!showExplorer)} className="gap-1.5" title="Toggle Explorer">
+    <div className="relative flex h-full flex-col bg-background overflow-hidden">
+      <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-5">
+        <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <Link
+            href="/projects"
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            <ArrowLeft size={13} />
+            Projekte
+          </Link>
+          <span className="opacity-50">/</span>
+          <span className="truncate text-[13px] font-semibold text-foreground">{project?.name ?? "..."}</span>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowExplorer(!showExplorer)}
+            className="gap-1.5"
+            title={showExplorer ? "Explorer ausblenden" : "Explorer einblenden"}
+          >
             <FolderTree size={14} />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowHandoff(true)} className="gap-1.5">
-            <Bot size={14} /> Handoff
+          <Button variant="outline" size="sm" onClick={() => setShowHandoff(true)} className="gap-1.5">
+            <Save size={14} /> Handoff
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowExport(true)} className="gap-1.5">
-            <Download size={14} /> Export
+          <Button variant="outline" size="sm" onClick={() => setShowExport(true)} className="gap-1.5">
+            <Download size={14} /> Exportieren
           </Button>
+          <button
+            type="button"
+            onClick={() => setPanelCollapsed((value) => !value)}
+            title={panelCollapsed ? "Chat & Clarifications einblenden" : "Chat & Clarifications ausblenden"}
+            aria-label={panelCollapsed ? "Chat & Clarifications einblenden" : "Chat & Clarifications ausblenden"}
+            className={cn(
+              "inline-flex h-[30px] items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+              panelCollapsed
+                ? "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+                : "border-primary/20 bg-primary/10 text-primary hover:bg-secondary"
+            )}
+          >
+            <Bot size={14} />
+            {panelCollapsed ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
+          </button>
         </div>
       </header>
 
@@ -130,16 +173,17 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
             />
           </div>
         </div>
-        <div className="shrink-0 overflow-hidden flex flex-row" style={{ width: sidebarWidth }}>
+        {!panelCollapsed && (
+        <div className="shrink-0 overflow-hidden flex flex-row animate-slide-in-right" style={{ width: sidebarWidth }}>
           <ResizeHandle isDragging={isDragging} onMouseDown={handleProps.onMouseDown} />
           <div className="flex-1 overflow-hidden flex flex-col border-l border-border">
-          {/* Tab buttons */}
-          <div className="flex border-b border-border bg-card">
+            {/* Tab buttons */}
+            <div className="flex h-12 shrink-0 items-stretch overflow-x-auto border-b border-border bg-background px-4">
             <button
               onClick={() => setRightTab("chat")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors",
-                rightTab === "chat" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+                "flex shrink-0 items-center justify-center gap-1.5 border-b-2 border-transparent px-3 text-xs font-medium transition-colors",
+                rightTab === "chat" ? "border-primary text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <MessageSquare size={13} /> Chat
@@ -147,8 +191,8 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
             <button
               onClick={() => setRightTab("decisions")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors",
-                rightTab === "decisions" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+                "flex shrink-0 items-center justify-center gap-1.5 border-b-2 border-transparent px-3 text-xs font-medium transition-colors",
+                rightTab === "decisions" ? "border-primary text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Scale size={13} /> Decisions
@@ -159,8 +203,8 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
             <button
               onClick={() => setRightTab("clarifications")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors",
-                rightTab === "clarifications" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+                "flex shrink-0 items-center justify-center gap-1.5 border-b-2 border-transparent px-3 text-xs font-medium transition-colors",
+                rightTab === "clarifications" ? "border-primary text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <HelpCircle size={13} /> Clarifications
@@ -171,8 +215,8 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
             <button
               onClick={() => setRightTab("tasks")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors",
-                rightTab === "tasks" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+                "flex shrink-0 items-center justify-center gap-1.5 border-b-2 border-transparent px-3 text-xs font-medium transition-colors",
+                rightTab === "tasks" ? "border-primary text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Layers size={13} /> Tasks
@@ -183,8 +227,8 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
             <button
               onClick={() => setRightTab("checks")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors",
-                rightTab === "checks" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+                "flex shrink-0 items-center justify-center gap-1.5 border-b-2 border-transparent px-3 text-xs font-medium transition-colors",
+                rightTab === "checks" ? "border-primary text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <ShieldCheck size={13} /> Checks
@@ -192,8 +236,8 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
             <button
               onClick={() => setRightTab("documents")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors",
-                rightTab === "documents" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+                "flex shrink-0 items-center justify-center gap-1.5 border-b-2 border-transparent px-3 text-xs font-medium transition-colors",
+                rightTab === "documents" ? "border-primary text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <FileText size={13} /> Documents
@@ -201,34 +245,59 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
             <button
               onClick={() => setRightTab("living-sync")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors",
-                rightTab === "living-sync" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+                "flex shrink-0 items-center justify-center gap-1.5 border-b-2 border-transparent px-3 text-xs font-medium transition-colors",
+                rightTab === "living-sync" ? "border-primary text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Activity size={13} /> Sync
             </button>
-          </div>
-          {/* Tab content */}
-          <div className="flex-1 overflow-hidden">
-            {rightTab === "chat" ? (
-              <ChatPanel projectId={id} />
-            ) : rightTab === "decisions" ? (
-              <DecisionLog projectId={id} />
-            ) : rightTab === "clarifications" ? (
-              <ClarificationList projectId={id} />
-            ) : rightTab === "tasks" ? (
-              <TaskTree projectId={id} />
-            ) : rightTab === "checks" ? (
-              <CheckResultsPanel projectId={id} />
-            ) : rightTab === "documents" ? (
-              <DocumentsPanel projectId={id} />
-            ) : (
-              <LivingSyncPanel projectId={id} />
-            )}
-          </div>
+            </div>
+            {/* Tab content */}
+            <div className="flex-1 overflow-hidden">
+              {rightTab === "chat" ? (
+                <ChatPanel projectId={id} />
+              ) : rightTab === "decisions" ? (
+                <DecisionLog projectId={id} />
+              ) : rightTab === "clarifications" ? (
+                <ClarificationList projectId={id} />
+              ) : rightTab === "tasks" ? (
+                <TaskTree projectId={id} />
+              ) : rightTab === "checks" ? (
+                <CheckResultsPanel projectId={id} />
+              ) : rightTab === "documents" ? (
+                <DocumentsPanel projectId={id} />
+              ) : (
+                <LivingSyncPanel projectId={id} />
+              )}
+            </div>
           </div>
         </div>
+        )}
       </div>
+      {showProjectOptions && project && (
+        <div
+          role="dialog"
+          aria-label="Projekt-Optionen"
+          className="absolute bottom-3 left-3 z-50 w-80 rounded-lg border border-border bg-card p-3 shadow-md ring-1 ring-foreground/10 animate-scale-in"
+        >
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Projekt-Optionen</h2>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Einstellungen fuer den aktuellen Workspace.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowProjectOptions(false)}
+              className="rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              Schliessen
+            </button>
+          </div>
+          <div className="rounded-md border border-border bg-background/60 p-3">
+            <GraphMeshSettings project={project} onProjectUpdate={setProject} />
+          </div>
+        </div>
+      )}
       <ExportDialog
         projectId={id}
         projectName={project?.name ?? "Project"}

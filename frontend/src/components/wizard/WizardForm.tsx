@@ -1,6 +1,19 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Download, Loader2, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  Cpu,
+  Download,
+  FileText,
+  FolderKanban,
+  Layers,
+  Loader2,
+  Monitor,
+  Save,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWizardStore } from "@/lib/stores/wizard-store";
 import { useStepBlockers } from "@/lib/hooks/use-step-blockers";
@@ -24,6 +37,41 @@ const FORM_MAP: Record<string, React.ComponentType<{ projectId: string }>> = {
   FRONTEND: FrontendForm,
   DESIGN: DesignForm,
 };
+
+const STEP_HELP: Record<string, string> = {
+  IDEA: "Verdichte Produktname, Vision und Kategorie zu einem belastbaren Startpunkt.",
+  PROBLEM: "Klaere Problem, Zielgruppe und messbaren Nutzen, bevor Features entstehen.",
+  FEATURES: "Priorisiere den Funktionsumfang und halte Abhaengigkeiten sichtbar.",
+  MVP: "Lege fest, was in die erste umsetzbare Version gehoert.",
+  DESIGN: "Verbinde Produktanforderungen mit UI-Richtung, Screens und Assets.",
+  ARCHITECTURE: "Definiere Systemform, Datenhaltung und Deployment-Rahmen.",
+  BACKEND: "Spezifiziere API, Authentifizierung und serverseitige Komponenten.",
+  FRONTEND: "Schaerfe Framework, UI-Bibliothek, Styling und Frontend-Schnittstellen.",
+};
+
+function StepIcon({ step }: { step: string }) {
+  const iconClass = "h-[15px] w-[15px]";
+  switch (step) {
+    case "IDEA":
+      return <Sparkles className={iconClass} />;
+    case "PROBLEM":
+      return <BookOpen className={iconClass} />;
+    case "FEATURES":
+      return <Layers className={iconClass} />;
+    case "MVP":
+      return <FolderKanban className={iconClass} />;
+    case "DESIGN":
+      return <FileText className={iconClass} />;
+    case "ARCHITECTURE":
+      return <Layers className={iconClass} />;
+    case "BACKEND":
+      return <Cpu className={iconClass} />;
+    case "FRONTEND":
+      return <Monitor className={iconClass} />;
+    default:
+      return <FileText className={iconClass} />;
+  }
+}
 
 interface WizardFormProps {
   projectId: string;
@@ -68,8 +116,19 @@ export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardF
   return (
     <div className="flex flex-col h-full">
       {/* Form Content */}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
-        <div className={activeStep === "FEATURES" || activeStep === "DESIGN" ? "h-full" : "max-w-2xl mx-auto"}>
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex h-[52px] items-center gap-2 border-b border-border px-4">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <StepIcon step={activeStep} />
+          </div>
+          <div className="flex min-w-0 max-w-full items-baseline gap-2">
+            <h1 className="shrink-0 whitespace-nowrap text-sm font-semibold text-foreground">{steps[stepIdx]?.label ?? activeStep}</h1>
+            <p className="min-w-0 truncate text-[11px] text-muted-foreground">
+              {STEP_HELP[activeStep] ?? "Bearbeite diesen Schritt und lasse offene Punkte vom Agenten klaeren."}
+            </p>
+          </div>
+        </div>
+        <div className={activeStep === "FEATURES" || activeStep === "DESIGN" ? "h-[calc(100%-52px)] px-8 py-6" : "mx-auto max-w-2xl px-8 py-6"}>
           {FormComponent && <FormComponent projectId={projectId} />}
         </div>
       </div>
@@ -94,7 +153,7 @@ export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardF
             {isWorking && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Loader2 size={12} className="animate-spin" />
-                {chatPending ? "Agent antwortet..." : "Saving..."}
+                {chatPending ? "Agent antwortet..." : "Speichert..."}
               </span>
             )}
             {/* DESIGN owns its own complete/skip CTAs until export is ready. */}

@@ -39,7 +39,7 @@ export default function NewProjectPage() {
           className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft size={14} />
-          All Projects
+          Alle Projekte
         </Link>
 
         <Card>
@@ -48,7 +48,7 @@ export default function NewProjectPage() {
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Sparkles size={18} />
               </div>
-              <CardTitle className="text-xl">New Project</CardTitle>
+              <CardTitle className="text-xl">Neues Projekt</CardTitle>
             </div>
             <CardDescription>
               Gib deinem Projekt einen Namen. Die Idee beschreibst du anschließend im Wizard.
@@ -58,14 +58,14 @@ export default function NewProjectPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-1.5">
                 <label htmlFor="project-name" className="block text-sm font-medium">
-                  Project Name
+                  Projektname
                 </label>
                 <Input
                   id="project-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. TaskFlow Pro"
+                  placeholder="z.B. TaskFlow Pro"
                   maxLength={120}
                   disabled={loading}
                 />
@@ -79,13 +79,13 @@ export default function NewProjectPage() {
 
               <div className="flex items-center justify-end gap-3 pt-1">
                 <Button type="button" variant="ghost" disabled={loading} onClick={() => router.push("/projects")}>
-                  Cancel
+                  Abbrechen
                 </Button>
                 <Button type="submit" disabled={!canSubmit}>
                   {loading ? (
-                    <><Loader2 size={14} className="animate-spin" /> Creating...</>
+                    <><Loader2 size={14} className="animate-spin" /> Wird angelegt...</>
                   ) : (
-                    <><Sparkles size={14} /> Create Project</>
+                    <><Sparkles size={14} /> Projekt anlegen</>
                   )}
                 </Button>
               </div>

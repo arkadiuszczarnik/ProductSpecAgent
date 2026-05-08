@@ -26,15 +26,15 @@ export function DecisionLog({ projectId, autoOpenDecisionId }: DecisionLogProps)
   const resolved = decisions.filter((d) => d.status === "RESOLVED");
 
   if (loading) {
-    return <div className="p-4 text-sm text-muted-foreground">Loading decisions...</div>;
+    return <div className="p-4 text-sm text-muted-foreground">Entscheidungen werden geladen...</div>;
   }
 
   if (decisions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
         <Scale size={24} className="opacity-30" />
-        <p className="text-sm">No decisions yet.</p>
-        <p className="text-xs">Decisions appear when the agent identifies a choice point.</p>
+        <p className="text-sm">Noch keine Entscheidungen.</p>
+        <p className="text-xs">Entscheidungen erscheinen, sobald der Agent einen Auswahlpunkt erkennt.</p>
       </div>
     );
   }
@@ -48,7 +48,7 @@ export function DecisionLog({ projectId, autoOpenDecisionId }: DecisionLogProps)
         </div>
         {pending.length > 0 && (
           <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground font-medium">
-            {pending.length} pending
+            {pending.length} offen
           </span>
         )}
       </div>
@@ -106,7 +106,7 @@ function DecisionItem({
           "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
           isResolved ? "bg-[oklch(0.65_0.15_160)] text-black" : "bg-primary/10 text-primary"
         )}>
-          {isResolved ? "Done" : "Pending"}
+          {isResolved ? "Erledigt" : "Offen"}
         </span>
       </button>
       {isOpen && (

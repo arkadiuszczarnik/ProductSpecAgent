@@ -40,14 +40,16 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Bot size={15} />
         </div>
-        <span className="text-sm font-semibold text-foreground">Spec Agent</span>
+        <div>
+          <span className="text-sm font-semibold text-foreground">Spec Agent</span>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
             <Bot size={32} className="opacity-30" />
-            <p className="text-sm">Say hi! I'll guide you through each step of the spec.</p>
+            <p className="text-sm">Sag kurz Hallo. Ich fuehre dich durch die naechsten Spec-Schritte.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -57,7 +59,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
             {chatSending && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 size={12} className="animate-spin" />
-                <span>Agent is thinking...</span>
+                <span>Agent denkt nach...</span>
               </div>
             )}
             <div ref={bottomRef} />
@@ -65,13 +67,13 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
         )}
       </div>
 
-      <div className="border-t p-3">
+      <div className="p-3">
         <div className="flex items-end gap-2 rounded-lg border border-border bg-background p-2">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Message the agent... (Enter to send)"
+            placeholder="Nachricht an den Agenten... (Enter zum Senden)"
             rows={1}
             disabled={chatSending}
             className="flex-1 resize-none border-0 bg-transparent dark:bg-transparent shadow-none focus-visible:ring-0 max-h-32 min-h-[24px] px-0 py-0"

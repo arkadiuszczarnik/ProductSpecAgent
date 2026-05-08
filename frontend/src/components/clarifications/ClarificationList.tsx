@@ -21,15 +21,15 @@ export function ClarificationList({ projectId }: ClarificationListProps) {
   const answered = clarifications.filter((c) => c.status === "ANSWERED");
 
   if (loading) {
-    return <div className="p-4 text-sm text-muted-foreground">Loading...</div>;
+    return <div className="p-4 text-sm text-muted-foreground">Klaerungen werden geladen...</div>;
   }
 
   if (clarifications.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
         <HelpCircle size={24} className="opacity-30" />
-        <p className="text-sm">No clarifications yet.</p>
-        <p className="text-xs">Clarifications appear when the agent detects gaps or contradictions.</p>
+        <p className="text-sm">Noch keine Klaerungen.</p>
+        <p className="text-xs">Klaerungen erscheinen, sobald der Agent Luecken oder Widersprueche erkennt.</p>
       </div>
     );
   }
@@ -43,7 +43,7 @@ export function ClarificationList({ projectId }: ClarificationListProps) {
         </div>
         {open.length > 0 && (
           <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-400 font-medium">
-            {open.length} open
+            {open.length} offen
           </span>
         )}
       </div>
@@ -89,7 +89,7 @@ function ClarificationItem({ clarification, projectId, isOpen, onToggle }: {
           "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
           clarification.status === "ANSWERED" ? "bg-[oklch(0.65_0.15_160)] text-black" : "bg-amber-500/20 text-amber-400"
         )}>
-          {clarification.status === "ANSWERED" ? "Done" : "Open"}
+          {clarification.status === "ANSWERED" ? "Erledigt" : "Offen"}
         </span>
       </button>
       {isOpen && (
