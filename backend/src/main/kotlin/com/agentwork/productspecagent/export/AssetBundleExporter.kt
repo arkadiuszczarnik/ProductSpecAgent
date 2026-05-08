@@ -129,6 +129,11 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
     fun writeToolLinksToZip(zip: ZipOutputStream, prefix: String): List<String> {
         val root = prefix.trimEnd('/')
         val base = if (root.isBlank()) "" else "$root/"
+        for (type in listOf("skills", "commands", "agents")) {
+            zip.putNextEntry(ZipEntry("${base}.asset-bundles/$type/"))
+            zip.closeEntry()
+        }
+
         val links = mapOf(
             "${base}.claude/skills" to "../.asset-bundles/skills",
             "${base}.claude/commands" to "../.asset-bundles/commands",
@@ -144,6 +149,12 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
     }
 
     fun writeToolLinksToArchive(writer: ZipArchiveWriter) {
+        listOf(
+            ".asset-bundles/skills",
+            ".asset-bundles/commands",
+            ".asset-bundles/agents",
+        ).forEach { writer.addDirectory(it) }
+
         val links = mapOf(
             ".claude/skills" to "../.asset-bundles/skills",
             ".claude/commands" to "../.asset-bundles/commands",

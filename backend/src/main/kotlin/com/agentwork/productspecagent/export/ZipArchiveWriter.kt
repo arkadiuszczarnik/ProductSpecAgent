@@ -23,6 +23,11 @@ class ZipArchiveWriter(rootPrefix: String = "") {
         zip.closeEntry()
     }
 
+    fun addDirectory(path: String) {
+        zip.putNextEntry(ZipEntry(newDirectoryEntryName(path)))
+        zip.closeEntry()
+    }
+
     fun addSymlink(path: String, target: String) {
         val name = newEntryName(path)
         zip.addSymlinkEntry(name, target)
@@ -47,4 +52,7 @@ class ZipArchiveWriter(rootPrefix: String = "") {
         check(entries.add(name)) { "Duplicate ZIP entry: $name" }
         return name
     }
+
+    private fun newDirectoryEntryName(path: String): String =
+        newEntryName(path.trimEnd('/') + "/")
 }

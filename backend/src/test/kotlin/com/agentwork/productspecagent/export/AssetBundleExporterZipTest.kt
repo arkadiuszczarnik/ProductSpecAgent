@@ -214,6 +214,10 @@ class AssetBundleExporterZipTest {
             }
         }
 
+        val entries = zipEntries(zipBytes)
+        assertTrue(entries.containsKey("myapp/.asset-bundles/skills/"))
+        assertTrue(entries.containsKey("myapp/.asset-bundles/commands/"))
+        assertTrue(entries.containsKey("myapp/.asset-bundles/agents/"))
         assertEquals("../.asset-bundles/skills", links["myapp/.claude/skills"])
         assertEquals("../.asset-bundles/commands", links["myapp/.claude/commands"])
         assertEquals("../.asset-bundles/agents", links["myapp/.claude/agents"])

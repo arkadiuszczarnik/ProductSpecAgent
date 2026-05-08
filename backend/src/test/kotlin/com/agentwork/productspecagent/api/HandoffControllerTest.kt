@@ -243,7 +243,14 @@ class HandoffControllerTest {
         assertTrue(settings.contains("\"Stop\""), "Settings should configure Stop hooks")
         assertTrue(settings.contains(".asset-bundles/skills/global.living-sync-reporter"), "Hooks should call the neutral asset-bundle reporter")
         assertZipSymlink(zipBytes, ".claude/skills", "../.asset-bundles/skills")
+        assertZipSymlink(zipBytes, ".claude/commands", "../.asset-bundles/commands")
+        assertZipSymlink(zipBytes, ".claude/agents", "../.asset-bundles/agents")
         assertZipSymlink(zipBytes, ".agents/skills", "../.asset-bundles/skills")
+        assertZipSymlink(zipBytes, ".agents/commands", "../.asset-bundles/commands")
+        assertZipSymlink(zipBytes, ".agents/agents", "../.asset-bundles/agents")
+        assertZipDirectory(zipBytes, ".asset-bundles/skills/")
+        assertZipDirectory(zipBytes, ".asset-bundles/commands/")
+        assertZipDirectory(zipBytes, ".asset-bundles/agents/")
     }
 
     @Test
@@ -278,6 +285,17 @@ class HandoffControllerTest {
             }
         }
         error("Symlink $name not found in handoff ZIP")
+    }
+
+    private fun assertZipDirectory(zipBytes: ByteArray, name: String) {
+        ZipInputStream(ByteArrayInputStream(zipBytes)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (entry.name == name && entry.isDirectory) return
+                entry = zis.nextEntry
+            }
+        }
+        error("Directory $name not found in handoff ZIP")
     }
 
     private fun readZipEntry(zipBytes: ByteArray, predicate: (String) -> Boolean): String? {

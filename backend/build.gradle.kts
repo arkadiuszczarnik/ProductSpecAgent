@@ -69,10 +69,10 @@ tasks.withType<Test> {
 }
 
 tasks.processResources {
-    from("../asset-bundles/living-sync-reporter-bundle") {
-        into("asset-bundles/living-sync-reporter-bundle")
+    from("../asset-bundles/living-sync-reporter-bundle.zip") {
+        into("asset-bundles")
     }
-    from("../asset-bundles/product-spec-sync-bundle") {
-        into("asset-bundles/product-spec-sync-bundle")
+    from("../asset-bundles/product-spec-sync-bundle.zip") {
+        into("asset-bundles")
     }
 }
