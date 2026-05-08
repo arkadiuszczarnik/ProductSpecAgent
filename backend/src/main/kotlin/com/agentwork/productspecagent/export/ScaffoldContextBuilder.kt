@@ -10,32 +10,14 @@ import org.springframework.stereotype.Component
 class ScaffoldContextBuilder(
     private val projectService: ProjectService,
     private val taskService: TaskService,
-    private val decisionService: DecisionService,
     private val wizardService: WizardService? = null,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    private fun readNonBlankSpec(projectId: String, fileName: String): String? {
-        val content = projectService.readSpecFile(projectId, fileName)?.trim()
-        return if (content.isNullOrBlank()) null else content
-    }
-
-    private fun readNonBlankStep(projectId: String, wizardData: WizardData, step: FlowStepType): String? {
-        val wizardContent = wizardData.steps[step.name]
-            ?.fields
-            ?.let { WizardMarkdown.renderStep(step.name, it) }
-            ?.trim()
-        if (!wizardContent.isNullOrBlank()) return wizardContent
-
-        return readNonBlankSpec(projectId, "${step.name.lowercase()}.md")
-    }
-
     fun build(projectId: String): ScaffoldContext {
         val projectResp = projectService.getProject(projectId)
         val project = projectResp.project
-        val wizardData = wizardService?.getWizardData(projectId) ?: WizardData(projectId)
         val tasks = taskService.listTasks(projectId)
-        val decisions = decisionService.listDecisions(projectId)
 
         val epics = tasks.filter { it.type == TaskType.EPIC }.sortedBy { it.priority }
 
@@ -88,35 +70,10 @@ class ScaffoldContextBuilder(
             )
         }
 
-        val resolvedDecisions = decisions
-            .filter { it.status == DecisionStatus.RESOLVED }
-            .map { d ->
-                val chosen = d.options.find { it.id == d.chosenOptionId }
-                DecisionContext(
-                    title = d.title,
-                    chosen = chosen?.label ?: "N/A",
-                    rationale = d.rationale ?: ""
-                )
-            }
-
-        val mvpContent = readNonBlankStep(projectId, wizardData, FlowStepType.MVP)
-        val problemContent = readNonBlankStep(projectId, wizardData, FlowStepType.PROBLEM)
-        val targetAudienceContent = readNonBlankSpec(projectId, "target_audience.md")
-        val architectureContent = readNonBlankStep(projectId, wizardData, FlowStepType.ARCHITECTURE)
-        val backendContent = readNonBlankStep(projectId, wizardData, FlowStepType.BACKEND)
-        val frontendContent = readNonBlankStep(projectId, wizardData, FlowStepType.FRONTEND)
-
         return ScaffoldContext(
             projectName = project.name,
             features = features,
-            decisions = resolvedDecisions,
-            mvpContent = mvpContent,
             techStack = "See SPEC.md for full tech stack details.",
-            problemContent = problemContent,
-            targetAudienceContent = targetAudienceContent,
-            architectureContent = architectureContent,
-            backendContent = backendContent,
-            frontendContent = frontendContent
         )
     }
 

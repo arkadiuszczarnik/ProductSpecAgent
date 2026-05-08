@@ -79,8 +79,8 @@ data class LivingSyncTokenUsageRequest(
 @Serializable
 data class LivingSyncCodeChangesRequest(
     val summary: String,
-    val files: List<String> = emptyList(),
-    val commits: List<String> = emptyList(),
+    val files: List<String>? = null,
+    val commits: List<String>? = null,
     val featureId: String? = null,
     val taskId: String? = null,
     val agentName: String? = null,

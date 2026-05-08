@@ -51,7 +51,7 @@ class ScaffoldContextBuilderTest {
         taskService = TaskService(taskStorage, planAgent)
         decisionService = DecisionService(decisionStorage, decisionAgent)
 
-        builder = ScaffoldContextBuilder(projectService, taskService, decisionService)
+        builder = ScaffoldContextBuilder(projectService, taskService)
 
         val resp = projectService.createProject("Test Project")
         projectId = resp.project.id
@@ -79,13 +79,8 @@ class ScaffoldContextBuilderTest {
             override suspend fun runAgent(prompt: String): String =
                 error("should not be called in scaffold tests")
         }
-        val decisionAgent = object : DecisionAgent(specCtxBuilder, promptService) {
-            override suspend fun runAgent(prompt: String): String =
-                error("should not be called in scaffold tests")
-        }
         val ts = TaskService(taskStorage, planAgent)
-        val ds = DecisionService(DecisionStorage(InMemoryObjectStore()), decisionAgent)
-        builder = ScaffoldContextBuilder(projectService, ts, ds, wizardService)
+        builder = ScaffoldContextBuilder(projectService, ts, wizardService)
     }
 
     @Test

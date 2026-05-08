@@ -18,14 +18,7 @@ class DocsScaffoldGeneratorTest {
                 tasks = listOf(TaskContext("Login Page", "Build login form"), TaskContext("Form works", "Submits credentials"))
             )
         ),
-        decisions = listOf(DecisionContext("Use JWT", "JWT tokens", "Stateless auth")),
-        mvpContent = "Login + Register.",
         techStack = "Kotlin + Spring Boot",
-        problemContent = null,
-        targetAudienceContent = null,
-        architectureContent = null,
-        backendContent = null,
-        frontendContent = null
     )
 
     @Test
@@ -48,65 +41,17 @@ class DocsScaffoldGeneratorTest {
     }
 
     @Test
-    fun `generates architecture overview with decisions`() {
+    fun `does not generate deprecated architecture backend or frontend docs`() {
         val result = generator.generate(sampleContext())
-        val arch = result["docs/architecture/overview.md"]
-        assertNotNull(arch)
-        assertContains(arch, "Use JWT")
-    }
-
-    @Test
-    fun `generates backend api doc`() {
-        val result = generator.generate(sampleContext())
-        assertNotNull(result["docs/backend/api.md"])
-    }
-
-    @Test
-    fun `generates frontend design doc`() {
-        val result = generator.generate(sampleContext())
-        assertNotNull(result["docs/frontend/design.md"])
+        assertFalse("docs/architecture/overview.md" in result)
+        assertFalse("docs/backend/api.md" in result)
+        assertFalse("docs/frontend/design.md" in result)
     }
 
     @Test
     fun `generates correct number of files`() {
         val result = generator.generate(sampleContext())
-        // overview + 1 feature + architecture + backend + frontend = 5
-        assertEquals(5, result.size)
-    }
-
-    private fun fullSpecContext() = ScaffoldContext(
-        projectName = "Test App",
-        features = emptyList(),
-        decisions = emptyList(),
-        mvpContent = "Login + Register.",
-        techStack = "Kotlin + Spring Boot",
-        problemContent = "Users cannot manage credentials securely.",
-        targetAudienceContent = "Enterprise developers needing SSO.",
-        architectureContent = "Microservice architecture with API gateway.",
-        backendContent = "REST API with Spring Boot, JWT auth.",
-        frontendContent = "React SPA with shadcn/ui components."
-    )
-
-    @Test
-    fun `architecture overview includes problem and target audience`() {
-        val result = generator.generate(fullSpecContext())
-        val arch = result["docs/architecture/overview.md"]!!
-        assertContains(arch, "Users cannot manage credentials securely.")
-        assertContains(arch, "Enterprise developers needing SSO.")
-        assertContains(arch, "Microservice architecture with API gateway.")
-    }
-
-    @Test
-    fun `backend api doc includes backend spec content`() {
-        val result = generator.generate(fullSpecContext())
-        val api = result["docs/backend/api.md"]!!
-        assertContains(api, "REST API with Spring Boot, JWT auth.")
-    }
-
-    @Test
-    fun `frontend design doc includes frontend spec content`() {
-        val result = generator.generate(fullSpecContext())
-        val design = result["docs/frontend/design.md"]!!
-        assertContains(design, "React SPA with shadcn/ui components.")
+        // overview + 1 feature
+        assertEquals(2, result.size)
     }
 }

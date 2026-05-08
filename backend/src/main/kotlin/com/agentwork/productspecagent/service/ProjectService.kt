@@ -6,8 +6,6 @@ import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.export.DocsScaffoldGenerator
 import com.agentwork.productspecagent.export.ScaffoldContext
 import com.agentwork.productspecagent.export.ScaffoldContextBuilder
-import com.agentwork.productspecagent.export.FeatureContext
-import com.agentwork.productspecagent.export.DecisionContext
 import com.agentwork.productspecagent.infrastructure.graphmesh.GraphMeshConfig
 import com.agentwork.productspecagent.storage.ProjectStorage
 import kotlinx.serialization.json.JsonPrimitive
@@ -18,6 +16,12 @@ import java.util.UUID
 
 class ProjectNotFoundException(id: String) : RuntimeException("Project not found: $id")
 class GraphMeshDisabledException : RuntimeException("GraphMesh is disabled in backend config")
+
+private val deprecatedScaffoldDocs = setOf(
+    "docs/architecture/overview.md",
+    "docs/backend/api.md",
+    "docs/frontend/design.md",
+)
 
 @Service
 class ProjectService(
@@ -72,14 +76,7 @@ class ProjectService(
             ScaffoldContext(
                 projectName = projectName,
                 features = emptyList(),
-                decisions = emptyList(),
-                mvpContent = null,
                 techStack = "See SPEC.md for tech stack details.",
-                problemContent = null,
-                targetAudienceContent = null,
-                architectureContent = null,
-                backendContent = null,
-                frontendContent = null
             )
         }
         val entries = generator.generate(context)
@@ -92,6 +89,10 @@ class ProjectService(
         val managedDirs = desired.map { it.substringBeforeLast('/') + "/" }.toSet()
         val onDisk = storage.listDocsFiles(projectId).map { it.first }
         for (path in onDisk) {
+            if (path in deprecatedScaffoldDocs) {
+                storage.deleteDocsFile(projectId, path)
+                continue
+            }
             if (path in desired) continue
             if (managedDirs.any { path.startsWith(it) }) {
                 storage.deleteDocsFile(projectId, path)

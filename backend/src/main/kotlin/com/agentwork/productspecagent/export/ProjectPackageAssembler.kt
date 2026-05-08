@@ -19,6 +19,12 @@ import com.github.mustachejava.MustacheFactory
 import org.springframework.stereotype.Service
 import java.io.StringWriter
 
+private val deprecatedScaffoldDocs = setOf(
+    "docs/architecture/overview.md",
+    "docs/backend/api.md",
+    "docs/frontend/design.md",
+)
+
 @Service
 class ProjectPackageAssembler(
     private val projectService: ProjectService,
@@ -60,7 +66,9 @@ class ProjectPackageAssembler(
 
         writer.addText(".gitignore", ".DS_Store\nnode_modules/\n.env\n")
 
-        for ((relativePath, content) in projectService.listDocsFiles(projectId)) {
+        val docsFiles = projectService.listDocsFiles(projectId)
+            .filterNot { it.first in deprecatedScaffoldDocs }
+        for ((relativePath, content) in docsFiles) {
             writer.addBytes(relativePath, content)
         }
 

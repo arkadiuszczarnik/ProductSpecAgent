@@ -8,14 +8,7 @@ import java.io.StringWriter
 data class ScaffoldContext(
     val projectName: String,
     val features: List<FeatureContext>,
-    val decisions: List<DecisionContext>,
-    val mvpContent: String?,
     val techStack: String,
-    val problemContent: String?,
-    val targetAudienceContent: String?,
-    val architectureContent: String?,
-    val backendContent: String?,
-    val frontendContent: String?
 )
 
 data class FeatureContext(
@@ -35,7 +28,6 @@ data class FeatureContext(
 
 data class StoryContext(val index: Int, val title: String, val description: String)
 data class TaskContext(val title: String, val description: String)
-data class DecisionContext(val title: String, val chosen: String, val rationale: String)
 
 @Service
 class DocsScaffoldGenerator {
@@ -56,21 +48,6 @@ class DocsScaffoldGenerator {
                 "docs/features/feature.md.mustache", feature
             )
         }
-
-        // Architecture overview
-        result["docs/architecture/overview.md"] = render(
-            "docs/architecture/overview.md.mustache", context
-        )
-
-        // Backend API
-        result["docs/backend/api.md"] = render(
-            "docs/backend/api.md.mustache", context
-        )
-
-        // Frontend design
-        result["docs/frontend/design.md"] = render(
-            "docs/frontend/design.md.mustache", context
-        )
 
         return result
     }

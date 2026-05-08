@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import java.io.ByteArrayInputStream
 import java.util.zip.ZipInputStream
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
@@ -25,6 +26,7 @@ class ExportControllerTest {
     @Autowired lateinit var assetBundleStorage: com.agentwork.productspecagent.storage.AssetBundleStorage
     @Autowired lateinit var wizardService: com.agentwork.productspecagent.service.WizardService
     @Autowired lateinit var projectService: com.agentwork.productspecagent.service.ProjectService
+    @Autowired lateinit var projectStorage: com.agentwork.productspecagent.storage.ProjectStorage
 
     private val createdProjectIds = mutableListOf<String>()
 
@@ -142,8 +144,11 @@ class ExportControllerTest {
     }
 
     @Test
-    fun `POST export ZIP includes docs scaffold directory`() {
+    fun `POST export ZIP includes feature docs scaffold only`() {
         val pid = createProject()
+        projectStorage.saveDocsFile(pid, "docs/architecture/overview.md", "stale")
+        projectStorage.saveDocsFile(pid, "docs/backend/api.md", "stale")
+        projectStorage.saveDocsFile(pid, "docs/frontend/design.md", "stale")
 
         val result = mockMvc.perform(
             post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
@@ -161,22 +166,22 @@ class ExportControllerTest {
             }
         }
 
-        // Docs scaffold is always included, created on project creation
+        // Feature docs scaffold is always included, created on project creation.
         assertTrue(
             entries.any { it.endsWith("docs/features/00-feature-set-overview.md") },
             "ZIP should contain docs/features/00-feature-set-overview.md, got: $entries"
         )
-        assertTrue(
+        assertFalse(
             entries.any { it.endsWith("docs/architecture/overview.md") },
-            "ZIP should contain docs/architecture/overview.md, got: $entries"
+            "ZIP should not contain docs/architecture/overview.md, got: $entries"
         )
-        assertTrue(
+        assertFalse(
             entries.any { it.endsWith("docs/backend/api.md") },
-            "ZIP should contain docs/backend/api.md, got: $entries"
+            "ZIP should not contain docs/backend/api.md, got: $entries"
         )
-        assertTrue(
+        assertFalse(
             entries.any { it.endsWith("docs/frontend/design.md") },
-            "ZIP should contain docs/frontend/design.md, got: $entries"
+            "ZIP should not contain docs/frontend/design.md, got: $entries"
         )
     }
 

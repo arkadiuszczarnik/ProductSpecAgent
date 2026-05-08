@@ -89,8 +89,8 @@ class LivingSyncService(
                 taskId = request.taskId,
                 agentName = request.agentName,
                 summary = request.summary,
-                files = request.files,
-                commits = request.commits,
+                files = request.files.orEmpty(),
+                commits = request.commits.orEmpty(),
                 createdAt = now(),
             ),
         )

@@ -80,6 +80,12 @@ class LivingSyncControllerTest {
         ).andExpect(status().isOk())
 
         mockMvc.perform(
+            post("/api/v1/projects/$projectId/living-sync/mcp/report-code-changes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"summary":"changed without commits","files":["src/other.ts"],"commits":null}"""),
+        ).andExpect(status().isOk())
+
+        mockMvc.perform(
             post("/api/v1/projects/$projectId/living-sync/mcp/report-sync-note")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"severity":"WARNING","message":"Needs review","suggestedAction":"Check auth"}"""),

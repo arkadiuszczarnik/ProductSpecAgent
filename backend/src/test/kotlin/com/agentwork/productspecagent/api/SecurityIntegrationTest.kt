@@ -103,6 +103,29 @@ class SecurityIntegrationTest : S3TestSupport() {
     }
 
     @Test
+    fun `living sync code changes endpoint accepts reporter payload without auth`() {
+        val projectId = projectService.createProject("Living Sync Code Changes").project.id
+
+        mvc.perform(
+            post("/api/v1/projects/$projectId/living-sync/mcp/report-code-changes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "summary": "Implemented spec consolidation.",
+                      "files": ["backend/src/main/kotlin/App.kt"],
+                      "commits": ["abc123"],
+                      "agentName": "claude-code"
+                    }
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.type").value("CODE_CHANGES"))
+            .andExpect(jsonPath("$.summary").value("Implemented spec consolidation."))
+    }
+
+    @Test
     fun `projects endpoint with valid session cookie does not return 401`() {
         val res = mvc.perform(post("/api/v1/auth/register")
             .contentType(MediaType.APPLICATION_JSON)

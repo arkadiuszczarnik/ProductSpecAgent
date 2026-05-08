@@ -126,27 +126,30 @@ class ProjectServiceTest {
         val projectId = response.project.id
 
         // Simulate orphans from prior generations: a deleted feature, a renamed feature,
-        // and a stray file in another generated subfolder.
+        // non-target docs in legacy subfolders, and the deprecated scaffold outputs.
         storage.saveDocsFile(projectId, "docs/features/01-old-deleted-feature.md", "stale")
         storage.saveDocsFile(projectId, "docs/features/02-renamed-old-slug.md", "stale")
         storage.saveDocsFile(projectId, "docs/architecture/legacy-overview.md", "stale")
         storage.saveDocsFile(projectId, "docs/backend/legacy-api.md", "stale")
         storage.saveDocsFile(projectId, "docs/frontend/legacy-design.md", "stale")
+        storage.saveDocsFile(projectId, "docs/architecture/overview.md", "stale")
+        storage.saveDocsFile(projectId, "docs/backend/api.md", "stale")
+        storage.saveDocsFile(projectId, "docs/frontend/design.md", "stale")
 
         syncingService.regenerateDocsScaffold(projectId)
 
         val paths = listDocsRelativePaths(projectId)
         assertFalse("docs/features/01-old-deleted-feature.md" in paths)
         assertFalse("docs/features/02-renamed-old-slug.md" in paths)
-        assertFalse("docs/architecture/legacy-overview.md" in paths)
-        assertFalse("docs/backend/legacy-api.md" in paths)
-        assertFalse("docs/frontend/legacy-design.md" in paths)
+        assertFalse("docs/architecture/overview.md" in paths)
+        assertFalse("docs/backend/api.md" in paths)
+        assertFalse("docs/frontend/design.md" in paths)
+        assertTrue("docs/architecture/legacy-overview.md" in paths)
+        assertTrue("docs/backend/legacy-api.md" in paths)
+        assertTrue("docs/frontend/legacy-design.md" in paths)
 
         // Generator's canonical files must remain
         assertTrue("docs/features/00-feature-set-overview.md" in paths)
-        assertTrue("docs/architecture/overview.md" in paths)
-        assertTrue("docs/backend/api.md" in paths)
-        assertTrue("docs/frontend/design.md" in paths)
     }
 
     @Test

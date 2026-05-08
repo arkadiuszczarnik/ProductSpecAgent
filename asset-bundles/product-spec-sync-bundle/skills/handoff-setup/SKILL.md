@@ -107,7 +107,7 @@ After selection:
 ## Guardrails
 
 - Stay interactive. Do not implement before the user confirms the MVP scope.
-- Do not treat generated tasks as product truth when `SPEC.md` disagrees.
+- Do not treat generated tasks as product truth when `spec.md` disagrees.
 - Do not discard decisions or clarifications; they are constraints.
 - Keep setup output concise enough for the user to choose.
 - If requirements are ambiguous, ask one focused question at a time.
