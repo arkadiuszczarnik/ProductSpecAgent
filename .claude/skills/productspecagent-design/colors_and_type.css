@@ -1,0 +1,188 @@
+/* =========================================================================
+   Spec Agent — Design tokens + base element styles
+   Reverse-engineered from frontend/src/app/globals.css (oklch source of truth).
+   The product is dark-by-default; a light fallback exists but is unused.
+   ========================================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  /* ---- raw palette (cool neutrals) ---------------------------------- */
+  --c-bg:           oklch(0.13 0.005 250);
+  --c-sidebar:      oklch(0.15 0.005 250);
+  --c-card:         oklch(0.17 0.005 250);
+  --c-popover:      oklch(0.17 0.005 250);
+  --c-surface-2:    oklch(0.22 0.005 250);     /* secondary / muted / accent */
+  --c-border:       oklch(1 0 0 / 10%);
+  --c-input:        oklch(1 0 0 / 15%);
+
+  --c-fg:           oklch(0.98 0 0);
+  --c-fg-muted:     oklch(0.7 0.005 250);
+
+  /* ---- brand + status ----------------------------------------------- */
+  --c-primary:      oklch(0.62 0.19 260);       /* tech blue — single primary */
+  --c-primary-fg:   oklch(0.98 0 0);
+  --c-primary-10:   oklch(0.62 0.19 260 / 10%); /* soft container */
+  --c-primary-20:   oklch(0.62 0.19 260 / 20%);
+  --c-primary-30:   oklch(0.62 0.19 260 / 30%);
+
+  --c-success:      oklch(0.65 0.15 160);       /* mint green — completed/resolved */
+  --c-success-10:   oklch(0.65 0.15 160 / 10%);
+  --c-warning:      oklch(0.7 0.18 80);         /* amber — clarifications */
+  --c-warning-10:   oklch(0.7 0.18 80 / 10%);
+  --c-destructive:  oklch(0.65 0.2 25);         /* red — destructive only */
+  --c-purple:       oklch(0.7 0.18 290);        /* "AI Recommendation" tint */
+
+  --c-ring:         var(--c-primary);
+
+  /* ---- semantic aliases (mirror Tailwind/shadcn names) -------------- */
+  --background:     var(--c-bg);
+  --foreground:     var(--c-fg);
+  --card:           var(--c-card);
+  --card-foreground:var(--c-fg);
+  --popover:        var(--c-popover);
+  --popover-foreground: var(--c-fg);
+  --primary:        var(--c-primary);
+  --primary-foreground: var(--c-primary-fg);
+  --secondary:      var(--c-surface-2);
+  --secondary-foreground: var(--c-fg);
+  --muted:          var(--c-surface-2);
+  --muted-foreground: var(--c-fg-muted);
+  --accent:         var(--c-surface-2);
+  --accent-foreground: var(--c-fg);
+  --destructive:    var(--c-destructive);
+  --border:         var(--c-border);
+  --input:          var(--c-input);
+  --ring:           var(--c-ring);
+  --sidebar:        var(--c-sidebar);
+  --sidebar-foreground: var(--c-fg);
+
+  /* ---- type --------------------------------------------------------- */
+  --font-sans:  "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: var(--font-sans);
+
+  --fs-display:   28px;
+  --fs-h1:        24px;
+  --fs-h2:        20px;
+  --fs-h3:        16px;
+  --fs-body:      14px;
+  --fs-meta:      12px;
+  --fs-micro:     11px;
+  --fs-badge:     10px;
+
+  --lh-tight:    1.2;
+  --lh-snug:     1.35;
+  --lh-body:     1.55;
+
+  --tracking-tight: -0.01em;
+  --tracking-flat:  0;
+  --tracking-wide:  0.02em;
+
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold:600;
+  --fw-bold:    700;
+
+  /* ---- spacing / radii / motion ------------------------------------- */
+  --radius-sm:  6px;
+  --radius-md:  8px;
+  --radius-lg:  10px;       /* base — `0.625rem` in tailwind */
+  --radius-xl:  14px;
+  --radius-pill: 9999px;
+
+  --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 20%);
+  --shadow-md:  0 4px 12px -2px rgb(0 0 0 / 35%);
+  --shadow-pop: 0 16px 40px -12px rgb(0 0 0 / 55%);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --dur-fast:   150ms;
+  --dur-base:   200ms;
+  --dur-slow:   300ms;
+  --ease-out:   cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* =========================================================================
+   Base element styles — semantic CSS so unstyled markup looks right.
+   ========================================================================= */
+
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, .h1 {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+}
+h2, .h2 {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+}
+h3, .h3 {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+}
+h4, h5, h6 {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+}
+
+p { margin: 0 0 var(--space-3); color: var(--foreground); }
+small, .meta {
+  font-size: var(--fs-meta);
+  color: var(--muted-foreground);
+}
+.micro {
+  font-size: var(--fs-micro);
+  color: var(--muted-foreground);
+}
+
+code, kbd, pre, samp { font-family: var(--font-mono); font-size: 13px; }
+code { background: var(--c-surface-2); padding: 2px 5px; border-radius: var(--radius-sm); }
+pre {
+  background: var(--c-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  overflow: auto;
+}
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { opacity: 0.9; }
+
+hr { border: 0; border-top: 1px solid var(--border); margin: var(--space-4) 0; }
+
+::selection { background: var(--c-primary-30); }
+
+/* Focus rings — match shadcn `ring/50 ring-[3px]` */
+:where(button, a, input, textarea, select, [role="button"]):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px oklch(0.62 0.19 260 / 50%);
+  border-color: var(--ring);
+}
+
+/* Reduced-motion mirrors globals.css */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="de" class="dark">
+<head>
+<meta charset="utf-8"/>
+<title>Spec Agent — Start</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="colors_and_type.css"/>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    overflow: hidden;
+    /* very faint single-spotlight — not a gradient slop, just an ambient glow */
+    background-image: radial-gradient(
+      circle at 50% 38%,
+      oklch(0.62 0.19 260 / 12%) 0%,
+      oklch(0.62 0.19 260 / 4%) 28%,
+      transparent 60%
+    );
+  }
+
+  .stage {
+    position: fixed; inset: 0;
+    display: grid; place-items: center;
+  }
+
+  .stack {
+    display: flex; flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    text-align: center;
+    padding: 40px;
+  }
+
+  /* ---------------- logo ---------------- */
+  .logo-wrap {
+    position: relative;
+    width: 144px; height: 144px;
+    display: grid; place-items: center;
+    /* fade + scale + lift sequence */
+    animation: logo-in 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* soft pulsating halo behind the tile */
+  .logo-wrap::before {
+    content: "";
+    position: absolute; inset: -24px;
+    border-radius: 50%;
+    background: oklch(0.62 0.19 260 / 18%);
+    filter: blur(28px);
+    animation: halo 4s ease-in-out infinite;
+    z-index: 0;
+  }
+  /* thin orbiting ring */
+  .logo-wrap::after {
+    content: "";
+    position: absolute; inset: -10px;
+    border-radius: 22px;
+    border: 1px solid oklch(0.62 0.19 260 / 25%);
+    animation: ring-pulse 2.6s ease-out infinite;
+    z-index: 0;
+  }
+
+  .logo-tile {
+    position: relative;
+    width: 144px; height: 124px;
+    display: grid; place-items: center;
+    z-index: 1;
+  }
+  .logo-tile svg { width: 100%; height: 100%; overflow: visible; }
+
+  /* SVG piece animations */
+  .doc-path {
+    stroke-dasharray: 700; stroke-dashoffset: 700;
+    animation: doc-draw 1400ms 80ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .spec-line { opacity: 0; transform-origin: left center; }
+  .spec-line--1 { animation: line-in 500ms 900ms ease-out both; }
+  .spec-line--2 { animation: line-in 500ms 1050ms ease-out both; }
+  .spec-line--3 { animation: line-in 500ms 1200ms ease-out both; }
+  .big-spark {
+    transform-origin: 48px 94px; transform-box: view-box;
+    animation: spark-in 900ms 400ms cubic-bezier(0.16, 1, 0.3, 1) both,
+               spark-twinkle 3.4s 1300ms ease-in-out infinite;
+  }
+  .diamond { transform-origin: center; transform-box: fill-box; opacity: 0; }
+  .d1 { animation: diamond-pop 600ms 1100ms cubic-bezier(0.16, 1, 0.3, 1) both, diamond-twinkle 2.8s 1700ms ease-in-out infinite; }
+  .d2 { animation: diamond-pop 600ms 1240ms cubic-bezier(0.16, 1, 0.3, 1) both, diamond-twinkle 2.8s 1900ms ease-in-out infinite; }
+  .d3 { animation: diamond-pop 600ms 1380ms cubic-bezier(0.16, 1, 0.3, 1) both, diamond-twinkle 2.8s 2100ms ease-in-out infinite; }
+  .d4 { animation: diamond-pop 600ms 1520ms cubic-bezier(0.16, 1, 0.3, 1) both, diamond-twinkle 2.8s 2300ms ease-in-out infinite; }
+
+  /* ---------------- type ---------------- */
+  .wordmark {
+    margin: 0;
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1;
+    animation: rise 700ms 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .wordmark .accent { color: var(--primary); }
+
+  .tagline {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: 0;
+    max-width: 460px;
+    line-height: 1.55;
+    animation: rise 700ms 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* ---------------- CTA + meta ---------------- */
+  .actions {
+    display: flex; gap: 10px; align-items: center;
+    margin-top: 8px;
+    animation: rise 700ms 540ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0 18px;
+    border-radius: 10px;
+    font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1;
+    cursor: pointer; border: 1px solid transparent;
+    transition: opacity 150ms, background 150ms, transform 150ms;
+    white-space: nowrap;
+  }
+  .btn--primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn--primary:hover { opacity: 0.92; transform: translateY(-1px); }
+  .btn--ghost { background: transparent; color: var(--foreground); border-color: var(--border); }
+  .btn--ghost:hover { background: var(--c-surface-2); }
+  .btn svg { width: 16px; height: 16px; stroke-width: 1.5; }
+
+  /* tiny status row */
+  .status {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--muted-foreground);
+    font-size: 12px;
+    margin-top: 16px;
+    animation: rise 700ms 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .status .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--c-success);
+    box-shadow: 0 0 0 0 oklch(0.65 0.15 160 / 60%);
+    animation: heartbeat 1.8s ease-out infinite;
+  }
+
+  /* ---------------- ambient particles ---------------- */
+  .particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .particles span {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: oklch(1 0 0 / 30%);
+    border-radius: 50%;
+    animation: drift 16s linear infinite;
+  }
+  .particles span:nth-child(1) { left:  8%; top:  82%; animation-delay: 0s;   animation-duration: 18s; }
+  .particles span:nth-child(2) { left: 22%; top:  90%; animation-delay: -3s;  animation-duration: 20s; }
+  .particles span:nth-child(3) { left: 38%; top:  88%; animation-delay: -7s;  animation-duration: 22s; }
+  .particles span:nth-child(4) { left: 56%; top:  92%; animation-delay: -1s;  animation-duration: 17s; }
+  .particles span:nth-child(5) { left: 72%; top:  86%; animation-delay: -10s; animation-duration: 21s; }
+  .particles span:nth-child(6) { left: 88%; top:  84%; animation-delay: -14s; animation-duration: 19s; background: oklch(0.62 0.19 260 / 60%); }
+  .particles span:nth-child(7) { left: 14%; top:  84%; animation-delay: -5s;  animation-duration: 23s; background: oklch(0.62 0.19 260 / 40%); }
+
+  /* tiny version chip in the corner */
+  .meta {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    color: var(--muted-foreground); font-size: 11px; letter-spacing: 0.04em;
+    animation: rise 800ms 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* ---------------- keyframes ---------------- */
+  @keyframes logo-in {
+    0%   { opacity: 0; transform: scale(0.85) translateY(8px); }
+    60%  { opacity: 1; }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes halo {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50%      { opacity: 1;   transform: scale(1.08); }
+  }
+  @keyframes ring-pulse {
+    0%   { transform: scale(0.92); opacity: 0; }
+    50%  { opacity: 0.7; }
+    100% { transform: scale(1.18); opacity: 0; }
+  }
+  @keyframes doc-draw {
+    0%   { stroke-dashoffset: 700; opacity: 0.3; }
+    100% { stroke-dashoffset: 0;   opacity: 1; }
+  }
+  @keyframes line-in {
+    0%   { opacity: 0; transform: scaleX(0.4); }
+    100% { opacity: 1; transform: scaleX(1); }
+  }
+  @keyframes spark-in {
+    0%   { opacity: 0; transform: scale(0.4) rotate(-12deg); }
+    100% { opacity: 1; transform: scale(1)   rotate(0deg); }
+  }
+  @keyframes spark-twinkle {
+    0%, 100% { transform: scale(1)    rotate(0deg); filter: brightness(1); }
+    50%      { transform: scale(1.06) rotate(2deg); filter: brightness(1.15); }
+  }
+  @keyframes diamond-pop {
+    0%   { opacity: 0; transform: scale(0); }
+    60%  { opacity: 1; transform: scale(1.25); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes diamond-twinkle {
+    0%, 100% { opacity: 1;   transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(0.7); }
+  }
+  @keyframes twinkle {
+    0%, 100% { transform: scale(1);    opacity: 0.95; }
+    40%      { transform: scale(0.7);  opacity: 0.55; }
+    70%      { transform: scale(1.1);  opacity: 1; }
+  }
+  @keyframes heartbeat {
+    0%   { box-shadow: 0 0 0 0 oklch(0.65 0.15 160 / 60%); }
+    70%  { box-shadow: 0 0 0 8px oklch(0.65 0.15 160 / 0%); }
+    100% { box-shadow: 0 0 0 0 oklch(0.65 0.15 160 / 0%); }
+  }
+  @keyframes drift {
+    0%   { transform: translateY(0)    translateX(0);  opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { transform: translateY(-90vh) translateX(40px); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="particles" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+
+  <main class="stage">
+    <div class="stack">
+      <div class="logo-wrap">
+        <div class="logo-tile" aria-label="Spec Agent">
+          <svg viewBox="0 0 189 163" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Product Spec Agent">
+            <defs>
+              <linearGradient id="docStroke" x1="56" y1="3" x2="159" y2="145" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#6C7CFF"/>
+                <stop offset="0.42" stop-color="#5177FF"/>
+                <stop offset="0.74" stop-color="#128FE7"/>
+                <stop offset="1" stop-color="#10B9F0"/>
+              </linearGradient>
+              <linearGradient id="sparkFill" x1="25" y1="63" x2="89" y2="132" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#8B6DFF"/>
+                <stop offset="0.5" stop-color="#7A62F2"/>
+                <stop offset="1" stop-color="#5E74FF"/>
+              </linearGradient>
+              <linearGradient id="lineStroke" x1="105" y1="72" x2="162" y2="72" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#8A67FF"/>
+                <stop offset="1" stop-color="#4777FF"/>
+              </linearGradient>
+              <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+                <feDropShadow dx="0" dy="0" stdDeviation="2.2" flood-color="#3B7BFF" flood-opacity="0.55"/>
+                <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#02A6FF" flood-opacity="0.22"/>
+              </filter>
+              <filter id="sparkGlow" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+                <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#8667FF" flood-opacity="0.7"/>
+                <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#5C6EFF" flood-opacity="0.25"/>
+              </filter>
+            </defs>
+            <g filter="url(#softGlow)">
+              <path class="doc-path" d="M65 57V11C65 6.58 68.58 3 73 3H129L176 50V140C176 144.42 172.42 148 168 148H76C71.58 148 68 144.42 68 140V134" stroke="url(#docStroke)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="doc-path" d="M130 4V42C130 46.42 133.58 50 138 50H176" stroke="url(#docStroke)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+            <g filter="url(#softGlow)" stroke="url(#lineStroke)" stroke-width="7" stroke-linecap="round">
+              <path class="spec-line spec-line--1" d="M108 75H156"/>
+              <path class="spec-line spec-line--2" d="M108 99H156"/>
+              <path class="spec-line spec-line--3" d="M108 124H156"/>
+            </g>
+            <g class="big-spark" filter="url(#sparkGlow)">
+              <path d="M48.5 54.5C55.1 76.9 66.6 88.2 88.5 94.5C66.6 100.8 55.1 112.1 48.5 134.5C41.9 112.1 30.4 100.8 8.5 94.5C30.4 88.2 41.9 76.9 48.5 54.5Z" fill="url(#sparkFill)"/>
+              <path d="M48.5 54.5C55.1 76.9 66.6 88.2 88.5 94.5C66.6 100.8 55.1 112.1 48.5 134.5C41.9 112.1 30.4 100.8 8.5 94.5C30.4 88.2 41.9 76.9 48.5 54.5Z" stroke="#9B87FF" stroke-width="1.2" stroke-linejoin="round"/>
+            </g>
+            <g fill="#8268F7" filter="url(#sparkGlow)">
+              <path class="diamond d1" d="M4.75 79L9.5 83.75L4.75 88.5L0 83.75L4.75 79Z"/>
+              <path class="diamond d2" d="M30.4 58L35.2 62.8L30.4 67.6L25.6 62.8L30.4 58Z"/>
+              <path class="diamond d3" d="M4.75 111L9.5 115.75L4.75 120.5L0 115.75L4.75 111Z"/>
+              <path class="diamond d4" d="M27.4 126L31.8 130.4L27.4 134.8L23 130.4L27.4 126Z"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <h1 class="wordmark">Product <span class="accent">Spec Agent</span></h1>
+
+      <p class="tagline">Von der Idee zur umsetzbaren Produktspezifikation — in acht geführten Schritten, mit deinem Spec Agent als Co-Pilot.</p>
+
+      <div class="actions">
+        <button class="btn btn--primary" id="cta-new">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          Neues Projekt
+        </button>
+        <button class="btn btn--ghost" id="cta-open">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+          Bestehendes Projekt öffnen
+        </button>
+      </div>
+
+      <div class="status">
+        <span class="dot" aria-hidden="true"></span>
+        <span>Spec Agent ist bereit</span>
+        <span style="opacity: 0.5;">·</span>
+        <span>v1.0</span>
+      </div>
+    </div>
+  </main>
+
+  <div class="meta">© 2026 Spec Agent · Press <kbd style="background:var(--c-surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:var(--font-mono);font-size:11px">↵</kbd> to start</div>
+
+  <script>
+    // Press Enter to "start" — wire to nav
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('cta-new').click();
+    });
+    document.getElementById('cta-new').addEventListener('click', () => {
+      window.location.href = 'ui_kits/spec-agent/index.html';
+    });
+    document.getElementById('cta-open').addEventListener('click', () => {
+      window.location.href = 'ui_kits/spec-agent/index.html';
+    });
+  </script>
+</body>
+</html>

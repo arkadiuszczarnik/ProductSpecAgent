@@ -1,0 +1,20 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  .grid { display:flex; align-items:flex-end; gap: 8px; }
+  .bar { background: var(--c-primary-20); border:1px solid var(--c-primary-30); border-radius:4px; }
+  .lbl { display:flex; flex-direction:column; gap:2px; align-items:center; }
+  .lbl small { color:var(--muted-foreground); }
+</style></head>
+<body class="card">
+  <div class="grid">
+    <div class="lbl"><div class="bar" style="width:32px;height:4px"></div><small>1 · 4</small></div>
+    <div class="lbl"><div class="bar" style="width:32px;height:8px"></div><small>2 · 8</small></div>
+    <div class="lbl"><div class="bar" style="width:32px;height:12px"></div><small>3 · 12</small></div>
+    <div class="lbl"><div class="bar" style="width:32px;height:16px"></div><small>4 · 16</small></div>
+    <div class="lbl"><div class="bar" style="width:32px;height:20px"></div><small>5 · 20</small></div>
+    <div class="lbl"><div class="bar" style="width:32px;height:24px"></div><small>6 · 24</small></div>
+    <div class="lbl"><div class="bar" style="width:32px;height:32px"></div><small>8 · 32</small></div>
+  </div>
+  <small style="margin-top:14px;display:block">4-step grid · gaps 8–16 · card padding 16 · page padding 24/32</small>
+</body></html>
