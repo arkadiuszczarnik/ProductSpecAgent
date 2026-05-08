@@ -121,21 +121,27 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowExplorer(!showExplorer)}
-            className="gap-1.5"
-            title={showExplorer ? "Explorer ausblenden" : "Explorer einblenden"}
-          >
-            <FolderTree size={14} />
-          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowHandoff(true)} className="gap-1.5">
             <Save size={14} /> Handoff
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowExport(true)} className="gap-1.5">
             <Download size={14} /> Exportieren
           </Button>
+          <button
+            type="button"
+            onClick={() => setShowExplorer(!showExplorer)}
+            title={showExplorer ? "Explorer ausblenden" : "Explorer einblenden"}
+            aria-label={showExplorer ? "Explorer ausblenden" : "Explorer einblenden"}
+            className={cn(
+              "inline-flex h-[30px] items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+              showExplorer
+                ? "border-primary/20 bg-primary/10 text-primary hover:bg-secondary"
+                : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+            )}
+          >
+            <FolderTree size={14} />
+            {showExplorer ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
+          </button>
           <button
             type="button"
             onClick={() => setPanelCollapsed((value) => !value)}
