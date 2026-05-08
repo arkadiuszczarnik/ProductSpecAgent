@@ -63,7 +63,7 @@ class ExportControllerTest {
     }
 
     @Test
-    fun `POST export returns ZIP with README at root and SPEC under docs`() {
+    fun `POST export returns ZIP with README at root and lowercase spec under docs`() {
         val pid = createProject()
 
         val result = mockMvc.perform(
@@ -89,8 +89,10 @@ class ExportControllerTest {
 
         assertTrue(entries.any { it.endsWith("/README.md") && !it.contains("/docs/") },
             "ZIP should contain README.md at root, got: $entries")
-        assertTrue(entries.any { it.endsWith("/docs/SPEC.md") },
-            "ZIP should contain docs/SPEC.md, got: $entries")
+        assertTrue(entries.any { it.endsWith("/docs/spec.md") },
+            "ZIP should contain docs/spec.md, got: $entries")
+        assertFalse(entries.any { it.endsWith("/docs/SPEC.md") },
+            "ZIP should not contain docs/SPEC.md, got: $entries")
         assertTrue(entries.any { it.endsWith(".gitignore") },
             "ZIP should contain .gitignore, got: $entries")
         assertTrue(entries.none { it.matches(Regex(".*/[^/]+/SPEC\\.md$")) && !it.contains("/docs/") },
@@ -186,7 +188,39 @@ class ExportControllerTest {
     }
 
     @Test
-    fun `POST export ZIP includes only spec md from spec directory`() {
+    fun `POST export excludes option controlled docs when flags are false`() {
+        val pid = createProject()
+        projectStorage.saveDocsFile(pid, "docs/decisions/decision-1.json", """{"id":"d1"}""")
+        projectStorage.saveDocsFile(pid, "docs/clarifications/clarification-1.json", """{"id":"c1"}""")
+        projectStorage.saveDocsFile(pid, "docs/tasks/task-1.json", """{"id":"t1"}""")
+        projectStorage.saveDocsFile(pid, "docs/PLAN.md", "# Plan")
+        projectStorage.saveDocsFile(pid, "docs/plan.md", "# Plan")
+
+        val result = mockMvc.perform(
+            post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
+                .content("""{"includeDecisions":false,"includeClarifications":false,"includeTasks":false}""")
+        )
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val entries = mutableListOf<String>()
+        ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                entries.add(entry.name)
+                entry = zis.nextEntry
+            }
+        }
+
+        assertFalse(entries.any { it.contains("/docs/decisions/") }, "ZIP should not contain decisions, got: $entries")
+        assertFalse(entries.any { it.contains("/docs/clarifications/") }, "ZIP should not contain clarifications, got: $entries")
+        assertFalse(entries.any { it.contains("/docs/tasks/") }, "ZIP should not contain tasks, got: $entries")
+        assertFalse(entries.any { it.endsWith("/docs/PLAN.md") }, "ZIP should not contain PLAN.md, got: $entries")
+        assertFalse(entries.any { it.endsWith("/docs/plan.md") }, "ZIP should not contain plan.md, got: $entries")
+    }
+
+    @Test
+    fun `POST export ZIP includes generated docs SPEC only`() {
         val pid = createProject()
         projectService.saveSpecFile(pid, "problem.md", "# Problem\n\nRaw problem spec.")
         projectService.saveSpecFile(pid, "spec.md", "# Product Spec\n\nClean summary.")
@@ -207,9 +241,16 @@ class ExportControllerTest {
         val rawStepEntry = entries.entries.firstOrNull { it.key.endsWith("/spec/problem.md") }
         kotlin.test.assertNull(rawStepEntry, "ZIP should not contain raw step specs, got: ${entries.keys}")
 
-        val specEntry = entries.entries.firstOrNull { it.key.endsWith("/spec/spec.md") }
-        assertNotNull(specEntry, "ZIP should contain spec/spec.md, got: ${entries.keys}")
-        assertEquals("# Product Spec\n\nClean summary.", specEntry.value)
+        val storageSpecEntry = entries.entries.firstOrNull { it.key.endsWith("/spec/spec.md") }
+        kotlin.test.assertNull(storageSpecEntry, "ZIP should not contain spec/spec.md, got: ${entries.keys}")
+
+        val docsSpecEntry = entries.entries.firstOrNull { it.key.endsWith("/docs/spec.md") }
+        assertNotNull(docsSpecEntry, "ZIP should contain docs/spec.md, got: ${entries.keys}")
+        kotlin.test.assertNull(
+            entries.entries.firstOrNull { it.key.endsWith("/docs/SPEC.md") },
+            "ZIP should not contain docs/SPEC.md, got: ${entries.keys}"
+        )
+        assertTrue(docsSpecEntry.value.contains("# Product Spec\n\nClean summary."))
     }
 
     @Test
@@ -254,9 +295,11 @@ class ExportControllerTest {
         }
 
         assertNotNull(readme, "README.md should exist in ZIP")
-        assertTrue(readme!!.contains("`docs/SPEC.md`"), "README should reference docs/SPEC.md, got: $readme")
-        assertTrue(readme.contains("`spec/spec.md`"), "README should reference final spec.md")
-        assertTrue(readme.contains("`docs/PLAN.md`"), "README should reference docs/PLAN.md")
+        assertTrue(readme.contains("`docs/spec.md`"), "README should reference docs/spec.md, got: $readme")
+        assertFalse(readme.contains("`docs/SPEC.md`"), "README should not reference docs/SPEC.md")
+        assertFalse(readme.contains("`spec/spec.md`"), "README should not reference spec/spec.md")
+        assertTrue(readme.contains("`docs/plan.md`"), "README should reference docs/plan.md")
+        assertFalse(readme.contains("`docs/PLAN.md`"), "README should not reference docs/PLAN.md")
         assertTrue(readme.contains("`docs/decisions/`"), "README should reference docs/decisions/")
         assertTrue(readme.contains("`docs/clarifications/`"), "README should reference docs/clarifications/")
         assertTrue(readme.contains("`docs/tasks/`"), "README should reference docs/tasks/")

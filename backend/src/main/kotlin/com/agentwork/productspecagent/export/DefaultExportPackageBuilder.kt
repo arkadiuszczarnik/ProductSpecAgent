@@ -35,7 +35,10 @@ class DefaultExportPackageBuilder(
         val writer = ZipArchiveWriter()
         projectPackageAssembler.writeProjectPackage(
             projectId = projectId,
-            options = ProjectExportOptions(),
+            options = ProjectExportOptions(
+                includeDecisions = false,
+                includeClarifications = false,
+            ),
             writer = writer,
             includeAgentTemplateFiles = false,
             includeToolLinks = false,

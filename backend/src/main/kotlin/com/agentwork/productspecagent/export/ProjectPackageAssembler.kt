@@ -25,6 +25,15 @@ private val deprecatedScaffoldDocs = setOf(
     "docs/frontend/design.md",
 )
 
+private fun isGeneratedExportDoc(relativePath: String): Boolean =
+    relativePath == "docs/SPEC.md" ||
+        relativePath == "docs/spec.md" ||
+        relativePath == "docs/PLAN.md" ||
+        relativePath == "docs/plan.md" ||
+        relativePath.startsWith("docs/decisions/") ||
+        relativePath.startsWith("docs/clarifications/") ||
+        relativePath.startsWith("docs/tasks/")
+
 @Service
 class ProjectPackageAssembler(
     private val projectService: ProjectService,
@@ -58,16 +67,13 @@ class ProjectPackageAssembler(
             writer.addText("AGENTS.md", agentTemplateMarkdown)
         }
 
-        writer.addText("docs/SPEC.md", generateSpec(projectId, flowState))
-
-        for ((relativePath, content) in projectService.listSpecFiles(projectId).filter { it.first == "spec/spec.md" }) {
-            writer.addBytes(relativePath, content)
-        }
+        writer.addText("docs/spec.md", generateSpec(projectId, flowState))
 
         writer.addText(".gitignore", ".DS_Store\nnode_modules/\n.env\n")
 
         val docsFiles = projectService.listDocsFiles(projectId)
             .filterNot { it.first in deprecatedScaffoldDocs }
+            .filterNot { isGeneratedExportDoc(it.first) }
         for ((relativePath, content) in docsFiles) {
             writer.addBytes(relativePath, content)
         }
@@ -91,7 +97,7 @@ class ProjectPackageAssembler(
         if (options.includeTasks) {
             val tasks = taskService.listTasks(projectId)
             if (tasks.isNotEmpty()) {
-                writer.addText("docs/PLAN.md", generatePlanMd(tasks))
+                writer.addText("docs/plan.md", generatePlanMd(tasks))
                 tasks.forEachIndexed { i, task ->
                     val slug = task.title.slug().take(50)
                     val typePrefix = task.type.name.lowercase()

@@ -22,6 +22,8 @@ class HandoffControllerTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var projectService: com.agentwork.productspecagent.service.ProjectService
+    @Autowired lateinit var decisionStorage: com.agentwork.productspecagent.storage.DecisionStorage
+    @Autowired lateinit var clarificationStorage: com.agentwork.productspecagent.storage.ClarificationStorage
 
     private fun createProject(): String {
         val result = mockMvc.perform(
@@ -226,12 +228,64 @@ class HandoffControllerTest {
         assertTrue(entries.contains("CLAUDE.md"), "CLAUDE.md should be at root, got: $entries")
         assertTrue(entries.contains("AGENTS.md"), "AGENTS.md should be at root, got: $entries")
         assertTrue(entries.contains("implementation-order.md"), "implementation-order.md should be at root, got: $entries")
-        assertTrue(entries.contains("spec/spec.md"), "Final spec should be under spec/, got: $entries")
+        assertTrue(entries.contains("docs/spec.md"), "Final spec should be under docs/spec.md, got: $entries")
+        assertFalse(entries.contains("docs/SPEC.md"), "Uppercase docs/SPEC.md should not be exported, got: $entries")
+        assertFalse(entries.contains("spec/spec.md"), "Duplicate spec/spec.md should not be exported, got: $entries")
         assertFalse(entries.contains("spec/problem.md"), "Raw step spec should not be exported, got: $entries")
         assertTrue(
             entries.none { it.startsWith("handoff-test/") },
             "No entry should be under the slug folder, got: $entries"
         )
+    }
+
+    @Test
+    fun `GET handoff zip excludes decisions and clarifications`() {
+        val pid = createProject()
+        decisionStorage.saveDecision(
+            com.agentwork.productspecagent.domain.Decision(
+                id = "decision-1",
+                projectId = pid,
+                stepType = com.agentwork.productspecagent.domain.FlowStepType.FEATURES,
+                title = "Use OAuth",
+                options = listOf(
+                    com.agentwork.productspecagent.domain.DecisionOption(
+                        id = "oauth",
+                        label = "OAuth",
+                        pros = listOf("standard"),
+                        cons = emptyList(),
+                        recommended = true,
+                    )
+                ),
+                recommendation = "Use OAuth",
+                createdAt = "2026-05-08T10:00:00Z",
+            )
+        )
+        clarificationStorage.saveClarification(
+            com.agentwork.productspecagent.domain.Clarification(
+                id = "clarification-1",
+                projectId = pid,
+                stepType = com.agentwork.productspecagent.domain.FlowStepType.FEATURES,
+                question = "Which provider?",
+                reason = "Provider affects integration",
+                createdAt = "2026-05-08T10:00:00Z",
+            )
+        )
+
+        val result = mockMvc.perform(get("/api/v1/projects/$pid/handoff/handoff.zip"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val entries = mutableListOf<String>()
+        ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                entries.add(entry.name)
+                entry = zis.nextEntry
+            }
+        }
+
+        assertFalse(entries.any { it.startsWith("docs/decisions/") }, "Handoff ZIP should not contain decisions, got: $entries")
+        assertFalse(entries.any { it.startsWith("docs/clarifications/") }, "Handoff ZIP should not contain clarifications, got: $entries")
     }
 
     @Test
