@@ -1,14 +1,17 @@
 # {{{projectName}}}
 
-> **AI Agent — read this entire file before doing anything else**
+> IMPORTANT: **AI Agent — read this entire file before doing anything else**
 
 ---
 
 ## How to Sync This Project
 
-Dieses Projekt wird vom Product-Spec-Agent verwaltet. Die hier vorliegende Spec
-ist eine **Momentaufnahme**. Wenn du Updates brauchst, hol dir die aktuelle
-Version vom Service:
+This project is managed by Product-Spec-Agent. The files in this handoff are a
+snapshot of the current product context, implementation guidance, decisions,
+clarifications, tasks, and supporting documents at export time.
+
+When you need the latest project state, refresh the handoff package from the
+service:
 
 ```bash
 curl -L -o handoff.zip "{{{syncUrl}}}"
@@ -17,11 +20,15 @@ rm handoff.zip
 ```
 
 - **Sync-URL:** `{{{syncUrl}}}`
-- **Method:** `GET` (kein Auth, kein Body)
-- **Response:** ZIP mit `CLAUDE.md`, `AGENTS.md`, `implementation-order.md`, `SPEC.md`, `decisions/`, `clarifications/`, `tasks/`, `documents/`.
+- **Method:** `GET` (no auth, no request body)
+- **Response:** ZIP archive with the current handoff files.
 
-**Empfohlenes Vorgehen vor jeder größeren Änderung:**
+## IMPORTANT: Start With `handoff-setup` skill
 
-1. Sync ziehen (`curl ...` wie oben).
-2. `git diff` auf den entpackten Files prüfen — gibt es Änderungen am Spec?
-3. Falls ja: Plan anpassen, mit dem User abstimmen, dann erst implementieren.
+After syncing, use the bundled `handoff-setup` skill before planning or coding.
+It turns `SPEC.md`, `implementation-order.md`, feature docs, tasks, decisions,
+and clarifications into an interactive MVP selection with the user.
+
+- **Skill:** `handoff-setup`
+- **Path:** `.claude/skills/global.product-spec-sync/handoff-setup/SKILL.md`
+- **Fallback:** If your agent cannot load skills, follow the workflow in that file manually with `spec/spec.md`.

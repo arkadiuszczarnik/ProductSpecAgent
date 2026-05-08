@@ -68,11 +68,4 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-tasks.processResources {
-    from("../asset-bundles/living-sync-reporter-bundle.zip") {
-        into("asset-bundles")
-    }
-    from("../asset-bundles/product-spec-sync-bundle.zip") {
-        into("asset-bundles")
-    }
-}
+

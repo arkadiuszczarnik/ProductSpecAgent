@@ -1,9 +1,9 @@
 {
   "id": "global.product-spec-sync",
   "scope": "GLOBAL",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "Product Spec Sync",
-  "description": "Skill fuer das Synchronisieren eines Handoff-Projekts mit dem Product-Spec-Agent.",
+  "description": "Skills for syncing a Product-Spec-Agent handoff and interactively selecting MVP scope before implementation.",
   "createdAt": "2026-05-07T00:00:00Z",
-  "updatedAt": "2026-05-07T00:00:00Z"
+  "updatedAt": "2026-05-08T00:00:00Z"
 }

@@ -65,8 +65,12 @@ export const useTaskStore = create<TaskState>((set) => ({
   },
 
   loadCoverage: async (projectId) => {
-    const coverage = await apiCoverage(projectId);
-    set({ coverage });
+    try {
+      const coverage = await apiCoverage(projectId);
+      set({ coverage });
+    } catch {
+      set({ coverage: {} });
+    }
   },
 
   selectTask: (id) => set({ selectedTaskId: id }),

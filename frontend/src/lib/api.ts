@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://productspecagent-backend.hackathon.netrtl.com";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 let onUnauthorized: (() => void) | null = null;
 

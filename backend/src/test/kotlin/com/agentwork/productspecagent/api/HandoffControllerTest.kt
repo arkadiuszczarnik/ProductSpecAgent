@@ -156,6 +156,28 @@ class HandoffControllerTest {
             claudeContent.contains("/handoff/handoff.zip"),
             "CLAUDE.md should embed sync URL pointing at the GET endpoint"
         )
+        assertTrue(
+            claudeContent.contains("This project is managed by Product-Spec-Agent"),
+            "CLAUDE.md should explain the handoff source in English"
+        )
+        assertTrue(
+            claudeContent.contains("Before any substantial change"),
+            "CLAUDE.md should give agents a clear pre-change workflow"
+        )
+        assertTrue(
+            claudeContent.contains("Compare the refreshed files with your local work"),
+            "CLAUDE.md should tell agents how to handle refreshed content"
+        )
+        assertTrue(
+            claudeContent.contains("handoff-setup"),
+            "CLAUDE.md should instruct agents to use the bundled handoff-setup skill"
+        )
+        assertTrue(
+            claudeContent.contains(".claude/skills/global.product-spec-sync/handoff-setup/SKILL.md"),
+            "CLAUDE.md should include the handoff-setup skill path"
+        )
+        assertFalse(claudeContent.contains("Dieses Projekt"), "CLAUDE.md should not contain German source text")
+        assertFalse(claudeContent.contains("Empfohlenes Vorgehen"), "CLAUDE.md should not contain German workflow text")
         assertFalse(claudeContent.contains("## Living-Sync Reporting"), "CLAUDE.md should use neutral handoff template")
     }
 
