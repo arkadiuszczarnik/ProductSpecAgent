@@ -208,20 +208,14 @@ export const useWizardStore = create<WizardState>((set, get) => ({
           chatSending: false,
         }));
 
-        // Mark DESIGN as completed in wizardData so StepIndicator shows the checkmark.
-        // Persists via saveWizardStep so it survives a page reload.
+        // Mark DESIGN as completed locally; the backend persists the DESIGN step while
+        // storing the generated design summary.
         const completedAt = new Date().toISOString();
         const designStepData = data.steps.DESIGN ?? { fields: {}, completedAt: null };
         const updatedDesign = { ...designStepData, completedAt };
-        try {
-          const persisted = await saveWizardStep(projectId, "DESIGN", updatedDesign);
-          set({ data: persisted });
-        } catch {
-          // Fall back to local-only update if persist fails
-          set({
-            data: { ...data, steps: { ...data.steps, DESIGN: updatedDesign } },
-          });
-        }
+        set({
+          data: { ...data, steps: { ...data.steps, DESIGN: updatedDesign } },
+        });
 
         if (response.progression) {
           set({ progression: response.progression });

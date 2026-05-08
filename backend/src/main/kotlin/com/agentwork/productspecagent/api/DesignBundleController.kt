@@ -9,15 +9,19 @@ import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.ProductCategory
 import com.agentwork.productspecagent.domain.WizardClientActionDto
 import com.agentwork.productspecagent.domain.WizardProgressionView
+import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.service.DesignBundleExtractor
 import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.service.WizardProgression
+import com.agentwork.productspecagent.service.WizardService
 import com.agentwork.productspecagent.service.WizardStepNotCurrentException
 import com.agentwork.productspecagent.service.WizardStepNotVisibleException
 import com.agentwork.productspecagent.storage.DesignBundleStorage
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.Serializable
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.beans.factory.annotation.Value
+import java.time.Instant
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import org.springframework.http.HttpHeaders
@@ -34,6 +38,7 @@ class DesignBundleController(
     private val props: DesignBundleProperties,
     private val designSummaryAgent: DesignSummaryAgent,
     private val projectService: ProjectService,
+    private val wizardService: WizardService,
     private val wizardProgression: WizardProgression,
     @Value("\${app.frontend-origin:http://localhost:3001}") private val frontendOrigin: String,
 ) {
@@ -149,12 +154,17 @@ class DesignBundleController(
         validateDesignCompletion(projectId)
         val bundle = storage.get(projectId)
         val message: String
+        val fields = mutableMapOf<String, kotlinx.serialization.json.JsonElement>()
         if (bundle != null) {
             try {
-                designSummaryAgent.summarize(projectId)
+                val summary = designSummaryAgent.summarize(projectId)
+                if (!summary.isNullOrBlank()) {
+                    fields["summary"] = JsonPrimitive(summary)
+                }
                 message = "Design-Bundle '${bundle.originalFilename}' analysiert. Spec aktualisiert."
             } catch (e: Exception) {
                 log.warn("design summarize unexpectedly threw for $projectId", e)
+                completeDesignWizardStep(projectId, fields)
                 return ResponseEntity.ok(
                     completeAfterAdvance(
                         projectId,
@@ -165,7 +175,20 @@ class DesignBundleController(
         } else {
             message = "Design-Step übersprungen — kein Bundle hochgeladen."
         }
+        completeDesignWizardStep(projectId, fields)
         return ResponseEntity.ok(completeAfterAdvance(projectId, message))
+    }
+
+    private fun completeDesignWizardStep(
+        projectId: String,
+        fields: Map<String, kotlinx.serialization.json.JsonElement>,
+    ) {
+        wizardService.saveStepData(
+            projectId,
+            FlowStepType.DESIGN.name,
+            WizardStepData(fields = fields, completedAt = Instant.now().toString()),
+        )
+        projectService.regenerateDocsScaffold(projectId)
     }
 
     private val log = org.slf4j.LoggerFactory.getLogger(javaClass)

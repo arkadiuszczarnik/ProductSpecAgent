@@ -68,12 +68,6 @@ open class IdeaToSpecAgent(
         }
 
         if (stepCompleted) {
-            val fileName = currentStep.name.lowercase() + ".md"
-            val title = currentStep.name.replace("_", " ").lowercase()
-                .replaceFirstChar { it.uppercase() }
-            val markdownContent = "# $title\n\n${summaryContent ?: cleanMessage}"
-            projectService.saveSpecFile(projectId, fileName, markdownContent)
-
             val now = Instant.now().toString()
             val updatedSteps = flowState.steps.map { step ->
                 when (step.stepType) {

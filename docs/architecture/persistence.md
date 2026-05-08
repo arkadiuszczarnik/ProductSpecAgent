@@ -18,12 +18,7 @@ Ein Bucket pro Umgebung (Default-Name `productspec-data`, konfigurierbar via `S3
         ├── flow-state.json          # Aktueller Stand im Wizard-Graph
         ├── wizard.json              # Wizard-Form-Daten
         ├── spec/
-        │   ├── idea.md
-        │   ├── problem.md
-        │   ├── target-audience.md
-        │   ├── scope.md
-        │   ├── mvp.md
-        │   └── full-spec.md
+        │   └── spec.md              # Finale Produktspezifikation
         └── docs/
             ├── decisions/{id}.json
             ├── clarifications/{id}.json

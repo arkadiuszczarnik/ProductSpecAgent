@@ -78,6 +78,10 @@ class ProjectStorage(private val objectStore: ObjectStore) {
         objectStore.put(specKey(projectId, fileName), content.toByteArray(), "text/markdown")
     }
 
+    fun deleteSpecStep(projectId: String, fileName: String) {
+        objectStore.delete(specKey(projectId, fileName))
+    }
+
     fun loadSpecStep(projectId: String, fileName: String): String? =
         objectStore.get(specKey(projectId, fileName))?.toString(Charsets.UTF_8)
 

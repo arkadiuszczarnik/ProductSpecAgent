@@ -20,9 +20,8 @@ export function DesignReplaceConfirmDialog({ open, bundleName, onConfirm, onCanc
           <DialogTitle>Design-Bundle ersetzen?</DialogTitle>
           <DialogDescription>
             Das vorhandene Bundle &quot;{bundleName}&quot; wird vollständig
-            ersetzt. Falls du den Step bereits abgeschlossen hast, wird
-            <code className="mx-1 rounded bg-muted px-1">design.md</code>
-            beim erneuten Step-Complete neu generiert.
+            ersetzt. Falls du den Step bereits abgeschlossen hast, wird die
+            Design-Zusammenfassung beim erneuten Step-Complete neu generiert.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

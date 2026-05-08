@@ -53,7 +53,6 @@ open class DesignBundleStorage(
 
     open fun delete(projectId: String) {
         // deleteFiles wipes the whole docs/design/ prefix, including manifest.json.
-        // spec/design.md cleanup is delegated to caller (ProjectService) — keep storage focused.
         deleteFiles(projectId)
     }
 

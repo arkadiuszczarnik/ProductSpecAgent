@@ -22,10 +22,10 @@ JetBrains Koog wird als AI-Agent-Framework innerhalb des Spring Boot Backends ei
 ## Kontext-Injection
 Jeder Agent erhält:
 - Projekt-Metadaten (`project.json`)
-- Bisherige Spec-Schritte (alle Markdown-Dateien in `spec/`)
+- Bisherige Wizard-Schritte aus `wizard.json`
 - Bisherige Entscheidungen (`decisions/`)
 - Offene Clarifications (`clarifications/`)
-- Bei Tasks: die vollständige Spec
+- Bei Export/Handoff: die finale Spec aus `spec/spec.md`
 
 ## Konfiguration (application.yml)
 ```yaml

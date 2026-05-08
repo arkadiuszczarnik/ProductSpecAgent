@@ -34,6 +34,8 @@ class ZipArchiveWriter(rootPrefix: String = "") {
         symlinkEntries += name
     }
 
+    fun hasEntry(path: String): Boolean = entryName(path) in entries
+
     fun finish(): ByteArray {
         finishedBytes?.let { return it }
         zip.close()

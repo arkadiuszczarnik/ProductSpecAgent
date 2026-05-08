@@ -115,9 +115,9 @@ class IdeaToSpecAgentTest {
         val problemStep = flowState.steps.find { it.stepType == FlowStepType.PROBLEM }
         assertEquals(FlowStepStatus.IN_PROGRESS, problemStep?.status)
 
-        // Verify spec file was saved
+        // Step files are no longer written; final output lives in spec/spec.md.
         val specContent = projectService.readSpecFile(project.project.id, "idea.md")
-        assertNotNull(specContent)
+        assertNull(specContent)
         Unit
     }
 

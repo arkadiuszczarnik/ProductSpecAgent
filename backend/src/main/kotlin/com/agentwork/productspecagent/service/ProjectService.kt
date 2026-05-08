@@ -151,6 +151,12 @@ class ProjectService(
     fun saveSpecFile(projectId: String, fileName: String, content: String) {
         storage.loadProject(projectId) ?: throw ProjectNotFoundException(projectId)
         storage.saveSpecStep(projectId, fileName, content)
+        if (fileName == "spec.md") {
+            storage.listSpecFiles(projectId)
+                .map { it.first.removePrefix("spec/") }
+                .filter { it != "spec.md" }
+                .forEach { storage.deleteSpecStep(projectId, it) }
+        }
         regenerateDocsScaffold(projectId)
     }
 
