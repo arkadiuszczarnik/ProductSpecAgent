@@ -7,6 +7,7 @@ import com.agentwork.productspecagent.domain.WizardData
 import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.service.WizardFeatureInput
+import com.agentwork.productspecagent.service.WizardFeatureParser
 import com.agentwork.productspecagent.service.WizardService
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
@@ -76,7 +77,7 @@ open class SpecContextBuilder(
                 val rawFeatures = currentFields["features"]
                 val category = (completedSteps["IDEA"]?.fields?.get("category")
                     ?.let { runCatching { it.jsonPrimitive.content }.getOrNull() })
-                val parsedFeatures = IdeaToSpecAgent.parseWizardFeatures(rawFeatures, category)
+                val parsedFeatures = WizardFeatureParser.parse(rawFeatures, category)
                 if (parsedFeatures.isNotEmpty()) {
                     appendLine()
                     appendLine(renderFeaturesBlock(parsedFeatures, category))

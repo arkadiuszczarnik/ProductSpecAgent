@@ -3,7 +3,6 @@
 import { ArrowLeft, ArrowRight, Download, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWizardStore } from "@/lib/stores/wizard-store";
-import { useProjectStore } from "@/lib/stores/project-store";
 import { useStepBlockers } from "@/lib/hooks/use-step-blockers";
 import { BlockerBanner } from "./BlockerBanner";
 import { IdeaForm } from "./steps/IdeaForm";
@@ -35,8 +34,7 @@ interface WizardFormProps {
 type NavigableBlockerTab = "decisions" | "clarifications";
 
 export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardFormProps) {
-  const { activeStep, saving, chatPending, completeStep, goPrev, visibleSteps } = useWizardStore();
-  const flowState = useProjectStore((s) => s.flowState);
+  const { activeStep, saving, chatPending, completeStep, goPrev, visibleSteps, progression } = useWizardStore();
   const { isBlocked, blockerSummary, firstBlockerTab } = useStepBlockers(activeStep);
 
   const steps = visibleSteps();
@@ -44,14 +42,9 @@ export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardF
   const isFirst = stepIdx === 0;
   const isLast = stepIdx === steps.length - 1;
   const isWorking = saving || chatPending;
-
-  // Once the last visible step is COMPLETED in flow state, the wizard is done —
-  // clicking the button should open Export instead of re-triggering the agent.
-  const lastStepKey = steps[steps.length - 1]?.key;
-  const lastStepCompleted =
-    !!lastStepKey &&
-    flowState?.steps.find((s) => s.stepType === lastStepKey)?.status === "COMPLETED";
-  const wizardDone = isLast && lastStepCompleted;
+  const primaryAction = progression?.primaryAction;
+  const exportReady = primaryAction?.type === "OPEN_EXPORT";
+  const wizardDone = exportReady && (isLast || activeStep === "DESIGN");
 
   const FormComponent = FORM_MAP[activeStep];
 
@@ -104,8 +97,8 @@ export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardF
                 {chatPending ? "Agent antwortet..." : "Saving..."}
               </span>
             )}
-            {/* DESIGN owns its own complete/skip CTAs inside DesignForm */}
-            {activeStep !== "DESIGN" && (
+            {/* DESIGN owns its own complete/skip CTAs until export is ready. */}
+            {(activeStep !== "DESIGN" || wizardDone) && (
               <Button
                 size="sm"
                 onClick={handleNext}

@@ -100,6 +100,32 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
         }
     }
 
+    fun writeToArchive(writer: ZipArchiveWriter, bundles: List<MatchedBundle>) {
+        val allowedTypes = setOf("skills", "commands", "agents")
+        for (bundle in bundles) {
+            for (file in bundle.files) {
+                val firstSlash = file.relativePath.indexOf('/')
+                if (firstSlash < 0) continue
+                val type = file.relativePath.substring(0, firstSlash)
+                val rest = file.relativePath.substring(firstSlash + 1)
+                if (type !in allowedTypes) continue
+
+                if (isSuspiciousPath(file.relativePath)) {
+                    log.warn("Suspicious path {}/{} — skipping file", bundle.manifest.id, file.relativePath)
+                    continue
+                }
+
+                val bytes = storage.loadFileBytesById(bundle.manifest.id, file.relativePath)
+                if (bytes == null) {
+                    log.warn("loadFileBytes returned null for {}/{} — skipping file", bundle.manifest.id, file.relativePath)
+                    continue
+                }
+
+                writer.addBytes(".asset-bundles/$type/${bundle.manifest.id}/$rest", bytes)
+            }
+        }
+    }
+
     fun writeToolLinksToZip(zip: ZipOutputStream, prefix: String): List<String> {
         val root = prefix.trimEnd('/')
         val base = if (root.isBlank()) "" else "$root/"
@@ -115,6 +141,20 @@ class AssetBundleExporter(private val storage: AssetBundleStorage) {
             zip.addSymlinkEntry(name, target)
         }
         return links.keys.toList()
+    }
+
+    fun writeToolLinksToArchive(writer: ZipArchiveWriter) {
+        val links = mapOf(
+            ".claude/skills" to "../.asset-bundles/skills",
+            ".claude/commands" to "../.asset-bundles/commands",
+            ".claude/agents" to "../.asset-bundles/agents",
+            ".agents/skills" to "../.asset-bundles/skills",
+            ".agents/commands" to "../.asset-bundles/commands",
+            ".agents/agents" to "../.asset-bundles/agents",
+        )
+        for ((name, target) in links) {
+            writer.addSymlink(name, target)
+        }
     }
 
     private fun isSuspiciousPath(relativePath: String): Boolean {

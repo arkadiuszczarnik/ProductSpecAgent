@@ -30,6 +30,15 @@ class DesignBundleControllerTest {
 
     private fun createProject(name: String): String = projectService.createProject(name).project.id
 
+    private fun advanceToDesign(projectId: String) {
+        listOf(
+            com.agentwork.productspecagent.domain.FlowStepType.IDEA,
+            com.agentwork.productspecagent.domain.FlowStepType.PROBLEM,
+            com.agentwork.productspecagent.domain.FlowStepType.FEATURES,
+            com.agentwork.productspecagent.domain.FlowStepType.MVP,
+        ).forEach { step -> projectService.advanceStep(projectId, step) }
+    }
+
     private val schedulerZip: ByteArray =
         java.io.File("../examples/Scheduler.zip").readBytes()
 
@@ -134,6 +143,7 @@ class DesignBundleControllerTest {
     @Test
     fun `complete with bundle runs agent and advances flow`() {
         val projectId = createProject("Complete With Bundle Test")
+        advanceToDesign(projectId)
         val file = MockMultipartFile("file", "Scheduler.zip", "application/zip", schedulerZip)
         mockMvc.perform(multipart("/api/v1/projects/$projectId/design/upload").file(file))
             .andExpect(status().isOk)
@@ -145,11 +155,16 @@ class DesignBundleControllerTest {
         ).andExpect(status().isOk)
             .andExpect(jsonPath("$.message").exists())
             .andExpect(jsonPath("$.nextStep").value("ARCHITECTURE"))
+            .andExpect(jsonPath("$.progression.currentStep").value("ARCHITECTURE"))
+            .andExpect(jsonPath("$.progression.status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.action.type").value("SHOW_STEP"))
+            .andExpect(jsonPath("$.action.step").value("ARCHITECTURE"))
     }
 
     @Test
     fun `complete without bundle skips agent and advances flow`() {
         val projectId = createProject("Complete Without Bundle Test")
+        advanceToDesign(projectId)
         mockMvc.perform(
             post("/api/v1/projects/$projectId/design/complete")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -157,5 +172,55 @@ class DesignBundleControllerTest {
         ).andExpect(status().isOk)
             .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("übersprungen")))
             .andExpect(jsonPath("$.nextStep").value("ARCHITECTURE"))
+            .andExpect(jsonPath("$.progression.currentStep").value("ARCHITECTURE"))
+            .andExpect(jsonPath("$.progression.status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.action.type").value("SHOW_STEP"))
+            .andExpect(jsonPath("$.action.step").value("ARCHITECTURE"))
+    }
+
+    @Test
+    fun `complete rejects design when it is not the current step`() {
+        val projectId = createProject("Design Not Current Test")
+
+        mockMvc.perform(
+            post("/api/v1/projects/$projectId/design/complete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"locale":"de"}""")
+        ).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("WIZARD_STEP_NOT_CURRENT"))
+    }
+
+    @Test
+    fun `complete with bundle rejects non-current design before writing summary`() {
+        val projectId = createProject("Design Bundle Not Current Test")
+        val file = MockMultipartFile("file", "Scheduler.zip", "application/zip", schedulerZip)
+        mockMvc.perform(multipart("/api/v1/projects/$projectId/design/upload").file(file))
+            .andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/api/v1/projects/$projectId/design/complete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"locale":"de"}""")
+        ).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("WIZARD_STEP_NOT_CURRENT"))
+
+        org.assertj.core.api.Assertions.assertThat(projectService.readSpecFile(projectId, "design.md")).isNull()
+    }
+
+    @Test
+    fun `complete rejects design when category hides design step`() {
+        val projectId = createProject("Hidden Design Test")
+        mockMvc.perform(
+            put("/api/v1/projects/$projectId/wizard/IDEA")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fields":{"category":"Library"},"completedAt":null}""")
+        ).andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/api/v1/projects/$projectId/design/complete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"locale":"de"}""")
+        ).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("WIZARD_STEP_NOT_VISIBLE"))
     }
 }

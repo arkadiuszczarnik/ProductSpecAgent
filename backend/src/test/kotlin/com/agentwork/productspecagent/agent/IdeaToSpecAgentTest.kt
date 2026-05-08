@@ -8,14 +8,12 @@ import com.agentwork.productspecagent.service.PromptRegistry
 import com.agentwork.productspecagent.service.PromptService
 import com.agentwork.productspecagent.service.TaskService
 import com.agentwork.productspecagent.service.WizardFeatureInput
-import com.agentwork.productspecagent.service.WizardService
 import com.agentwork.productspecagent.storage.ClarificationStorage
 import com.agentwork.productspecagent.storage.DecisionStorage
 import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import com.agentwork.productspecagent.storage.TaskStorage
 import kotlinx.coroutines.runBlocking
-import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -30,7 +28,6 @@ class IdeaToSpecAgentTest {
     private lateinit var decisionService: DecisionService
     private lateinit var clarificationStorage: ClarificationStorage
     private lateinit var clarificationService: ClarificationService
-    private lateinit var wizardService: WizardService
     private lateinit var taskStorage: TaskStorage
     private lateinit var taskService: TaskService
     private lateinit var promptService: PromptService
@@ -50,7 +47,6 @@ class IdeaToSpecAgentTest {
         decisionService = DecisionService(decisionStorage, fakeDecisionAgent)
         clarificationStorage = ClarificationStorage(InMemoryObjectStore())
         clarificationService = ClarificationService(clarificationStorage)
-        wizardService = WizardService(storage)
         taskStorage = TaskStorage(InMemoryObjectStore())
         val fakePlanAgent = object : PlanGeneratorAgent(contextBuilder, promptService) {
             override suspend fun generatePlanForFeature(
@@ -78,39 +74,10 @@ class IdeaToSpecAgentTest {
     }
 
     private fun createTestAgent(agentResponse: String): IdeaToSpecAgent {
-        return object : IdeaToSpecAgent(contextBuilder, projectService, promptService, decisionService, clarificationService, wizardService, taskService = taskService) {
+        return object : IdeaToSpecAgent(contextBuilder, projectService, promptService, decisionService, clarificationService) {
             override suspend fun runAgent(systemPrompt: String, userMessage: String): String {
                 return agentResponse
             }
-        }
-    }
-
-    /** Helper: Agent, der alle empfangenen User-Prompts aufzeichnet */
-    private fun createCapturingAgent(
-        agentResponse: String = "OK.",
-        capturedUserPrompts: MutableList<String>
-    ): IdeaToSpecAgent {
-        return object : IdeaToSpecAgent(contextBuilder, projectService, promptService, decisionService, clarificationService, wizardService, taskService = taskService) {
-            override suspend fun runAgent(systemPrompt: String, userMessage: String): String {
-                capturedUserPrompts.add(userMessage)
-                return agentResponse
-            }
-        }
-    }
-
-    /** Spy-TaskService: zeichnet Aufrufe von replaceWizardFeatureTasks auf */
-    private class SpyTaskService(
-        storage: TaskStorage,
-        agent: PlanGeneratorAgent,
-    ) : TaskService(storage, agent) {
-        val capturedCalls = mutableListOf<List<WizardFeatureInput>>()
-
-        override suspend fun replaceWizardFeatureTasks(
-            projectId: String,
-            features: List<WizardFeatureInput>,
-        ): List<SpecTask> {
-            capturedCalls.add(features)
-            return super.replaceWizardFeatureTasks(projectId, features)
         }
     }
 
@@ -218,178 +185,5 @@ class IdeaToSpecAgentTest {
         val clarifications = clarificationService.listClarifications(project.project.id)
         assertEquals(1, clarifications.size)
         assertEquals("How should offline users sync?", clarifications[0].question)
-    }
-
-    // ─── T6: FEATURES step validator tests ───────────────────────────────────
-
-    @Test
-    fun `FEATURES step passes graph block to agent prompt`() = runBlocking {
-        val project = projectService.createProject("Test")
-        val captured = mutableListOf<String>()
-        val agent = createCapturingAgent(agentResponse = "OK.", capturedUserPrompts = captured)
-
-        agent.processWizardStep(
-            projectId = project.project.id,
-            step = "FEATURES",
-            fields = mapOf(
-                "features" to listOf(
-                    mapOf(
-                        "id" to "f-1",
-                        "title" to "Login",
-                        "scopes" to listOf("BACKEND"),
-                        "scopeFields" to mapOf("apiEndpoints" to "POST /auth/login"),
-                    )
-                ),
-                "edges" to emptyList<Any>(),
-            ),
-        )
-
-        assertThat(captured).isNotEmpty
-        // Der User-Prompt muss den Graph-Block enthalten (wird von buildWizardStepFeedbackPrompt erzeugt)
-        assertThat(captured.last())
-            .contains("Features & Dependencies")
-            .contains("[f-1] Login (Backend)")
-        Unit
-    }
-
-    // ─── Last-step finalization: agent must not emit blockers on FRONTEND ──────
-
-    @Test
-    fun `processWizardStep on FRONTEND ignores CLARIFICATION_NEEDED marker`() = runBlocking {
-        val project = projectService.createProject("Test")
-        val agent = createTestAgent(
-            "Alles sieht gut aus!\n[CLARIFICATION_NEEDED]: Welches Theme? | Theme ist unklar"
-        )
-
-        val response = agent.processWizardStep(
-            projectId = project.project.id,
-            step = "FRONTEND",
-            fields = mapOf("framework" to "Next.js+React", "theme" to "Both"),
-        )
-
-        // Last step must not create a clarification even if the agent emits the marker
-        assertThat(response.clarificationId).isNull()
-        assertThat(clarificationService.listClarifications(project.project.id)).isEmpty()
-        assertThat(response.exportTriggered).isTrue()
-        assertThat(response.nextStep).isNull()
-    }
-
-    @Test
-    fun `processWizardStep on FRONTEND ignores DECISION_NEEDED marker`() = runBlocking {
-        val project = projectService.createProject("Test")
-        val agent = createTestAgent(
-            "Looks great!\n[DECISION_NEEDED]: Light vs. dark?"
-        )
-
-        val response = agent.processWizardStep(
-            projectId = project.project.id,
-            step = "FRONTEND",
-            fields = mapOf("framework" to "Next.js+React"),
-        )
-
-        assertThat(response.decisionId).isNull()
-        assertThat(decisionService.listDecisions(project.project.id)).isEmpty()
-        assertThat(response.exportTriggered).isTrue()
-        Unit
-    }
-
-    @Test
-    fun `processWizardStep on FRONTEND does not include MARKER_REMINDER in prompt`() = runBlocking {
-        val project = projectService.createProject("Test")
-        val captured = mutableListOf<String>()
-        val agent = createCapturingAgent(agentResponse = "Done.", capturedUserPrompts = captured)
-
-        agent.processWizardStep(
-            projectId = project.project.id,
-            step = "FRONTEND",
-            fields = mapOf("framework" to "Next.js+React"),
-        )
-
-        // The feedback call is the FIRST invocation; a second call generates the summary.
-        // Neither should push markers on the final step.
-        assertThat(captured).isNotEmpty
-        for (prompt in captured) {
-            assertThat(prompt).doesNotContain("MANDATORY OUTPUT REQUIREMENT")
-            assertThat(prompt).doesNotContain("Err on the side of including a marker")
-        }
-    }
-
-    @Test
-    fun `processWizardStep on non-last step still creates clarification from marker`() = runBlocking {
-        val project = projectService.createProject("Test")
-        val agent = createTestAgent(
-            "Gut!\n[CLARIFICATION_NEEDED]: Wer ist die Zielgruppe? | Grundlage fuer alles weitere"
-        )
-
-        val response = agent.processWizardStep(
-            projectId = project.project.id,
-            step = "PROBLEM",
-            fields = mapOf("description" to "Kurz"),
-        )
-
-        assertThat(response.clarificationId).isNotNull()
-        assertThat(clarificationService.listClarifications(project.project.id)).hasSize(1)
-        assertThat(response.exportTriggered).isFalse()
-        Unit
-    }
-
-    @Test
-    fun `FEATURES step calls replaceWizardFeatureTasks with parsed input`() = runBlocking {
-        val project = projectService.createProject("Test")
-        val fakePlanAgentForSpy = object : PlanGeneratorAgent(contextBuilder, promptService) {
-            override suspend fun generatePlanForFeature(
-                projectId: String,
-                input: WizardFeatureInput,
-                startPriority: Int,
-            ): List<SpecTask> {
-                val now = java.time.Instant.now().toString()
-                return listOf(
-                    SpecTask(
-                        id = "epic-${input.id}",
-                        projectId = projectId,
-                        type = TaskType.EPIC,
-                        title = input.title,
-                        estimate = "M",
-                        priority = startPriority,
-                        specSection = FlowStepType.FEATURES,
-                        createdAt = now,
-                        updatedAt = now,
-                    )
-                )
-            }
-        }
-        val spyStorage = TaskStorage(InMemoryObjectStore())
-        val spyTaskService = SpyTaskService(spyStorage, fakePlanAgentForSpy)
-
-        val agent = object : IdeaToSpecAgent(
-            contextBuilder, projectService, promptService,
-            decisionService, clarificationService, wizardService,
-            taskService = spyTaskService,
-        ) {
-            override suspend fun runAgent(systemPrompt: String, userMessage: String): String = "OK."
-        }
-
-        agent.processWizardStep(
-            projectId = project.project.id,
-            step = "FEATURES",
-            fields = mapOf(
-                "features" to listOf(
-                    mapOf(
-                        "id" to "f-1",
-                        "title" to "Login",
-                        "scopes" to listOf("BACKEND"),
-                        "scopeFields" to emptyMap<String, String>(),
-                    )
-                ),
-                "edges" to emptyList<Any>(),
-            ),
-        )
-
-        assertThat(spyTaskService.capturedCalls).hasSize(1)
-        val parsedList = spyTaskService.capturedCalls.first()
-        assertThat(parsedList).hasSize(1)
-        assertThat(parsedList.first().id).isEqualTo("f-1")
-        assertThat(parsedList.first().scopes).isEqualTo(setOf(FeatureScope.BACKEND))
-        Unit
     }
 }

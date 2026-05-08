@@ -1,0 +1,62 @@
+package com.agentwork.productspecagent.service
+
+import com.agentwork.productspecagent.domain.FlowStepType
+import com.agentwork.productspecagent.domain.ProductCategory
+import com.agentwork.productspecagent.domain.WizardData
+import kotlinx.serialization.json.jsonPrimitive
+import org.springframework.stereotype.Component
+
+@Component
+class WizardProgressionPolicy {
+
+    private val fullFlowSteps = listOf(
+        FlowStepType.IDEA,
+        FlowStepType.PROBLEM,
+        FlowStepType.FEATURES,
+        FlowStepType.MVP,
+        FlowStepType.DESIGN,
+        FlowStepType.ARCHITECTURE,
+        FlowStepType.BACKEND,
+        FlowStepType.FRONTEND,
+    )
+
+    fun planFor(wizardData: WizardData): WizardProgressionPlan {
+        val category = ProductCategory.fromWire(
+            wizardData.steps["IDEA"]?.fields?.get("category")
+                ?.let { runCatching { it.jsonPrimitive.content }.getOrNull() },
+        )
+        return WizardProgressionPlan(
+            category = category,
+            visibleSteps = visibleSteps(category),
+        )
+    }
+
+    private fun visibleSteps(category: ProductCategory?): List<FlowStepType> =
+        when (category) {
+            ProductCategory.LIBRARY -> listOf(
+                FlowStepType.IDEA,
+                FlowStepType.PROBLEM,
+                FlowStepType.FEATURES,
+                FlowStepType.MVP,
+            )
+            ProductCategory.CLI_TOOL -> listOf(
+                FlowStepType.IDEA,
+                FlowStepType.PROBLEM,
+                FlowStepType.FEATURES,
+                FlowStepType.MVP,
+                FlowStepType.ARCHITECTURE,
+            )
+            ProductCategory.API -> listOf(
+                FlowStepType.IDEA,
+                FlowStepType.PROBLEM,
+                FlowStepType.FEATURES,
+                FlowStepType.MVP,
+                FlowStepType.ARCHITECTURE,
+                FlowStepType.BACKEND,
+            )
+            ProductCategory.SAAS,
+            ProductCategory.MOBILE_APP,
+            ProductCategory.DESKTOP_APP,
+            null -> fullFlowSteps
+        }
+}

@@ -21,6 +21,8 @@ import com.agentwork.productspecagent.service.TaskNotFoundException
 import com.agentwork.productspecagent.service.UnsupportedMediaTypeException
 import com.agentwork.productspecagent.service.UnsupportedStepException
 import com.agentwork.productspecagent.service.WeakPasswordException
+import com.agentwork.productspecagent.service.WizardStepNotCurrentException
+import com.agentwork.productspecagent.service.WizardStepNotVisibleException
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -90,6 +92,16 @@ class GlobalExceptionHandler {
             timestamp = Instant.now().toString()
         )
     }
+
+    @ExceptionHandler(WizardStepNotVisibleException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleWizardStepNotVisible(ex: WizardStepNotVisibleException): ErrorResponse =
+        ErrorResponse("WIZARD_STEP_NOT_VISIBLE", ex.message ?: "Wizard step is not visible", Instant.now().toString())
+
+    @ExceptionHandler(WizardStepNotCurrentException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleWizardStepNotCurrent(ex: WizardStepNotCurrentException): ErrorResponse =
+        ErrorResponse("WIZARD_STEP_NOT_CURRENT", ex.message ?: "Wizard step is not current", Instant.now().toString())
 
     @ExceptionHandler(GraphMeshException.Unavailable::class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)

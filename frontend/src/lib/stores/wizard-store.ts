@@ -1,6 +1,12 @@
 import { create } from "zustand";
-import type { WizardData, WizardStepData, WizardFeature, WizardFeatureEdge, WizardFeatureGraph } from "@/lib/api";
-import { getWizardData, saveWizardStep, completeWizardStep } from "@/lib/api";
+import type {
+  WizardData,
+  WizardFeature,
+  WizardFeatureEdge,
+  WizardFeatureGraph,
+  WizardProgressionView,
+} from "@/lib/api";
+import { getWizardData, getWizardProgression, saveWizardStep, completeWizardStep } from "@/lib/api";
 import { wouldCreateCycle } from "@/lib/graph/cycleCheck";
 import { formatStepFields } from "@/lib/step-field-labels";
 import { useProjectStore } from "@/lib/stores/project-store";
@@ -19,6 +25,7 @@ export const WIZARD_STEPS = [
 
 interface WizardState {
   data: WizardData | null;
+  progression: WizardProgressionView | null;
   activeStep: string;
   loading: boolean;
   saving: boolean;
@@ -26,7 +33,7 @@ interface WizardState {
 
   loadWizard: (projectId: string) => Promise<void>;
   setActiveStep: (step: string) => void;
-  updateField: (step: string, field: string, value: any) => void;
+  updateField: (step: string, field: string, value: unknown) => void;
   saveStep: (projectId: string, step: string) => Promise<void>;
   completeStep: (projectId: string, step: string) => Promise<{ exportTriggered: boolean } | null>;
   goNext: () => void;
@@ -62,6 +69,7 @@ let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export const useWizardStore = create<WizardState>((set, get) => ({
   data: null,
+  progression: null,
   activeStep: "IDEA",
   loading: false,
   saving: false,
@@ -71,9 +79,15 @@ export const useWizardStore = create<WizardState>((set, get) => ({
     set({ loading: true });
     try {
       const data = await getWizardData(projectId);
-      set({ data, loading: false });
+      const progression = await getWizardProgression(projectId).catch(() => null);
+      const fallbackSteps = getVisibleSteps(data.steps["IDEA"]?.fields?.category as string | undefined);
+      const activeStep = progression?.currentStep
+        ?? progression?.steps.find((step) => step.visible)?.step
+        ?? fallbackSteps[0]
+        ?? "IDEA";
+      set({ data, progression, activeStep, loading: false });
     } catch {
-      set({ data: { projectId, steps: {} }, loading: false });
+      set({ data: { projectId, steps: {} }, progression: null, activeStep: "IDEA", loading: false });
     }
   },
 
@@ -85,6 +99,13 @@ export const useWizardStore = create<WizardState>((set, get) => ({
   },
 
   visibleSteps: () => {
+    const progression = get().progression;
+    if (progression?.steps.length) {
+      return progression.steps
+        .filter((step) => step.visible)
+        .flatMap((step) => WIZARD_STEPS.find((wizardStep) => wizardStep.key === step.step) ?? []);
+    }
+
     const category = get().getCategory();
     const visible = getVisibleSteps(category);
     return WIZARD_STEPS.filter((s) => visible.includes(s.key));
@@ -106,6 +127,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
 
     // If category changed, ensure activeStep is still visible
     if (step === "IDEA" && field === "category") {
+      set({ progression: null });
       const { activeStep } = get();
       const visible = getVisibleSteps(value as string);
       if (!visible.includes(activeStep)) {
@@ -170,9 +192,11 @@ export const useWizardStore = create<WizardState>((set, get) => ({
       }));
 
       set({ chatPending: true });
+      let exportTriggered = false;
       try {
         const locale = typeof navigator !== "undefined" ? navigator.language : "de";
         const response = await completeDesignStep(projectId, locale);
+        exportTriggered = response.action?.type === "OPEN_EXPORT";
         const agentMsg = {
           id: `wizard-agent-${Date.now()}`,
           role: "agent" as const,
@@ -199,8 +223,14 @@ export const useWizardStore = create<WizardState>((set, get) => ({
           });
         }
 
-        if (response.nextStep) {
-          const visible = visibleSteps();
+        if (response.progression) {
+          set({ progression: response.progression });
+        }
+
+        if (response.action?.type === "SHOW_STEP" && response.action.step) {
+          set({ activeStep: response.action.step });
+        } else if (response.nextStep) {
+          const visible = get().visibleSteps();
           const nextVisible = visible.find((v) => v.key === response.nextStep);
           if (nextVisible) set({ activeStep: response.nextStep });
         }
@@ -218,7 +248,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
       } finally {
         set({ chatPending: false });
       }
-      return { exportTriggered: false };
+      return { exportTriggered };
     }
 
     const stepData = data.steps[step] ?? { fields: {}, completedAt: null };
@@ -236,10 +266,10 @@ export const useWizardStore = create<WizardState>((set, get) => ({
 
     // Format fields as readable chat message
     const fields = stepData.fields ?? {};
-    const plainFields: Record<string, any> = {};
+    const plainFields: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(fields)) {
       plainFields[k] = typeof v === "object" && v !== null && "value" in v
-        ? (v as any).value
+        ? (v as { value: unknown }).value
         : v;
     }
     const chatMessage = formatStepFields(step, plainFields);
@@ -274,8 +304,24 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         chatSending: false,
       }));
 
+      if (response.progression) {
+        set({ progression: response.progression });
+      }
+
+      const action = response.action;
+      if (action?.type === "SHOW_STEP" && action.step) {
+        const steps = get().visibleSteps();
+        const nextVisible = steps.find((s) => s.key === action.step);
+        set({
+          activeStep: nextVisible ? action.step : get().activeStep,
+          chatPending: false,
+        });
+      } else {
+        set({ chatPending: false });
+      }
+
       // Navigate to next step
-      if (response.nextStep) {
+      if (!action && response.nextStep) {
         const steps = visibleSteps();
         const nextVisible = steps.find((s) => s.key === response.nextStep);
         if (nextVisible) {
@@ -288,23 +334,32 @@ export const useWizardStore = create<WizardState>((set, get) => ({
       }
 
       // If a decision was triggered, fetch it
-      if (response.decisionId) {
+      const decisionIds = Array.from(new Set([
+        ...(response.artifacts?.decisionIds ?? []),
+        ...(response.decisionId ? [response.decisionId] : []),
+      ]));
+      for (const decisionId of decisionIds) {
         const { getDecision } = await import("@/lib/api");
-        const decision = await getDecision(projectId, response.decisionId);
+        const decision = await getDecision(projectId, decisionId);
         const { useDecisionStore } = await import("@/lib/stores/decision-store");
         useDecisionStore.getState().addDecision(decision);
       }
 
       // If a clarification was triggered, fetch it
-      if (response.clarificationId) {
+      const clarificationIds = Array.from(new Set([
+        ...(response.artifacts?.clarificationIds ?? []),
+        ...(response.clarificationId ? [response.clarificationId] : []),
+      ]));
+      for (const clarificationId of clarificationIds) {
         const { getClarification } = await import("@/lib/api");
-        const clarification = await getClarification(projectId, response.clarificationId);
+        const clarification = await getClarification(projectId, clarificationId);
         const { useClarificationStore } = await import("@/lib/stores/clarification-store");
         useClarificationStore.getState().addClarification(clarification);
       }
 
       // Handle export trigger on last step
-      if (response.exportTriggered) {
+      const exportTriggered = action?.type === "OPEN_EXPORT" || response.exportTriggered;
+      if (exportTriggered) {
         const systemMsg = {
           id: `wizard-export-${Date.now()}`,
           role: "system" as const,
@@ -316,7 +371,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         }));
       }
 
-      return { exportTriggered: !!response.exportTriggered };
+      return { exportTriggered };
     } catch (err) {
       const errMsg = {
         id: `wizard-err-${Date.now()}`,
@@ -347,7 +402,14 @@ export const useWizardStore = create<WizardState>((set, get) => ({
     if (idx > 0) set({ activeStep: steps[idx - 1].key });
   },
 
-  reset: () => set({ data: null, activeStep: "IDEA", loading: false, saving: false, chatPending: false }),
+  reset: () => set({
+    data: null,
+    progression: null,
+    activeStep: "IDEA",
+    loading: false,
+    saving: false,
+    chatPending: false,
+  }),
 
   addFeature: (f) => {
     const id = crypto.randomUUID();

@@ -2,8 +2,10 @@ package com.agentwork.productspecagent.api
 
 import com.agentwork.productspecagent.domain.HandoffExportRequest
 import com.agentwork.productspecagent.domain.HandoffPreview
-import com.agentwork.productspecagent.export.HandoffService
-import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.export.ExportPackageBuilder
+import com.agentwork.productspecagent.export.HandoffFormat
+import com.agentwork.productspecagent.export.ZipPackage
+import com.agentwork.productspecagent.export.toHandoffPackageOptions
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
@@ -14,8 +16,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/handoff")
 class HandoffController(
-    private val handoffService: HandoffService,
-    private val projectService: ProjectService
+    private val packageBuilder: ExportPackageBuilder,
 ) {
 
     @PostMapping("/preview")
@@ -24,7 +25,7 @@ class HandoffController(
         @RequestParam(defaultValue = "claude-code") format: String
     ): ResponseEntity<HandoffPreview> {
         val syncUrl = buildSyncUrl(projectId)
-        val preview = handoffService.generatePreview(projectId, format, syncUrl)
+        val preview = packageBuilder.previewHandoff(projectId, syncUrl, HandoffFormat.fromWire(format))
         return ResponseEntity.ok(preview)
     }
 
@@ -33,15 +34,11 @@ class HandoffController(
         @PathVariable projectId: String,
         @RequestBody(required = false) request: HandoffExportRequest?
     ): ResponseEntity<ByteArray> {
-        val project = projectService.getProject(projectId).project
-        val slug = project.name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
-        val syncUrl = buildSyncUrl(projectId)
-        val zipBytes = handoffService.exportHandoff(projectId, request ?: HandoffExportRequest(), syncUrl, flat = true)
+        val requestBody = request ?: HandoffExportRequest()
+        val syncUrl = requestBody.syncUrl ?: buildSyncUrl(projectId)
+        val zip = packageBuilder.exportHandoff(projectId, syncUrl, requestBody.toHandoffPackageOptions())
 
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$slug-handoff.zip\"")
-            .contentType(MediaType.parseMediaType("application/zip"))
-            .body(zipBytes)
+        return zip.toResponseEntity()
     }
 
     @GetMapping("/handoff.zip")
@@ -49,15 +46,10 @@ class HandoffController(
         @PathVariable projectId: String,
         request: HttpServletRequest
     ): ResponseEntity<ByteArray> {
-        val project = projectService.getProject(projectId).project
-        val slug = project.name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
         val syncUrl = ServletUriComponentsBuilder.fromRequest(request).build().toUriString()
-        val zipBytes = handoffService.exportHandoff(projectId, HandoffExportRequest(), syncUrl, flat = true)
+        val zip = packageBuilder.exportHandoff(projectId, syncUrl)
 
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$slug-handoff.zip\"")
-            .contentType(MediaType.parseMediaType("application/zip"))
-            .body(zipBytes)
+        return zip.toResponseEntity()
     }
 
     private fun buildSyncUrl(projectId: String): String =
@@ -66,3 +58,9 @@ class HandoffController(
             .buildAndExpand(projectId)
             .toUriString()
 }
+
+private fun ZipPackage.toResponseEntity(): ResponseEntity<ByteArray> =
+    ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$filename\"")
+        .contentType(MediaType.parseMediaType(mediaType))
+        .body(bytes)

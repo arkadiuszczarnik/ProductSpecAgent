@@ -72,4 +72,22 @@ class WizardControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.steps.PROBLEM.fields.problem").value("Users lose track"))
     }
+
+    @Test
+    fun `GET wizard progression returns backend visible steps for library`() {
+        val pid = createProject()
+        mockMvc.perform(
+            put("/api/v1/projects/$pid/wizard/IDEA")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fields":{"category":"Library"},"completedAt":null}""")
+        ).andExpect(status().isOk())
+
+        mockMvc.perform(get("/api/v1/projects/$pid/wizard/progression"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.category").value("Library"))
+            .andExpect(jsonPath("$.steps.length()").value(4))
+            .andExpect(jsonPath("$.steps[3].step").value("MVP"))
+            .andExpect(jsonPath("$.steps[3].finalVisibleStep").value(true))
+            .andExpect(jsonPath("$.primaryAction.type").value("COMPLETE_STEP"))
+    }
 }

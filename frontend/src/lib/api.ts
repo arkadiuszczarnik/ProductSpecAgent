@@ -500,7 +500,7 @@ export async function exportHandoff(projectId: string, request: HandoffExportReq
 // ─── Wizard Types ─────────────────────────────────────────────────────────────
 
 export interface WizardStepData {
-  fields: Record<string, any>;
+  fields: Record<string, unknown>;
   completedAt: string | null;
 }
 
@@ -509,10 +509,44 @@ export interface WizardData {
   steps: Record<string, WizardStepData>;
 }
 
+export interface WizardStepView {
+  step: StepType;
+  status: StepStatus;
+  visible: boolean;
+  finalVisibleStep: boolean;
+}
+
+export interface WizardPrimaryAction {
+  type: "COMPLETE_STEP" | "OPEN_EXPORT" | "NONE";
+  step?: StepType | null;
+}
+
+export interface WizardClientAction {
+  type: "SHOW_STEP" | "OPEN_EXPORT" | "STAY";
+  step?: StepType | null;
+}
+
+export interface WizardCreatedArtifacts {
+  decisionIds: string[];
+  clarificationIds: string[];
+}
+
+export interface WizardProgressionView {
+  category: string | null;
+  steps: WizardStepView[];
+  currentStep: StepType | null;
+  status: string;
+  primaryAction: WizardPrimaryAction;
+}
+
 // ─── Wizard API ───────────────────────────────────────────────────────────────
 
 export async function getWizardData(projectId: string): Promise<WizardData> {
   return apiFetch<WizardData>(`/api/v1/projects/${projectId}/wizard`);
+}
+
+export async function getWizardProgression(projectId: string): Promise<WizardProgressionView> {
+  return apiFetch<WizardProgressionView>(`/api/v1/projects/${projectId}/wizard/progression`);
 }
 
 export async function saveWizardData(projectId: string, data: WizardData): Promise<WizardData> {
@@ -581,7 +615,7 @@ export async function setProjectGraphMeshEnabled(projectId: string, enabled: boo
 
 export interface WizardStepCompleteRequest {
   step: string;
-  fields: Record<string, any>;
+  fields: Record<string, unknown>;
   locale: string;
 }
 
@@ -591,6 +625,9 @@ export interface WizardStepCompleteResponse {
   exportTriggered: boolean;
   decisionId?: string | null;
   clarificationId?: string | null;
+  progression?: WizardProgressionView;
+  action?: WizardClientAction;
+  artifacts?: WizardCreatedArtifacts;
 }
 
 export async function completeWizardStep(
@@ -861,7 +898,9 @@ export interface DesignBundle {
 
 export interface DesignCompleteResponse {
   message: string;
-  nextStep: string | null;
+  nextStep?: StepType | null;
+  progression?: WizardProgressionView | null;
+  action?: WizardClientAction | null;
 }
 
 // ─── Design Bundle API ───────────────────────────────────────────────────────

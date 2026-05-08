@@ -6,8 +6,14 @@ import com.agentwork.productspecagent.domain.DesignBundle
 import com.agentwork.productspecagent.domain.DesignBundleFile
 import com.agentwork.productspecagent.domain.DesignPage
 import com.agentwork.productspecagent.domain.FlowStepType
+import com.agentwork.productspecagent.domain.ProductCategory
+import com.agentwork.productspecagent.domain.WizardClientActionDto
+import com.agentwork.productspecagent.domain.WizardProgressionView
 import com.agentwork.productspecagent.service.DesignBundleExtractor
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.WizardProgression
+import com.agentwork.productspecagent.service.WizardStepNotCurrentException
+import com.agentwork.productspecagent.service.WizardStepNotVisibleException
 import com.agentwork.productspecagent.storage.DesignBundleStorage
 import kotlinx.serialization.Serializable
 import jakarta.servlet.http.HttpServletRequest
@@ -28,6 +34,7 @@ class DesignBundleController(
     private val props: DesignBundleProperties,
     private val designSummaryAgent: DesignSummaryAgent,
     private val projectService: ProjectService,
+    private val wizardProgression: WizardProgression,
     @Value("\${app.frontend-origin:http://localhost:3001}") private val frontendOrigin: String,
 ) {
 
@@ -130,6 +137,8 @@ class DesignBundleController(
     data class CompleteResponse(
         val message: String,
         val nextStep: String?,
+        val progression: WizardProgressionView? = null,
+        val action: WizardClientActionDto? = null,
     )
 
     @PostMapping("/complete")
@@ -137,6 +146,7 @@ class DesignBundleController(
         @PathVariable projectId: String,
         @RequestBody body: CompleteRequest,
     ): ResponseEntity<CompleteResponse> {
+        validateDesignCompletion(projectId)
         val bundle = storage.get(projectId)
         val message: String
         if (bundle != null) {
@@ -146,20 +156,46 @@ class DesignBundleController(
             } catch (e: Exception) {
                 log.warn("design summarize unexpectedly threw for $projectId", e)
                 return ResponseEntity.ok(
-                    CompleteResponse(
-                        message = "Design-Summary konnte nicht generiert werden, Page-Liste wurde übernommen.",
-                        nextStep = projectService.advanceStep(projectId, FlowStepType.DESIGN)?.name,
+                    completeAfterAdvance(
+                        projectId,
+                        "Design-Summary konnte nicht generiert werden, Page-Liste wurde übernommen.",
                     )
                 )
             }
         } else {
             message = "Design-Step übersprungen — kein Bundle hochgeladen."
         }
-        val nextStep = projectService.advanceStep(projectId, FlowStepType.DESIGN)
-        return ResponseEntity.ok(CompleteResponse(message, nextStep?.name))
+        return ResponseEntity.ok(completeAfterAdvance(projectId, message))
     }
 
     private val log = org.slf4j.LoggerFactory.getLogger(javaClass)
+
+    private fun validateDesignCompletion(projectId: String) {
+        val beforeAdvance = wizardProgression.snapshot(projectId)
+        if (beforeAdvance.steps.none { it.step == FlowStepType.DESIGN.name }) {
+            throw WizardStepNotVisibleException(
+                FlowStepType.DESIGN,
+                ProductCategory.fromWire(beforeAdvance.category),
+            )
+        }
+        if (beforeAdvance.currentStep != FlowStepType.DESIGN.name) {
+            throw WizardStepNotCurrentException(FlowStepType.DESIGN, beforeAdvance.currentStep)
+        }
+    }
+
+    private fun completeAfterAdvance(projectId: String, message: String): CompleteResponse {
+        val nextStep = projectService.advanceStep(projectId, FlowStepType.DESIGN)
+        val progression = wizardProgression.snapshot(projectId)
+        val action = progression.currentStep
+            ?.takeIf { it != FlowStepType.DESIGN.name }
+            ?.let { WizardClientActionDto(type = "SHOW_STEP", step = it) }
+            ?: if (progression.status == "READY_FOR_EXPORT") {
+                WizardClientActionDto(type = "OPEN_EXPORT")
+            } else {
+                WizardClientActionDto(type = "STAY")
+            }
+        return CompleteResponse(message, nextStep?.name, progression, action)
+    }
 
     private fun mimeTypeFor(path: String): String {
         val lower = path.lowercase()

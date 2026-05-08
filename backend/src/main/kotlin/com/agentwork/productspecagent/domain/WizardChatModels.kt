@@ -11,5 +11,8 @@ data class WizardStepCompleteResponse(
     val nextStep: String?,
     val exportTriggered: Boolean = false,
     val decisionId: String? = null,
-    val clarificationId: String? = null
+    val clarificationId: String? = null,
+    val progression: WizardProgressionView = emptyWizardProgressionView(),
+    val action: WizardClientActionDto = WizardClientActionDto(type = "STAY"),
+    val artifacts: WizardCreatedArtifacts = WizardCreatedArtifacts(),
 )
