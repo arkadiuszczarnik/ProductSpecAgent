@@ -158,7 +158,6 @@ Used very sparingly:
 ### Cards
 
 The base card recipe (`components/ui/card.tsx`):
-
 ```
 bg-card text-card-foreground border border-border rounded-lg shadow-sm transition-all duration-200
 ```
