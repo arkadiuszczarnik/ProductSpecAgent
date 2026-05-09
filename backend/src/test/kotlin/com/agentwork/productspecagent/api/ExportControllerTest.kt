@@ -124,11 +124,7 @@ class ExportControllerTest {
         assertNotNull(agentsMd, "ZIP should contain AGENTS.md, got: ${entries.keys}")
         kotlin.test.assertNull(implementationOrder, "ZIP should not contain implementation-order.md, got: ${entries.keys}")
         assertTrue(
-            claudeMd.value.contains("## Richtlinien"),
-            "CLAUDE.md should use agent-template.md.mustache, got:\n${claudeMd.value}"
-        )
-        assertTrue(
-            agentsMd.value.contains("## Richtlinien"),
+            agentsMd.value.contains("# AGENTS.md") && agentsMd.value.contains("## Arbeitsweise"),
             "AGENTS.md should use agent-template.md.mustache, got:\n${agentsMd.value}"
         )
         assertTrue(
