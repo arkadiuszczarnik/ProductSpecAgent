@@ -1,62 +1,22 @@
 ## Guidelines
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+Work surgically: understand the existing code before changing it, keep the smallest change that satisfies the request, and do not refactor unrelated code. State unclear assumptions instead of guessing.
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+Before editing, define the success check for the task. For bug fixes, reproduce or cover the bug first when practical. For feature work, update only the files needed for the accepted scope.
 
-## 1. Think Before Coding
+Use the repository's existing commands, style, and test layout. Do not commit secrets, generated runtime data, or unrelated local changes.
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+## Asset Bundles
 
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+Bundled agent assets live in `.asset-bundles`. The `.claude` and `.agents` entries may be symlinks to that directory; keep that structure and do not duplicate bundle files elsewhere.
 
-## 2. Simplicity First
+Use these global bundles when present:
 
-**Minimum code that solves the problem. Nothing speculative.**
+- `feature-implementieren` (`.asset-bundles/skills/feature-implementieren/SKILL.md`): use for requests to implement a feature from `docs/features/00-feature-set-overview.md`, including `$feature-implementieren`.
+- `global.living-sync-reporter` (`.asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/SKILL.md`): use for Living Sync progress, test, code-change, blocker, note, and completion reports. Prefer the bundled reporter binary over hand-written curl calls.
 
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
+## Verification
 
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+Run the narrowest relevant checks first, then broaden when the change touches shared behavior. Report exactly what passed or failed. If a full check fails because of unrelated existing issues, name the failing files and still verify your changed files.
 
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
----
+Keep final responses short: summarize the change, list verification, and call out any remaining risk or unrelated dirty worktree state.

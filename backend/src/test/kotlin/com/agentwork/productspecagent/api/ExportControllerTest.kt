@@ -132,6 +132,14 @@ class ExportControllerTest {
             "AGENTS.md should use agent-template.md.mustache, got:\n${agentsMd.value}"
         )
         assertTrue(
+            agentsMd.value.contains("feature-implementieren"),
+            "AGENTS.md should mention the feature implementation asset bundle, got:\n${agentsMd.value}"
+        )
+        assertTrue(
+            agentsMd.value.contains("global.living-sync-reporter"),
+            "AGENTS.md should mention the Living Sync reporter asset bundle, got:\n${agentsMd.value}"
+        )
+        assertTrue(
             !claudeMd.value.contains("## How to Sync This Project"),
             "CLAUDE.md should not use handoff.md.mustache, got:\n${claudeMd.value}"
         )
