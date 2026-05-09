@@ -8,6 +8,8 @@ import com.agentwork.productspecagent.agent.ScreenProposalAgent
 import com.agentwork.productspecagent.domain.DesignInputCategory
 import com.agentwork.productspecagent.domain.DesignInputClassification
 import com.agentwork.productspecagent.domain.DesignInputKind
+import com.agentwork.productspecagent.domain.DesignScreen
+import com.agentwork.productspecagent.domain.DesignSuggestion
 import com.agentwork.productspecagent.domain.DesignVariantStatus
 import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 import com.agentwork.productspecagent.storage.InMemoryObjectStore
@@ -124,6 +126,51 @@ class DesignWorkbenchServiceTest {
         }
         assertFailsWith<InvalidDesignWorkbenchException> {
             service.setActiveVariant("p1", "landing", "missing")
+        }
+    }
+
+    @Test
+    fun `apply suggestion generates variant with suggestion prompt`() {
+        storage.save(
+            storage.load("p1").copy(
+                screens = listOf(DesignScreen(id = "settings", name = "Settings", purpose = "Manage preferences")),
+                suggestions = listOf(
+                    DesignSuggestion(
+                        id = "tighten",
+                        screenId = "settings",
+                        title = "Tighten controls",
+                        description = "Make density higher and reduce empty space.",
+                        createdAt = "now",
+                    ),
+                ),
+            ),
+        )
+        var capturedPrompt: String? = null
+        val service = service(
+            designVariantAgent = object : DesignVariantAgent(null) {
+                override fun generate(projectId: String, screenId: String, prompt: String?): GeneratedDesignVariant {
+                    capturedPrompt = prompt
+                    return validGeneratedVariant()
+                }
+            },
+        )
+
+        val workbench = service.applySuggestion("p1", "settings", "tighten")
+
+        assertEquals("Tighten controls\n\nMake density higher and reduce empty space.", capturedPrompt)
+        assertEquals(1, workbench.screens.single().variants.size)
+    }
+
+    @Test
+    fun `apply suggestion rejects missing suggestion`() {
+        storage.save(
+            storage.load("p1").copy(
+                screens = listOf(DesignScreen(id = "settings", name = "Settings", purpose = "Manage preferences")),
+            ),
+        )
+
+        assertFailsWith<InvalidDesignWorkbenchException> {
+            service.applySuggestion("p1", "settings", "missing")
         }
     }
 

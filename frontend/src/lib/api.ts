@@ -980,6 +980,14 @@ export interface DesignCompleteResponse {
   action?: WizardClientAction | null;
 }
 
+export interface UpdateDesignInputRequest {
+  userLabel?: string | null;
+  category?: DesignInputCategory;
+  summary?: string;
+  suggestedUse?: string;
+  confidence?: number;
+}
+
 // ─── Design Bundle Types ─────────────────────────────────────────────────────
 
 export interface DesignPage {
@@ -1067,6 +1075,44 @@ export async function addDesignTextInput(projectId: string, text: string): Promi
   });
 }
 
+export async function addDesignImageInput(projectId: string, file: File): Promise<DesignWorkbench> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design/inputs/image`, {
+    method: "POST",
+    credentials: "include",
+    body: fd,
+  });
+  if (res.status === 401) onUnauthorized?.();
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const bodyMessage =
+      body && typeof body === "object" && "message" in body && typeof (body as { message?: unknown }).message === "string"
+        ? (body as { message: string }).message
+        : null;
+    throw new ApiError(res.status, body, bodyMessage || `API error: ${res.status}`);
+  }
+  return (await res.json()) as DesignWorkbench;
+}
+
+export async function addDesignSnippetInput(projectId: string, snippet: string, name?: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/inputs/snippet`, {
+    method: "POST",
+    body: JSON.stringify({ snippet, name }),
+  });
+}
+
+export async function updateDesignInput(
+  projectId: string,
+  inputId: string,
+  request: UpdateDesignInputRequest,
+): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/design/inputs/${encodeURIComponent(inputId)}`,
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
 export async function analyzeDesignInputs(projectId: string): Promise<DesignWorkbench> {
   return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/analyze`, { method: "POST" });
 }
@@ -1075,10 +1121,38 @@ export async function proposeDesignScreens(projectId: string): Promise<DesignWor
   return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/propose`, { method: "POST" });
 }
 
+export async function addDesignScreen(projectId: string, name: string, purpose: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/screens`, {
+    method: "POST",
+    body: JSON.stringify({ name, purpose }),
+  });
+}
+
+export async function updateDesignScreen(projectId: string, screenId: string, name: string, purpose: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/${encodeURIComponent(screenId)}`,
+    { method: "PATCH", body: JSON.stringify({ name, purpose }) },
+  );
+}
+
+export async function deleteDesignScreen(projectId: string, screenId: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/${encodeURIComponent(screenId)}`,
+    { method: "DELETE" },
+  );
+}
+
 export async function generateDesignVariant(projectId: string, screenId: string, prompt: string): Promise<DesignWorkbench> {
   return apiFetch<DesignWorkbench>(
     `/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/${encodeURIComponent(screenId)}/variants`,
     { method: "POST", body: JSON.stringify({ prompt }) },
+  );
+}
+
+export async function applyDesignSuggestion(projectId: string, screenId: string, suggestionId: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/${encodeURIComponent(screenId)}/suggestions/${encodeURIComponent(suggestionId)}/apply`,
+    { method: "POST" },
   );
 }
 

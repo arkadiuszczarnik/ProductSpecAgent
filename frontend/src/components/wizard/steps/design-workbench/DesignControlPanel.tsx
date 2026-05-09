@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Check, Layers3, Loader2, PanelRight, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Layers3, Loader2, PanelRight, Plus, Save, Sparkles, Trash2, WandSparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useDesignWorkbenchStore } from "@/lib/stores/design-workbench-store";
@@ -20,6 +21,76 @@ interface DesignControlPanelProps {
   onComplete: () => void;
 }
 
+function SelectedScreenEditor({
+  projectId,
+  selectedScreen,
+  working,
+}: {
+  projectId: string;
+  selectedScreen: DesignScreen;
+  working: boolean;
+}) {
+  const updateScreen = useDesignWorkbenchStore((s) => s.updateScreen);
+  const deleteScreen = useDesignWorkbenchStore((s) => s.deleteScreen);
+  const [screenName, setScreenName] = useState(selectedScreen.name);
+  const [screenPurpose, setScreenPurpose] = useState(selectedScreen.purpose);
+
+  async function handleUpdateScreen() {
+    if (!screenName.trim()) return;
+    await updateScreen(projectId, selectedScreen.id, screenName.trim(), screenPurpose.trim());
+  }
+
+  async function handleDeleteScreen() {
+    await deleteScreen(projectId, selectedScreen.id);
+  }
+
+  return (
+    <div className="border-b border-border p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Aktiver Screen</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          onClick={handleDeleteScreen}
+          disabled={working}
+          className="h-7 gap-1 text-destructive hover:text-destructive"
+        >
+          <Trash2 size={12} />
+          Remove
+        </Button>
+      </div>
+      <div className="grid gap-1.5">
+        <Input
+          aria-label="Screen name"
+          value={screenName}
+          onChange={(event) => setScreenName(event.target.value)}
+          disabled={working}
+          className="h-8 text-xs"
+        />
+        <Textarea
+          aria-label="Screen purpose"
+          value={screenPurpose}
+          onChange={(event) => setScreenPurpose(event.target.value)}
+          disabled={working}
+          className="min-h-16 resize-none text-xs"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="xs"
+          onClick={handleUpdateScreen}
+          disabled={working || !screenName.trim()}
+          className="h-8 gap-1"
+        >
+          <Save size={12} />
+          Save screen
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function DesignControlPanel({
   projectId,
   workbench,
@@ -31,10 +102,14 @@ export function DesignControlPanel({
   onComplete,
 }: DesignControlPanelProps) {
   const proposeScreens = useDesignWorkbenchStore((s) => s.proposeScreens);
+  const addScreen = useDesignWorkbenchStore((s) => s.addScreen);
   const generateVariant = useDesignWorkbenchStore((s) => s.generateVariant);
+  const applySuggestion = useDesignWorkbenchStore((s) => s.applySuggestion);
   const setActiveVariant = useDesignWorkbenchStore((s) => s.setActiveVariant);
   const selectScreen = useDesignWorkbenchStore((s) => s.selectScreen);
   const [prompt, setPrompt] = useState("");
+  const [newScreenName, setNewScreenName] = useState("");
+  const [newScreenPurpose, setNewScreenPurpose] = useState("");
 
   const hasActiveValidVariant = Boolean(
     workbench?.screens.some((screen) =>
@@ -46,6 +121,16 @@ export function DesignControlPanel({
     if (!selectedScreen) return;
     await generateVariant(projectId, selectedScreen.id, prompt.trim());
     if (!useDesignWorkbenchStore.getState().error) setPrompt("");
+  }
+
+  async function handleAddScreen() {
+    const name = newScreenName.trim();
+    if (!name) return;
+    await addScreen(projectId, name, newScreenPurpose.trim());
+    if (!useDesignWorkbenchStore.getState().error) {
+      setNewScreenName("");
+      setNewScreenPurpose("");
+    }
   }
 
   return (
@@ -73,6 +158,37 @@ export function DesignControlPanel({
           <div className="mb-2 flex items-center justify-between gap-2 px-1">
             <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Screens</span>
             <Badge variant="ghost" className="text-[10px]">{workbench?.screens.length ?? 0}</Badge>
+          </div>
+          <div className="mb-2 grid gap-1.5">
+            <Input
+              aria-label="Neuer Screen Name"
+              value={newScreenName}
+              onChange={(event) => setNewScreenName(event.target.value)}
+              placeholder="Screen name"
+              disabled={working}
+              className="h-8 text-xs"
+            />
+            <div className="grid gap-1.5 sm:grid-cols-[1fr_auto]">
+              <Input
+                aria-label="Neuer Screen Zweck"
+                value={newScreenPurpose}
+                onChange={(event) => setNewScreenPurpose(event.target.value)}
+                placeholder="Purpose"
+                disabled={working}
+                className="h-8 text-xs"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={handleAddScreen}
+                disabled={working || !newScreenName.trim()}
+                className="h-8 gap-1"
+              >
+                <Plus size={12} />
+                Add
+              </Button>
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             {workbench?.screens.length ? (
@@ -102,6 +218,15 @@ export function DesignControlPanel({
             )}
           </div>
         </div>
+
+        {selectedScreen ? (
+          <SelectedScreenEditor
+            key={selectedScreen.id}
+            projectId={projectId}
+            selectedScreen={selectedScreen}
+            working={working}
+          />
+        ) : null}
 
         <div className="border-b border-border p-3">
           <Textarea
@@ -186,6 +311,17 @@ export function DesignControlPanel({
                 <div key={suggestion.id} className="rounded-md border border-border bg-background p-2">
                   <div className="text-xs font-medium text-foreground">{suggestion.title}</div>
                   <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground">{suggestion.description}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => applySuggestion(projectId, suggestion.screenId, suggestion.id)}
+                    disabled={working || !workbench.screens.some((screen) => screen.id === suggestion.screenId)}
+                    className="mt-2 w-full gap-1"
+                  >
+                    <WandSparkles size={12} />
+                    Apply
+                  </Button>
                 </div>
               ))}
             </div>

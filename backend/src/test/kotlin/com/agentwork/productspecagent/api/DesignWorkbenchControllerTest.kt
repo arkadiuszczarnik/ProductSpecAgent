@@ -2,10 +2,11 @@ package com.agentwork.productspecagent.api
 
 import com.agentwork.productspecagent.agent.DesignVariantAgent
 import com.agentwork.productspecagent.agent.GeneratedDesignVariant
+import com.agentwork.productspecagent.domain.DesignInputCategory
 import com.agentwork.productspecagent.domain.FlowStepType
+import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.service.WizardService
-import com.agentwork.productspecagent.domain.WizardStepData
 import kotlinx.serialization.json.JsonPrimitive
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsString
@@ -17,8 +18,11 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import org.springframework.http.MediaType
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
@@ -63,6 +67,17 @@ class DesignWorkbenchControllerTest {
     }
 
     private fun createProject(name: String): String = projectService.createProject(name).project.id
+
+    private fun inputId(): String =
+        """"id"\s*:\s*"([^"]+)"""".toRegex()
+            .find(
+                mockMvc.perform(get("/api/v1/projects/$projectId/design/workbench"))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .response
+                    .contentAsString,
+            )!!
+            .groupValues[1]
 
     private fun advanceToDesign(projectId: String) {
         listOf(
@@ -140,6 +155,100 @@ class DesignWorkbenchControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"text":"Reference notes"}"""),
         )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("WIZARD_STEP_NOT_CURRENT"))
+    }
+
+    @Test
+    fun `POST image input adds image input`() {
+        advanceToDesign(projectId)
+        val image = MockMultipartFile("file", "dashboard.png", "image/png", byteArrayOf(1, 2, 3))
+
+        mockMvc.perform(multipart("/api/v1/projects/$projectId/design/inputs/image").file(image))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.inputs[0].kind").value("IMAGE"))
+            .andExpect(jsonPath("$.inputs[0].originalName").value("dashboard.png"))
+    }
+
+    @Test
+    fun `POST snippet input adds html css snippet input`() {
+        advanceToDesign(projectId)
+
+        mockMvc.perform(
+            post("/api/v1/projects/$projectId/design/inputs/snippet")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"pricing.html","snippet":"<style>.hero{color:red}</style><section>Pricing</section>"}"""),
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.inputs[0].kind").value("HTML_CSS_SNIPPET"))
+            .andExpect(jsonPath("$.inputs[0].originalName").value("pricing.html"))
+    }
+
+    @Test
+    fun `PATCH input updates user label and classification`() {
+        advanceToDesign(projectId)
+        mockMvc.perform(
+            post("/api/v1/projects/$projectId/design/inputs/snippet")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"snippet":"<button>Buy</button>"}"""),
+        )
+            .andExpect(status().isOk())
+
+        mockMvc.perform(
+            patch("/api/v1/projects/$projectId/design/inputs/{inputId}", inputId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "userLabel":"Checkout reference",
+                      "category":"HTML_CSS_REFERENCE",
+                      "summary":"Compact checkout section",
+                      "suggestedUse":"Use button density",
+                      "confidence":0.9
+                    }
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.inputs[0].userLabel").value("Checkout reference"))
+            .andExpect(jsonPath("$.inputs[0].classification.category").value(DesignInputCategory.HTML_CSS_REFERENCE.name))
+            .andExpect(jsonPath("$.inputs[0].classification.summary").value("Compact checkout section"))
+            .andExpect(jsonPath("$.inputs[0].classification.suggestedUse").value("Use button density"))
+            .andExpect(jsonPath("$.inputs[0].classification.confidence").value(0.9))
+    }
+
+    @Test
+    fun `manual screen add update and delete works`() {
+        advanceToDesign(projectId)
+
+        mockMvc.perform(
+            post("/api/v1/projects/$projectId/design/screens")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Settings","purpose":"Manage account preferences"}"""),
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.screens[0].id").value("settings"))
+            .andExpect(jsonPath("$.screens[0].name").value("Settings"))
+
+        mockMvc.perform(
+            patch("/api/v1/projects/$projectId/design/screens/settings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Account Settings","purpose":"Tune workspace preferences"}"""),
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.screens[0].name").value("Account Settings"))
+            .andExpect(jsonPath("$.screens[0].purpose").value("Tune workspace preferences"))
+
+        mockMvc.perform(delete("/api/v1/projects/$projectId/design/screens/settings"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.screens").isEmpty)
+    }
+
+    @Test
+    fun `POST image input rejects before DESIGN is current`() {
+        val image = MockMultipartFile("file", "dashboard.png", "image/png", byteArrayOf(1, 2, 3))
+
+        mockMvc.perform(multipart("/api/v1/projects/$projectId/design/inputs/image").file(image))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("WIZARD_STEP_NOT_CURRENT"))
     }
