@@ -4,6 +4,9 @@ import com.agentwork.productspecagent.agent.DesignVariantAgent
 import com.agentwork.productspecagent.agent.GeneratedDesignVariant
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.service.ProjectService
+import com.agentwork.productspecagent.service.WizardService
+import org.assertj.core.api.Assertions.assertThat
+import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,7 +17,10 @@ import org.springframework.context.annotation.Primary
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -44,6 +50,7 @@ class DesignWorkbenchControllerTest {
 
     @Autowired private lateinit var ctx: WebApplicationContext
     @Autowired private lateinit var projectService: ProjectService
+    @Autowired private lateinit var wizardService: WizardService
     private lateinit var mockMvc: MockMvc
     private lateinit var projectId: String
 
@@ -62,6 +69,23 @@ class DesignWorkbenchControllerTest {
             FlowStepType.FEATURES,
             FlowStepType.MVP,
         ).forEach { step -> projectService.advanceStep(projectId, step) }
+    }
+
+    private fun createVariant(prompt: String = "valid-preview"): String {
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/screens/propose"))
+            .andExpect(status().isOk())
+
+        val result = mockMvc.perform(
+            post("/api/v1/projects/$projectId/design/screens/landing/variants")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"prompt":"$prompt"}"""),
+        )
+            .andExpect(status().isOk())
+            .andReturn()
+
+        return """"variants"\s*:\s*\[\s*\{[^}]*"id"\s*:\s*"([^"]+)"""".toRegex()
+            .find(result.response.contentAsString)!!
+            .groupValues[1]
     }
 
     @Test
@@ -101,5 +125,47 @@ class DesignWorkbenchControllerTest {
                 .content("""{"prompt":"invalid-preview"}"""),
         )
             .andExpect(status().isBadRequest())
+    }
+
+    @Test
+    fun `GET preview returns html with security headers`() {
+        val variantId = createVariant()
+
+        mockMvc.perform(get("/api/v1/projects/$projectId/design/preview/$variantId"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+            .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+            .andExpect(header().string("Cache-Control", "no-store"))
+            .andExpect(header().string("Content-Security-Policy", containsString("frame-ancestors 'self' http://localhost:3001")))
+            .andExpect(content().string(containsString("valid-preview")))
+    }
+
+    @Test
+    fun `GET preview returns not found for unknown variant`() {
+        mockMvc.perform(get("/api/v1/projects/$projectId/design/preview/missing"))
+            .andExpect(status().isNotFound())
+    }
+
+    @Test
+    fun `POST complete saves active design summary and advances flow`() {
+        val variantId = createVariant()
+        mockMvc.perform(
+            patch("/api/v1/projects/$projectId/design/screens/landing/active-variant")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"variantId":"$variantId"}"""),
+        )
+            .andExpect(status().isOk())
+        advanceToDesign(projectId)
+
+        mockMvc.perform(
+            post("/api/v1/projects/$projectId/design/complete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"),
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.nextStep").value("ARCHITECTURE"))
+
+        assertThat(projectService.readSpecFile(projectId, "design.md")).contains("Landing", "Initial")
+        assertThat(wizardService.getWizardData(projectId).steps["DESIGN"]?.fields?.get("summary")).isNotNull()
     }
 }

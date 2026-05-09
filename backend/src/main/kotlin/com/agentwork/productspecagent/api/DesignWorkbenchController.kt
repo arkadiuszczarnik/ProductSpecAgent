@@ -15,6 +15,7 @@ import com.agentwork.productspecagent.service.WizardStepNotCurrentException
 import com.agentwork.productspecagent.service.WizardStepNotVisibleException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -36,6 +37,7 @@ class DesignWorkbenchController(
     private val wizardService: WizardService,
     private val projectService: ProjectService,
     private val wizardProgression: WizardProgression,
+    @Value("\${app.frontend-origin:http://localhost:3001}") private val frontendOrigin: String,
 ) {
 
     data class TextInputRequest(val text: String = "")
@@ -101,7 +103,7 @@ class DesignWorkbenchController(
         headers.set(
             "Content-Security-Policy",
             "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; " +
-                "script-src 'unsafe-inline'; frame-ancestors 'self'",
+                "script-src 'unsafe-inline'; frame-ancestors 'self' $frontendOrigin",
         )
         return ResponseEntity(bytes, headers, HttpStatus.OK)
     }
