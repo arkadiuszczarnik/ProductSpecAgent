@@ -8,6 +8,7 @@ import com.agentwork.productspecagent.domain.DesignVariant
 import com.agentwork.productspecagent.domain.DesignVariantStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -33,6 +34,22 @@ class DesignWorkbenchStorageTest {
         assertEquals(DesignInputKind.TEXT, input.kind)
         assertEquals(input.id, loaded.inputs.single().id)
         assertEquals("Make a compact SaaS dashboard", objectStore.get(input.contentRef)!!.toString(Charsets.UTF_8))
+    }
+
+    @Test
+    fun `stores binary input and persists metadata`() {
+        val input = storage.addBinaryInput(
+            projectId = "p1",
+            kind = DesignInputKind.IMAGE,
+            originalName = "reference.png",
+            bytes = byteArrayOf(1, 2, 3),
+            contentType = "image/png",
+        )
+
+        val loaded = storage.load("p1").inputs.single()
+        assertEquals(DesignInputKind.IMAGE, loaded.kind)
+        assertEquals("reference.png", loaded.originalName)
+        assertEquals(byteArrayOf(1, 2, 3).toList(), objectStore.get(input.contentRef)!!.toList())
     }
 
     @Test
@@ -77,12 +94,12 @@ class DesignWorkbenchStorageTest {
     }
 
     @Test
-    fun `save variant ignores caller path and persists normalized path`() {
+    fun `save variant ignores caller path and screen id and persists normalized variant`() {
         val screen = DesignScreen(id = "landing", name = "Landing", purpose = "Explain value")
         storage.saveScreens("p1", listOf(screen))
         val variant = DesignVariant(
             id = "v2",
-            screenId = "landing",
+            screenId = "wrong-screen",
             version = 2,
             title = "Second",
             htmlPath = "wrong/path.html",
@@ -96,6 +113,61 @@ class DesignWorkbenchStorageTest {
 
         assertNull(objectStore.get("wrong/path.html"))
         assertNotNull(objectStore.get(expectedPath))
-        assertEquals(expectedPath, updated.screens.single().variants.single().htmlPath)
+        val storedVariant = updated.screens.single().variants.single()
+        assertEquals("landing", storedVariant.screenId)
+        assertEquals(expectedPath, storedVariant.htmlPath)
+    }
+
+    @Test
+    fun `save variant rejects unknown screen without writing html`() {
+        val variant = DesignVariant(
+            id = "v1",
+            screenId = "landing",
+            version = 1,
+            title = "Initial",
+            htmlPath = "wrong/path.html",
+            status = DesignVariantStatus.VALID,
+            rationale = "Initial variant",
+            createdAt = "2026-05-09T00:00:00Z",
+        )
+
+        assertFailsWith<NoSuchElementException> {
+            storage.saveVariant("p1", "landing", variant, "<html></html>".toByteArray())
+        }
+        assertNull(objectStore.get(storage.variantKey("p1", "landing", "v1")))
+        assertNull(objectStore.get("wrong/path.html"))
+    }
+
+    @Test
+    fun `set active variant rejects unknown screen`() {
+        assertFailsWith<NoSuchElementException> {
+            storage.setActiveVariant("p1", "landing", "v1")
+        }
+    }
+
+    @Test
+    fun `set active variant rejects variant not on screen`() {
+        val screen = DesignScreen(id = "landing", name = "Landing", purpose = "Explain value")
+        storage.saveScreens("p1", listOf(screen))
+
+        assertFailsWith<IllegalArgumentException> {
+            storage.setActiveVariant("p1", "landing", "missing")
+        }
+        assertNull(storage.load("p1").screens.single().activeVariantId)
+    }
+
+    @Test
+    fun `read by key throws for missing object`() {
+        assertFailsWith<NoSuchElementException> {
+            storage.readByKey("projects/p1/design/missing.html")
+        }
+    }
+
+    @Test
+    fun `write active screen stores html at active screen key`() {
+        storage.writeActiveScreen("p1", "landing", "<html><body>Active</body></html>".toByteArray())
+
+        val activeHtml = objectStore.get(storage.activeScreenKey("p1", "landing"))!!.toString(Charsets.UTF_8)
+        assertEquals("<html><body>Active</body></html>", activeHtml)
     }
 }

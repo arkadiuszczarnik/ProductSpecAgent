@@ -100,9 +100,15 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         save(load(projectId).copy(screens = screens))
 
     fun saveVariant(projectId: String, screenId: String, variant: DesignVariant, html: ByteArray): DesignWorkbench {
-        val normalizedVariant = variant.copy(htmlPath = variantKey(projectId, screenId, variant.id))
-        objectStore.put(normalizedVariant.htmlPath, html, "text/html")
         val workbench = load(projectId)
+        if (workbench.screens.none { it.id == screenId }) {
+            throw NoSuchElementException("design screen not found: $screenId")
+        }
+        val normalizedVariant = variant.copy(
+            screenId = screenId,
+            htmlPath = variantKey(projectId, screenId, variant.id),
+        )
+        objectStore.put(normalizedVariant.htmlPath, html, "text/html")
         return save(
             workbench.copy(
                 screens = workbench.screens.map { screen ->
@@ -118,6 +124,11 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
 
     fun setActiveVariant(projectId: String, screenId: String, variantId: String): DesignWorkbench {
         val workbench = load(projectId)
+        val screen = workbench.screens.firstOrNull { it.id == screenId }
+            ?: throw NoSuchElementException("design screen not found: $screenId")
+        require(screen.variants.any { it.id == variantId }) {
+            "design variant not found on screen $screenId: $variantId"
+        }
         return save(
             workbench.copy(
                 screens = workbench.screens.map { screen ->
