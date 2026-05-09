@@ -56,6 +56,7 @@ export function DesignInputPanel({ projectId, workbench, working }: DesignInputP
 
       <div className="flex shrink-0 flex-col gap-2 border-b border-border p-3">
         <Textarea
+          aria-label="Designbeschreibung"
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder="UI-Richtung, Referenzen, gewuenschte Screens..."

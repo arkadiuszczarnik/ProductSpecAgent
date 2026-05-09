@@ -16,6 +16,7 @@ interface DesignControlPanelProps {
   previewVariant: DesignVariant | null;
   working: boolean;
   completing: boolean;
+  blocked: boolean;
   onComplete: () => void;
 }
 
@@ -26,6 +27,7 @@ export function DesignControlPanel({
   previewVariant,
   working,
   completing,
+  blocked,
   onComplete,
 }: DesignControlPanelProps) {
   const proposeScreens = useDesignWorkbenchStore((s) => s.proposeScreens);
@@ -103,6 +105,7 @@ export function DesignControlPanel({
 
         <div className="border-b border-border p-3">
           <Textarea
+            aria-label="Variantenvorgabe"
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
             placeholder="Variante: dichter, ruhiger, mehr Dashboard..."
@@ -195,7 +198,8 @@ export function DesignControlPanel({
           type="button"
           size="sm"
           onClick={onComplete}
-          disabled={working || completing || !hasActiveValidVariant}
+          disabled={working || completing || blocked || !hasActiveValidVariant}
+          title={blocked ? "Offene Blocker klaeren" : undefined}
           className="w-full gap-1.5"
         >
           {completing ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}

@@ -224,17 +224,22 @@ export const useWizardStore = create<WizardState>((set, get) => ({
           chatSending: false,
         }));
 
-        // Mark DESIGN as completed locally; the backend persists the DESIGN step and summary.
-        const completedAt = new Date().toISOString();
-        const designStepData = data.steps.DESIGN ?? { fields: {}, completedAt: null };
-        const updatedDesign = {
-          ...designStepData,
-          fields: { ...designStepData.fields, summary: chatMessage },
-          completedAt,
-        };
-        set({
-          data: { ...data, steps: { ...data.steps, DESIGN: updatedDesign } },
-        });
+        const refreshedData = await getWizardData(projectId).catch(() => null);
+        if (refreshedData) {
+          set({ data: refreshedData });
+        } else {
+          const completedAt = new Date().toISOString();
+          const designStepData = data.steps.DESIGN ?? { fields: {}, completedAt: null };
+          set({
+            data: {
+              ...data,
+              steps: {
+                ...data.steps,
+                DESIGN: { ...designStepData, completedAt },
+              },
+            },
+          });
+        }
 
         if (refreshedProgression) {
           set({ progression: refreshedProgression });

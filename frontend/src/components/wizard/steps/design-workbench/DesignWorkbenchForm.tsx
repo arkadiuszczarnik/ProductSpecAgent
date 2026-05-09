@@ -10,9 +10,10 @@ import { DesignInputPanel } from "./DesignInputPanel";
 
 interface DesignWorkbenchFormProps {
   projectId: string;
+  isBlocked?: boolean;
 }
 
-export function DesignWorkbenchForm({ projectId }: DesignWorkbenchFormProps) {
+export function DesignWorkbenchForm({ projectId, isBlocked = false }: DesignWorkbenchFormProps) {
   const { workbench, selectedScreenId, loading, working, error, load } = useDesignWorkbenchStore();
   const completeStep = useWizardStore((s) => s.completeStep);
   const completing = useWizardStore((s) => s.chatPending);
@@ -31,6 +32,7 @@ export function DesignWorkbenchForm({ projectId }: DesignWorkbenchFormProps) {
     null;
 
   async function handleComplete() {
+    if (isBlocked) return;
     await completeStep(projectId, "DESIGN");
   }
 
@@ -43,14 +45,14 @@ export function DesignWorkbenchForm({ projectId }: DesignWorkbenchFormProps) {
   }
 
   return (
-    <div className="flex h-full min-h-[620px] flex-col gap-3">
+    <div className="flex h-full min-h-[620px] min-w-0 flex-col gap-3">
       {error && (
         <div className="flex shrink-0 items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           <AlertTriangle size={14} />
           <span className="min-w-0 truncate">{error}</span>
         </div>
       )}
-      <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[280px_minmax(360px,1fr)_300px]">
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-3">
         <DesignInputPanel projectId={projectId} workbench={workbench} working={working} />
         <DesignCanvasPreview
           projectId={projectId}
@@ -65,6 +67,7 @@ export function DesignWorkbenchForm({ projectId }: DesignWorkbenchFormProps) {
           previewVariant={previewVariant}
           working={working}
           completing={completing}
+          blocked={isBlocked}
           onComplete={handleComplete}
         />
       </div>

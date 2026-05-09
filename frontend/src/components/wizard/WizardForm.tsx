@@ -27,7 +27,12 @@ import { BackendForm } from "./steps/BackendForm";
 import { FrontendForm } from "./steps/FrontendForm";
 import { DesignWorkbenchForm } from "./steps/design-workbench/DesignWorkbenchForm";
 
-const FORM_MAP: Record<string, React.ComponentType<{ projectId: string }>> = {
+interface StepFormProps {
+  projectId: string;
+  isBlocked?: boolean;
+}
+
+const FORM_MAP: Record<string, React.ComponentType<StepFormProps>> = {
   IDEA: IdeaForm,
   PROBLEM: ProblemForm,
   MVP: MvpForm,
@@ -129,7 +134,12 @@ export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardF
           </div>
         </div>
         <div className={activeStep === "FEATURES" || activeStep === "DESIGN" ? "h-[calc(100%-52px)] px-8 py-6" : "mx-auto max-w-2xl px-8 py-6"}>
-          {FormComponent && <FormComponent projectId={projectId} />}
+          {FormComponent && (
+            <FormComponent
+              projectId={projectId}
+              isBlocked={isBlocked && !wizardDone}
+            />
+          )}
         </div>
       </div>
 
