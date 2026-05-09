@@ -76,6 +76,7 @@ class HandoffOverlayWriter(
         val embeddedBundleResources = listOf(
             "asset-bundles/living-sync-reporter-bundle.zip" to "global.living-sync-reporter",
             "asset-bundles/product-spec-sync-bundle.zip" to "global.product-spec-sync",
+            "asset-bundles/feature-implementieren-bundle.zip" to "feature-implementieren",
         )
         val allowedBundleTypes = setOf("skills", "commands", "agents")
         val localBundleRoots = listOf(Path.of("."), Path.of(".."))

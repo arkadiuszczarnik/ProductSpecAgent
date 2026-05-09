@@ -49,6 +49,7 @@ class DefaultAssetBundleBootstrapper(
         val defaultBundleResources = listOf(
             "asset-bundles/living-sync-reporter-bundle.zip",
             "asset-bundles/product-spec-sync-bundle.zip",
+            "asset-bundles/feature-implementieren-bundle.zip",
         )
     }
 }

@@ -349,6 +349,23 @@ class HandoffControllerTest {
         assertFalse(skill.contains("{{{syncUrl}}}"), "Static skill should not contain Mustache placeholders")
     }
 
+    @Test
+    fun `GET handoff zip embeds Feature Implementieren asset bundle`() {
+        val pid = createProject()
+
+        val result = mockMvc.perform(get("/api/v1/projects/$pid/handoff/handoff.zip"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+        val skill = readZipEntry(zipBytes) {
+            it == ".asset-bundles/skills/feature-implementieren/SKILL.md"
+        } ?: error("Feature Implementieren skill not found in handoff ZIP")
+
+        assertTrue(skill.contains("name: feature-implementieren"), "Skill should keep the feature-implementieren name")
+        assertTrue(skill.contains("superpowers:brainstorming"), "Skill should include the implementation workflow")
+    }
+
     private fun assertZipSymlink(zipBytes: ByteArray, name: String, target: String) {
         ZipInputStream(ByteArrayInputStream(zipBytes)).use { zis ->
             var entry = zis.nextEntry

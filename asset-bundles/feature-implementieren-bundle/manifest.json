@@ -1,0 +1,9 @@
+{
+  "id": "feature-implementieren",
+  "scope": "GLOBAL",
+  "version": "1.0.0",
+  "title": "Feature Implementieren",
+  "description": "Globaler Skill fuer die gefuehrte Implementierung eines Features aus docs/features/00-feature-set-overview.md.",
+  "createdAt": "2026-05-08T00:00:00Z",
+  "updatedAt": "2026-05-08T00:00:00Z"
+}
