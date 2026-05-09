@@ -1,22 +1,22 @@
-## Guidelines
+## Richtlinien
 
-Work surgically: understand the existing code before changing it, keep the smallest change that satisfies the request, and do not refactor unrelated code. State unclear assumptions instead of guessing.
+Arbeite gezielt: Verstehe den bestehenden Code vor einer Aenderung, waehle die kleinste passende Loesung und refaktoriere keinen fremden Code. Benenne unklare Annahmen, statt zu raten.
 
-Before editing, define the success check for the task. For bug fixes, reproduce or cover the bug first when practical. For feature work, update only the files needed for the accepted scope.
+Definiere vor dem Editieren, woran der Erfolg geprueft wird. Bei Bugfixes reproduziere oder teste den Fehler zuerst, wenn das praktikabel ist. Bei Features aendere nur Dateien, die zum vereinbarten Umfang gehoeren.
 
-Use the repository's existing commands, style, and test layout. Do not commit secrets, generated runtime data, or unrelated local changes.
+Nutze die vorhandenen Kommandos, den bestehenden Stil und die Teststruktur des Repositories. Committe keine Secrets, keine generierten Laufzeitdaten und keine unrelated lokalen Aenderungen.
 
 ## Asset Bundles
 
-Bundled agent assets live in `.asset-bundles`. The `.claude` and `.agents` entries may be symlinks to that directory; keep that structure and do not duplicate bundle files elsewhere.
+Gebundelte Agent-Assets liegen in `.asset-bundles`. `.claude` und `.agents` koennen symbolische Links auf dieses Verzeichnis sein; erhalte diese Struktur und dupliziere Bundle-Dateien nicht an anderer Stelle.
 
-Use these global bundles when present:
+Verwende diese globalen Bundles, wenn sie vorhanden sind:
 
-- `feature-implementieren` (`.asset-bundles/skills/feature-implementieren/SKILL.md`): use for requests to implement a feature from `docs/features/00-feature-set-overview.md`, including `$feature-implementieren`.
-- `global.living-sync-reporter` (`.asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/SKILL.md`): use for Living Sync progress, test, code-change, blocker, note, and completion reports. Prefer the bundled reporter binary over hand-written curl calls.
+- `feature-implementieren` (`.asset-bundles/skills/feature-implementieren/SKILL.md`): fuer Anfragen zur Implementierung eines Features aus `docs/features/00-feature-set-overview.md`, inklusive `$feature-implementieren`.
+- `global.living-sync-reporter` (`.asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/SKILL.md`): fuer Living-Sync-Berichte zu Fortschritt, Tests, Code-Aenderungen, Blockern, Notizen und Abschluss. Verwende bevorzugt das gebundelte Reporter-Binary statt handgeschriebener curl-Aufrufe.
 
-## Verification
+## Verifikation
 
-Run the narrowest relevant checks first, then broaden when the change touches shared behavior. Report exactly what passed or failed. If a full check fails because of unrelated existing issues, name the failing files and still verify your changed files.
+Fuehre zuerst die engsten relevanten Checks aus und erweitere sie, wenn die Aenderung gemeinsames Verhalten betrifft. Berichte exakt, was bestanden oder fehlgeschlagen ist. Wenn ein vollstaendiger Check wegen bestehender unrelated Probleme fehlschlaegt, nenne die betroffenen Dateien und verifiziere trotzdem deine geaenderten Dateien.
 
-Keep final responses short: summarize the change, list verification, and call out any remaining risk or unrelated dirty worktree state.
+Halte Abschlussantworten kurz: Aenderung zusammenfassen, Verifikation nennen und verbleibende Risiken oder unrelated offene Worktree-Aenderungen klar benennen.
