@@ -130,6 +130,12 @@ class DesignPreviewValidatorTest {
             validator.validate("""<style>.avatar{background-image:url('/api/v1/projects')}</style>""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<style>@import "/api/v1/projects";</style>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<style>@import url('/api/v1/projects');</style>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<img srcset="/api/v1/projects 1x">""")
         }
         assertFailsWith<InvalidDesignPreviewException> {

@@ -276,6 +276,10 @@ class DesignWorkbenchControllerTest {
             .andExpect(header().string("X-Content-Type-Options", "nosniff"))
             .andExpect(header().string("Cache-Control", "no-store"))
             .andExpect(header().string("Content-Security-Policy", containsString("frame-ancestors 'self' http://localhost:3001")))
+            .andExpect(header().string("Content-Security-Policy", containsString("img-src data:")))
+            .andExpect(header().string("Content-Security-Policy", containsString("connect-src 'none'")))
+            .andExpect(header().string("Content-Security-Policy", containsString("frame-src 'none'")))
+            .andExpect(header().string("Content-Security-Policy", containsString("object-src 'none'")))
             .andExpect(content().string(containsString("valid-preview")))
     }
 
