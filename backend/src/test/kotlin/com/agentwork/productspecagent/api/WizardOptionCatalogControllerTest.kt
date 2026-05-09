@@ -107,6 +107,33 @@ class WizardOptionCatalogControllerTest {
             .andExpect(jsonPath("$.message").value(containsString("Duplicate category id")))
     }
 
+    @Test
+    @WithMockUser(roles = ["ADMIN"])
+    fun `PUT admin wizard-options rejects invalid allowed scopes`() {
+        mockMvc.perform(
+            put("/api/v1/admin/wizard-options")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "version": 1,
+                      "updatedAt": "2026-05-09T00:00:00Z",
+                      "categories": [
+                        {
+                          "id": "SaaS",
+                          "label": "SaaS",
+                          "visibleSteps": ["IDEA", "PROBLEM", "FEATURES", "MVP"],
+                          "allowedScopes": ["IDEA"],
+                          "fields": []
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+            .andExpect(status().isBadRequest)
+    }
+
     @WithAnonymousUser
     @Test
     fun `PUT admin wizard-options rejects unauthenticated requests`() {

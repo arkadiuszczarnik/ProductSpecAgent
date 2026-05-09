@@ -17,7 +17,15 @@ function normalize(opt: ChipOption): { label: string; value: string } {
 
 export function ChipSelect({ options, value, onChange, multiSelect = false }: ChipSelectProps) {
   const selected = Array.isArray(value) ? value : value ? [value] : [];
-  const normalized = options.map(normalize);
+  const normalizedOptions = options.map(normalize);
+  const knownValues = new Set(normalizedOptions.map((opt) => opt.value));
+  const preservedSelected = selected
+    .filter((selectedValue) => !knownValues.has(selectedValue))
+    .map((selectedValue) => ({
+      label: `${selectedValue} (deaktiviert)`,
+      value: selectedValue,
+    }));
+  const normalized = [...normalizedOptions, ...preservedSelected];
 
   function handleClick(v: string) {
     if (multiSelect) {

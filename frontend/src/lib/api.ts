@@ -74,7 +74,7 @@ export interface WizardOptionCategory {
   id: Category;
   label: string;
   visibleSteps: StepType[];
-  allowedScopes: StepType[];
+  allowedScopes: FeatureScope[];
   fields: WizardOptionField[];
 }
 

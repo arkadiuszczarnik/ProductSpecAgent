@@ -152,10 +152,6 @@ function enabledOptionLabels(options: { label: string; enabled?: boolean }[]): s
   return options.filter((option) => option.enabled !== false).map((option) => option.label);
 }
 
-function toFeatureScopes(scopes: StepType[]): FeatureScope[] {
-  return scopes.filter((scope): scope is FeatureScope => scope === "FRONTEND" || scope === "BACKEND");
-}
-
 export function catalogToCategoryStepConfig(catalog: WizardOptionCatalog): Record<Category, CategoryStepConfig> {
   const next: Record<Category, CategoryStepConfig> = Object.fromEntries(
     (Object.entries(CATEGORY_STEP_CONFIG) as [Category, CategoryStepConfig][]).map(([category, config]) => [
@@ -192,7 +188,7 @@ export function catalogToCategoryStepConfig(catalog: WizardOptionCatalog): Recor
 
     next[category.id] = {
       visibleSteps: category.visibleSteps.length > 0 ? [...category.visibleSteps] : [...fallback.visibleSteps],
-      allowedScopes: toFeatureScopes(category.allowedScopes),
+      allowedScopes: [...category.allowedScopes],
       fieldOptions,
     };
   }
@@ -234,5 +230,5 @@ export function getAllowedScopesFromCatalog(
   if (!catalog || !category || !isCategory(category)) return getAllowedScopes(category);
   const catalogCategory = catalog.categories.find((entry) => entry.id === category);
   if (!catalogCategory) return getAllowedScopes(category);
-  return toFeatureScopes(catalogCategory.allowedScopes);
+  return [...catalogCategory.allowedScopes];
 }

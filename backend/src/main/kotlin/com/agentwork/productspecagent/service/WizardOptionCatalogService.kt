@@ -48,6 +48,9 @@ class WizardOptionCatalogService(
                     "Category '${category.id}' visibleSteps must include ${missingBaseSteps.joinToString(", ")}"
                 )
             }
+            if (category.allowedScopes.size != category.allowedScopes.toSet().size) {
+                throw WizardOptionCatalogValidationException("Category '${category.id}' has duplicate allowedScopes")
+            }
 
             val fieldIdentities = mutableSetOf<Pair<FlowStepType, String>>()
             category.fields.forEach { field ->

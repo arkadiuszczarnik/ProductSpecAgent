@@ -14,7 +14,7 @@ data class WizardOptionCategory(
     val id: String,
     val label: String,
     val visibleSteps: List<FlowStepType>,
-    val allowedScopes: List<FlowStepType>,
+    val allowedScopes: List<FeatureScope>,
     val fields: List<WizardOptionField> = emptyList()
 )
 

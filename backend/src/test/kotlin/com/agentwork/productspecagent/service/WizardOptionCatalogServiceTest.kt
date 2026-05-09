@@ -128,6 +128,24 @@ class WizardOptionCatalogServiceTest {
             service().saveCatalog(invalid)
         }
     }
+
+    @Test
+    fun `rejects duplicate allowed scopes`() {
+        val catalog = service().getCatalog()
+        val invalid = catalog.copy(
+            categories = catalog.categories.map { category ->
+                if (category.id == "SaaS") {
+                    category.copy(allowedScopes = category.allowedScopes + category.allowedScopes.first())
+                } else {
+                    category
+                }
+            }
+        )
+
+        assertFailsWith<WizardOptionCatalogValidationException> {
+            service().saveCatalog(invalid)
+        }
+    }
 }
 
 private fun WizardOptionCatalog.withOption(

@@ -1,6 +1,7 @@
 package com.agentwork.productspecagent.service
 
 import com.agentwork.productspecagent.domain.FlowStepType
+import com.agentwork.productspecagent.domain.FeatureScope
 import com.agentwork.productspecagent.domain.WizardOption
 import com.agentwork.productspecagent.domain.WizardOptionCatalog
 import com.agentwork.productspecagent.domain.WizardOptionCategory
@@ -37,7 +38,7 @@ object WizardOptionCatalogDefaults {
                 category(
                     id = "SaaS",
                     visibleSteps = baseSteps + listOf(FlowStepType.DESIGN, FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND),
-                    allowedScopes = listOf(FlowStepType.FRONTEND, FlowStepType.BACKEND),
+                    allowedScopes = listOf(FeatureScope.FRONTEND, FeatureScope.BACKEND),
                     fields = saasMobileApiArchitecture + saasApiBackend + listOf(
                         field(FlowStepType.FRONTEND, "framework", "Next.js+React", "Vue+Nuxt", "Svelte", "Angular", "Stitch"),
                         field(FlowStepType.FRONTEND, "uiLibrary", "shadcn/ui", "Material UI", "Ant Design", "Custom"),
@@ -48,7 +49,7 @@ object WizardOptionCatalogDefaults {
                 category(
                     id = "Mobile App",
                     visibleSteps = baseSteps + listOf(FlowStepType.DESIGN, FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND),
-                    allowedScopes = listOf(FlowStepType.FRONTEND, FlowStepType.BACKEND),
+                    allowedScopes = listOf(FeatureScope.FRONTEND, FeatureScope.BACKEND),
                     fields = listOf(
                         field(FlowStepType.ARCHITECTURE, "architecture", "Monolith", "Microservices", "Serverless"),
                         field(FlowStepType.ARCHITECTURE, "database", "PostgreSQL", "MongoDB", "SQLite", "Firebase"),
@@ -65,7 +66,7 @@ object WizardOptionCatalogDefaults {
                 category(
                     id = "CLI Tool",
                     visibleSteps = baseSteps + FlowStepType.ARCHITECTURE,
-                    allowedScopes = listOf(FlowStepType.BACKEND),
+                    allowedScopes = listOf(FeatureScope.BACKEND),
                     fields = listOf(
                         field(FlowStepType.ARCHITECTURE, "architecture", "Single Binary", "Multi-Command"),
                         field(FlowStepType.ARCHITECTURE, "database", "Filesystem", "SQLite"),
@@ -81,7 +82,7 @@ object WizardOptionCatalogDefaults {
                 category(
                     id = "Desktop App",
                     visibleSteps = baseSteps + listOf(FlowStepType.DESIGN, FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND),
-                    allowedScopes = listOf(FlowStepType.FRONTEND, FlowStepType.BACKEND),
+                    allowedScopes = listOf(FeatureScope.FRONTEND, FeatureScope.BACKEND),
                     fields = listOf(
                         field(FlowStepType.ARCHITECTURE, "architecture", "Monolith", "Plugin-basiert"),
                         field(FlowStepType.ARCHITECTURE, "database", "SQLite", "PostgreSQL", "Filesystem"),
@@ -98,7 +99,7 @@ object WizardOptionCatalogDefaults {
                 category(
                     id = "API",
                     visibleSteps = baseSteps + listOf(FlowStepType.ARCHITECTURE, FlowStepType.BACKEND),
-                    allowedScopes = listOf(FlowStepType.BACKEND),
+                    allowedScopes = listOf(FeatureScope.BACKEND),
                     fields = listOf(
                         field(FlowStepType.ARCHITECTURE, "architecture", "Monolith", "Microservices", "Serverless"),
                         field(FlowStepType.ARCHITECTURE, "database", "PostgreSQL", "MongoDB", "Redis"),
@@ -113,7 +114,7 @@ object WizardOptionCatalogDefaults {
     private fun category(
         id: String,
         visibleSteps: List<FlowStepType>,
-        allowedScopes: List<FlowStepType>,
+        allowedScopes: List<FeatureScope>,
         fields: List<WizardOptionField>,
     ): WizardOptionCategory =
         WizardOptionCategory(

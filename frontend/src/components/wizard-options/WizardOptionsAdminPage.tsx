@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
+  FeatureScope,
   StepType,
   WizardOptionCatalog,
   WizardOptionCategory,
@@ -22,6 +23,8 @@ const STEP_ORDER: StepType[] = [
   "BACKEND",
   "FRONTEND",
 ];
+const REQUIRED_STEPS: StepType[] = ["IDEA", "PROBLEM", "FEATURES", "MVP"];
+const FEATURE_SCOPES: FeatureScope[] = ["FRONTEND", "BACKEND"];
 
 function cloneCatalog(catalog: WizardOptionCatalog): WizardOptionCatalog {
   return {
@@ -130,6 +133,34 @@ export function WizardOptionsAdminPage() {
           category.id === nextCategory.id ? nextCategory : category
         )),
       };
+    });
+  }
+
+  function toggleVisibleStep(step: StepType) {
+    if (!selectedCategory || REQUIRED_STEPS.includes(step)) return;
+    const selected = new Set(selectedCategory.visibleSteps);
+    if (selected.has(step)) {
+      selected.delete(step);
+    } else {
+      selected.add(step);
+    }
+    updateSelectedCategory({
+      ...selectedCategory,
+      visibleSteps: STEP_ORDER.filter((entry) => selected.has(entry)),
+    });
+  }
+
+  function toggleAllowedScope(scope: FeatureScope) {
+    if (!selectedCategory) return;
+    const selected = new Set(selectedCategory.allowedScopes);
+    if (selected.has(scope)) {
+      selected.delete(scope);
+    } else {
+      selected.add(scope);
+    }
+    updateSelectedCategory({
+      ...selectedCategory,
+      allowedScopes: FEATURE_SCOPES.filter((entry) => selected.has(entry)),
     });
   }
 
@@ -260,6 +291,73 @@ export function WizardOptionsAdminPage() {
                   </span>
                 ) : null}
               </div>
+
+              <section className="rounded-md border">
+                <div className="border-b bg-muted/30 px-3 py-2">
+                  <h2 className="text-sm font-semibold">Flow und Feature Scopes</h2>
+                </div>
+                <div className="grid gap-4 px-3 py-3 lg:grid-cols-2">
+                  <div>
+                    <div className="mb-2 text-xs font-medium uppercase text-muted-foreground">
+                      Sichtbare Schritte
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {STEP_ORDER.map((step) => {
+                        const required = REQUIRED_STEPS.includes(step);
+                        const checked = selectedCategory.visibleSteps.includes(step);
+                        return (
+                          <label
+                            key={step}
+                            className={cn(
+                              "flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs",
+                              checked ? "bg-secondary text-secondary-foreground" : "text-muted-foreground",
+                              (busy || required) && "opacity-70",
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={busy || required}
+                              onChange={() => toggleVisibleStep(step)}
+                              aria-label={`${step} sichtbar`}
+                            />
+                            {step}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-2 text-xs font-medium uppercase text-muted-foreground">
+                      Feature Scopes
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {FEATURE_SCOPES.map((scope) => {
+                        const checked = selectedCategory.allowedScopes.includes(scope);
+                        return (
+                          <label
+                            key={scope}
+                            className={cn(
+                              "flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs",
+                              checked ? "bg-secondary text-secondary-foreground" : "text-muted-foreground",
+                              busy && "opacity-70",
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={busy}
+                              onChange={() => toggleAllowedScope(scope)}
+                              aria-label={`${scope} erlaubt`}
+                            />
+                            {scope}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </section>
 
               {groupedFields.length === 0 ? (
                 <div className="rounded-md border px-3 py-6 text-sm text-muted-foreground">

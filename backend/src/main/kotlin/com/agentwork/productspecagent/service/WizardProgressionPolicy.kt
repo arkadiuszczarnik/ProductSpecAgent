@@ -7,7 +7,9 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.stereotype.Component
 
 @Component
-class WizardProgressionPolicy {
+class WizardProgressionPolicy(
+    private val wizardOptionCatalogService: WizardOptionCatalogService? = null,
+) {
 
     private val fullFlowSteps = listOf(
         FlowStepType.IDEA,
@@ -25,14 +27,24 @@ class WizardProgressionPolicy {
             wizardData.steps["IDEA"]?.fields?.get("category")
                 ?.let { runCatching { it.jsonPrimitive.content }.getOrNull() },
         )
+        val categoryWireValue = category?.wireValue
         return WizardProgressionPlan(
             category = category,
-            visibleSteps = visibleSteps(category),
+            visibleSteps = visibleSteps(category, categoryWireValue),
         )
     }
 
-    private fun visibleSteps(category: ProductCategory?): List<FlowStepType> =
-        when (category) {
+    private fun visibleSteps(category: ProductCategory?, categoryWireValue: String?): List<FlowStepType> {
+        val catalogSteps = categoryWireValue
+            ?.let { wireValue ->
+                (wizardOptionCatalogService?.getCatalog() ?: WizardOptionCatalogDefaults.create()).categories
+                    .firstOrNull { it.id == wireValue }
+                    ?.visibleSteps
+                    ?.takeIf { it.isNotEmpty() }
+            }
+        if (catalogSteps != null) return catalogSteps
+
+        return when (category) {
             ProductCategory.LIBRARY -> listOf(
                 FlowStepType.IDEA,
                 FlowStepType.PROBLEM,
@@ -59,4 +71,5 @@ class WizardProgressionPolicy {
             ProductCategory.DESKTOP_APP,
             null -> fullFlowSteps
         }
+    }
 }

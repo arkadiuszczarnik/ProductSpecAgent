@@ -3,13 +3,22 @@ package com.agentwork.productspecagent.service
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.WizardData
 import com.agentwork.productspecagent.domain.WizardStepData
+import com.agentwork.productspecagent.storage.InMemoryObjectStore
+import com.agentwork.productspecagent.storage.WizardOptionCatalogStorage
 import kotlinx.serialization.json.JsonPrimitive
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 
 class WizardProgressionPolicyTest {
 
-    private val policy = WizardProgressionPolicy()
+    private val catalogService = WizardOptionCatalogService(
+        WizardOptionCatalogStorage(InMemoryObjectStore()),
+        Clock.fixed(Instant.parse("2026-05-09T00:00:00Z"), ZoneOffset.UTC),
+    )
+    private val policy = WizardProgressionPolicy(catalogService)
     private val fullFlowSteps = listOf(
         FlowStepType.IDEA,
         FlowStepType.PROBLEM,
@@ -72,6 +81,41 @@ class WizardProgressionPolicyTest {
 
         assertThat(plan.visibleSteps).containsExactlyElementsOf(fullFlowSteps)
         assertThat(plan.isTerminal(FlowStepType.FRONTEND)).isTrue()
+    }
+
+    @Test
+    fun `catalog visible steps override category defaults`() {
+        val catalog = catalogService.getCatalog()
+        catalogService.saveCatalog(
+            catalog.copy(
+                categories = catalog.categories.map { category ->
+                    if (category.id == "SaaS") {
+                        category.copy(
+                            visibleSteps = listOf(
+                                FlowStepType.IDEA,
+                                FlowStepType.PROBLEM,
+                                FlowStepType.FEATURES,
+                                FlowStepType.MVP,
+                                FlowStepType.BACKEND,
+                            )
+                        )
+                    } else {
+                        category
+                    }
+                }
+            )
+        )
+
+        val plan = policy.planFor(wizardData("SaaS"))
+
+        assertThat(plan.visibleSteps).containsExactly(
+            FlowStepType.IDEA,
+            FlowStepType.PROBLEM,
+            FlowStepType.FEATURES,
+            FlowStepType.MVP,
+            FlowStepType.BACKEND,
+        )
+        assertThat(plan.isTerminal(FlowStepType.BACKEND)).isTrue()
     }
 
     @Test

@@ -87,11 +87,10 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         await optionsStore.loadCatalog();
       }
       const catalog = useWizardOptionsStore.getState().catalog;
-      const fallbackSteps = getVisibleStepsFromCatalog(catalog, data.steps["IDEA"]?.fields?.category as string | undefined);
-      const activeStep = progression?.currentStep
-        ?? progression?.steps.find((step) => step.visible)?.step
-        ?? fallbackSteps[0]
-        ?? "IDEA";
+      const catalogSteps = getVisibleStepsFromCatalog(catalog, data.steps["IDEA"]?.fields?.category as string | undefined);
+      const activeStep = progression?.currentStep && catalogSteps.includes(progression.currentStep)
+        ? progression.currentStep
+        : (catalogSteps[0] ?? "IDEA");
       set({ data, progression, activeStep, loading: false });
     } catch {
       set({ data: { projectId, steps: {} }, progression: null, activeStep: "IDEA", loading: false });
@@ -106,13 +105,6 @@ export const useWizardStore = create<WizardState>((set, get) => ({
   },
 
   visibleSteps: () => {
-    const progression = get().progression;
-    if (progression?.steps.length) {
-      return progression.steps
-        .filter((step) => step.visible)
-        .flatMap((step) => WIZARD_STEPS.find((wizardStep) => wizardStep.key === step.step) ?? []);
-    }
-
     const category = get().getCategory();
     const catalog = useWizardOptionsStore.getState().catalog;
     const visible = getVisibleStepsFromCatalog(catalog, category);
