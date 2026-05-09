@@ -48,6 +48,15 @@ class DesignPreviewValidatorTest {
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<img src="https:&#10;//example.com/a.png">""")
         }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img src="https&colon;&sol;&sol;example.com/a.png">""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img src="https:&NewLine;//example.com/a.png">""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img src="https:&Tab;//example.com/a.png">""")
+        }
     }
 
     @Test
@@ -158,6 +167,12 @@ class DesignPreviewValidatorTest {
             validator.validate("""<script>sessionStorage.token</script>""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>window['localStorage'].token</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>globalThis["sessionStorage"].token</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>document.cookie</script>""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
@@ -205,6 +220,15 @@ class DesignPreviewValidatorTest {
         }
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<form action=/api/v1/projects></form>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<form><button formaction="/api/v1/projects">Go</button></form>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<form><button formaction='/api/v1/projects'>Go</button></form>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<form><button formaction=/api/v1/projects>Go</button></form>""")
         }
     }
 }

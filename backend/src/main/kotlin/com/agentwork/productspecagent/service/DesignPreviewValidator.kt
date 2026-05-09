@@ -19,12 +19,13 @@ class DesignPreviewValidator {
         Regex("""(?i)(?:\bEventSource\b|["']EventSource["'])""") to "EventSource is not allowed",
         Regex("""(?i)(?:\bsendBeacon\b|["']sendBeacon["'])""") to "sendBeacon is not allowed",
         Regex("""(?i)\bimport\s*\(""") to "dynamic import is not allowed",
-        Regex("""(?i)\blocalStorage\b""") to "localStorage is not allowed",
-        Regex("""(?i)\bsessionStorage\b""") to "sessionStorage is not allowed",
+        Regex("""(?i)(?:\blocalStorage\b|["']localStorage["'])""") to "localStorage is not allowed",
+        Regex("""(?i)(?:\bsessionStorage\b|["']sessionStorage["'])""") to "sessionStorage is not allowed",
         Regex("""(?i)(?:\bcookie\b|["']cookie["'])""") to "cookie access is not allowed",
         Regex("""(?i)(?:\bparent\b|["']parent["'])""") to "parent window access is not allowed",
         Regex("""(?i)(?:\bpostMessage\b|["']postMessage["'])""") to "postMessage is not allowed",
         Regex("""(?i)<form[^>]+\baction\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)""") to "form actions are not allowed",
+        Regex("""(?i)\bformaction\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)""") to "form actions are not allowed",
     )
 
     fun validate(html: String) {
@@ -56,6 +57,9 @@ class DesignPreviewValidator {
                 "quot" -> "\""
                 "apos" -> "'"
                 "colon" -> ":"
+                "sol" -> "/"
+                "newline" -> "\n"
+                "tab" -> "\t"
                 else -> decodeNumericEntity(entity) ?: match.value
             }
         }
@@ -77,7 +81,7 @@ class DesignPreviewValidator {
     private companion object {
         private val asciiControlCharacters = Regex("""[\u0000-\u001F\u007F]""")
         private val htmlEntityPattern = Regex(
-            """&(#x[0-9a-fA-F]+;?|#[0-9]+;?|amp;|lt;|gt;|quot;|apos;|colon;)""",
+            """&(#x[0-9a-fA-F]+;?|#[0-9]+;?|amp;|lt;|gt;|quot;|apos;|colon;|sol;|newline;|tab;)""",
             RegexOption.IGNORE_CASE,
         )
         private val semicolonlessHexColonPattern = Regex("""&#x0*3a;?""", RegexOption.IGNORE_CASE)
