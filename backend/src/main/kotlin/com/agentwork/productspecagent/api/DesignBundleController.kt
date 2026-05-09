@@ -146,7 +146,7 @@ class DesignBundleController(
         val action: WizardClientActionDto? = null,
     )
 
-    @PostMapping("/complete")
+    @PostMapping("/legacy/complete")
     fun complete(
         @PathVariable projectId: String,
         @RequestBody body: CompleteRequest,
