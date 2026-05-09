@@ -55,6 +55,7 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 | 44 | Akzeptanzkriterien im Feature-Edit-Modal | [44-feature-acceptance-criteria-done.md](44-feature-acceptance-criteria-done.md) | Feature 22, 36 | M |
 | 45 | Living-Sync via MCP | [45-living-sync-mcp-done.md](45-living-sync-mcp-done.md) | Feature 8, 30, 31, 44 | L |
 | 46 | Wizard-Options-Admin | [46-wizard-options-admin.md](46-wizard-options-admin.md) | Feature 11, 12, 34, 41 | M |
+| 47 | Agentic Design Workbench | [47-agentic-design-workbench.md](47-agentic-design-workbench.md) | Feature 11, 12, 13, 40, 46 | XL |
 
 ## Architecture Docs
 
