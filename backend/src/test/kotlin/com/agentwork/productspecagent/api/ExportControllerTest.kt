@@ -261,6 +261,7 @@ class ExportControllerTest {
     @Test
     fun `POST export includes active design screens and docs spec`() {
         val pid = createProject()
+        saveActiveDesignScreen(pid)
         designWorkbenchStorage.writeActiveScreen(
             pid,
             "landing",
@@ -273,8 +274,34 @@ class ExportControllerTest {
 
         val zipBytes = result.response.contentAsByteArray
 
-        assertNotNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/landing/index.html") })
+        val designScreen = assertNotNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/landing/index.html") })
+        assertTrue(designScreen.contains("Landing design"))
         assertNotNull(readZipEntry(zipBytes) { it.endsWith("/docs/spec.md") })
+    }
+
+    @Test
+    fun `POST export excludes stale design screens`() {
+        val pid = createProject()
+        saveActiveDesignScreen(pid)
+        designWorkbenchStorage.writeActiveScreen(
+            pid,
+            "landing",
+            "<html><body>Landing design</body></html>".toByteArray(),
+        )
+        designWorkbenchStorage.writeActiveScreen(
+            pid,
+            "stale",
+            "<html><body>Stale design</body></html>".toByteArray(),
+        )
+
+        val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+
+        assertNotNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/landing/index.html") })
+        kotlin.test.assertNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/stale/index.html") })
     }
 
     @Test
@@ -400,6 +427,32 @@ class ExportControllerTest {
             }
         }
         return null
+    }
+
+    private fun saveActiveDesignScreen(projectId: String) {
+        designWorkbenchStorage.saveScreens(
+            projectId,
+            listOf(
+                com.agentwork.productspecagent.domain.DesignScreen(
+                    id = "landing",
+                    name = "Landing",
+                    purpose = "Explain value",
+                    variants = listOf(
+                        com.agentwork.productspecagent.domain.DesignVariant(
+                            id = "variant-1",
+                            screenId = "landing",
+                            version = 1,
+                            title = "Landing",
+                            htmlPath = designWorkbenchStorage.variantKey(projectId, "landing", "variant-1"),
+                            status = com.agentwork.productspecagent.domain.DesignVariantStatus.VALID,
+                            rationale = "Ready",
+                            createdAt = "2026-05-10T00:00:00Z",
+                        )
+                    ),
+                    activeVariantId = "variant-1",
+                )
+            ),
+        )
     }
 
 }

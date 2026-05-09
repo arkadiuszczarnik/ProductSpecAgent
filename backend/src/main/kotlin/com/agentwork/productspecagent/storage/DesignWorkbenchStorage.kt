@@ -5,6 +5,7 @@ import com.agentwork.productspecagent.domain.DesignInputClassification
 import com.agentwork.productspecagent.domain.DesignInputKind
 import com.agentwork.productspecagent.domain.DesignScreen
 import com.agentwork.productspecagent.domain.DesignVariant
+import com.agentwork.productspecagent.domain.DesignVariantStatus
 import com.agentwork.productspecagent.domain.DesignWorkbench
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -146,9 +147,18 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
     }
 
     fun listActiveOutputFiles(projectId: String): List<Pair<String, ByteArray>> {
-        val outputPrefix = "projects/$projectId/design/screens/"
-        return objectStore.listKeys(outputPrefix).map { key ->
-            key.removePrefix("projects/$projectId/") to (objectStore.get(key) ?: ByteArray(0))
+        return load(projectId).screens.mapNotNull { screen ->
+            val activeVariantId = screen.activeVariantId ?: return@mapNotNull null
+            val hasActiveValidVariant = screen.variants.any {
+                it.id == activeVariantId && it.status == DesignVariantStatus.VALID
+            }
+            if (!hasActiveValidVariant) return@mapNotNull null
+
+            val key = activeScreenKey(projectId, screen.name.toSlug())
+            key.removePrefix("projects/$projectId/") to readByKey(key)
         }
     }
+
+    private fun String.toSlug(): String =
+        lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
 }
