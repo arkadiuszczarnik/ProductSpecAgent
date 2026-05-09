@@ -81,7 +81,7 @@ class DesignPreviewValidator {
         if (trimmed.isBlank()) return false
         if (trimmed.startsWith("#")) return false
         if (trimmed.startsWith("data:image/", ignoreCase = true)) return false
-        if (trimmed.startsWith("javascript:", ignoreCase = true)) return false
+        if (trimmed.startsWith("javascript:", ignoreCase = true)) return true
         if (trimmed.startsWith("mailto:", ignoreCase = true)) return false
         if (trimmed.startsWith("tel:", ignoreCase = true)) return false
         return !absoluteSchemePattern.containsMatchIn(trimmed)

@@ -132,6 +132,9 @@ class DesignPreviewValidatorTest {
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<img srcset="/api/v1/projects 1x">""")
         }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<a href="javascript:alert(1)">Open</a>""")
+        }
     }
 
     @Test
