@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Cpu, FolderKanban, MessageSquareText, Package, Plus, Settings, Sparkles } from "lucide-react";
+import { Cpu, FolderKanban, MessageSquareText, Package, Plus, Settings, SlidersHorizontal, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 
@@ -71,6 +71,12 @@ function IconRail() {
           icon={<Package size={20} />}
           label="Asset Bundles"
           active={pathname?.startsWith("/asset-bundles") ?? false}
+        />
+        <NavItem
+          href="/admin/wizard-options"
+          icon={<SlidersHorizontal size={20} />}
+          label="Wizard Optionen"
+          active={pathname?.startsWith("/admin/wizard-options") ?? false}
         />
         <NavItem
           href="/prompts"
