@@ -6,6 +6,7 @@ import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.ProductCategory
 import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.service.DesignWorkbenchService
+import com.agentwork.productspecagent.service.InvalidDesignPreviewException
 import com.agentwork.productspecagent.service.InvalidDesignWorkbenchException
 import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.service.WizardProgression
@@ -173,6 +174,8 @@ class DesignWorkbenchController(
             block()
         } catch (e: InvalidDesignWorkbenchException) {
             throw badRequest(e.message ?: "Invalid design workbench.")
+        } catch (e: InvalidDesignPreviewException) {
+            throw badRequest(e.message ?: "Invalid design preview.")
         } catch (e: IllegalArgumentException) {
             throw badRequest(e.message ?: "Invalid design workbench.")
         }

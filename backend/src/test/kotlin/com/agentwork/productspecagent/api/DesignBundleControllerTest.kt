@@ -149,7 +149,7 @@ class DesignBundleControllerTest {
             .andExpect(status().isOk)
 
         mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/complete")
+            post("/api/v1/projects/$projectId/design/legacy/complete")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"locale":"de"}""")
         ).andExpect(status().isOk)
@@ -166,7 +166,7 @@ class DesignBundleControllerTest {
         val projectId = createProject("Complete Without Bundle Test")
         advanceToDesign(projectId)
         mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/complete")
+            post("/api/v1/projects/$projectId/design/legacy/complete")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"locale":"de"}""")
         ).andExpect(status().isOk)
@@ -183,7 +183,7 @@ class DesignBundleControllerTest {
         val projectId = createProject("Design Not Current Test")
 
         mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/complete")
+            post("/api/v1/projects/$projectId/design/legacy/complete")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"locale":"de"}""")
         ).andExpect(status().isBadRequest)
@@ -198,7 +198,7 @@ class DesignBundleControllerTest {
             .andExpect(status().isOk)
 
         mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/complete")
+            post("/api/v1/projects/$projectId/design/legacy/complete")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"locale":"de"}""")
         ).andExpect(status().isBadRequest)
@@ -217,7 +217,7 @@ class DesignBundleControllerTest {
         ).andExpect(status().isOk)
 
         mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/complete")
+            post("/api/v1/projects/$projectId/design/legacy/complete")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"locale":"de"}""")
         ).andExpect(status().isBadRequest)
