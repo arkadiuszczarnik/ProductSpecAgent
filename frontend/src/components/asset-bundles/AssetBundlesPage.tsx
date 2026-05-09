@@ -3,6 +3,7 @@
 
 import { useEffect } from "react";
 import { useAssetBundleStore } from "@/lib/stores/asset-bundle-store";
+import { useWizardOptionsStore } from "@/lib/stores/wizard-options-store";
 import { BundleList } from "./BundleList";
 import { BundleDetail } from "./BundleDetail";
 import { MissingBundleList } from "./MissingBundleList";
@@ -15,12 +16,21 @@ export function AssetBundlesPage() {
   const activeTab = useAssetBundleStore((s) => s.activeTab);
   const setActiveTab = useAssetBundleStore((s) => s.setActiveTab);
   const getMissingTriples = useAssetBundleStore((s) => s.getMissingTriples);
+  const catalog = useWizardOptionsStore((s) => s.catalog);
+  const catalogLoading = useWizardOptionsStore((s) => s.loading);
+  const loadCatalog = useWizardOptionsStore((s) => s.loadCatalog);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const missingCount = getMissingTriples().length;
+  useEffect(() => {
+    if (activeTab === "missing" && !catalog && !catalogLoading) {
+      void loadCatalog();
+    }
+  }, [activeTab, catalog, catalogLoading, loadCatalog]);
+
+  const missingCount = getMissingTriples(catalog).length;
 
   return (
     <div className="flex h-screen flex-col">
@@ -46,10 +56,10 @@ export function AssetBundlesPage() {
       </div>
       <div className="flex flex-1 min-h-0">
         <aside className="w-96 border-r overflow-hidden">
-          {activeTab === "uploaded" ? <BundleList /> : <MissingBundleList />}
+          {activeTab === "uploaded" ? <BundleList /> : <MissingBundleList catalog={catalog} />}
         </aside>
         <main className="flex-1 overflow-hidden">
-          {activeTab === "uploaded" ? <BundleDetail /> : <ManifestStubView />}
+          {activeTab === "uploaded" ? <BundleDetail /> : <ManifestStubView catalog={catalog} />}
         </main>
       </div>
     </div>

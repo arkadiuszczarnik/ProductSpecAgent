@@ -2,7 +2,8 @@
 import { FormField } from "../FormField";
 import { ChipSelect } from "../ChipSelect";
 import { useWizardStore } from "@/lib/stores/wizard-store";
-import { getFieldOptions } from "@/lib/category-step-config";
+import { getFieldOptionsFromCatalog } from "@/lib/category-step-config";
+import { useWizardOptionsStore } from "@/lib/stores/wizard-options-store";
 
 const DEFAULT_OPTIONS = {
   framework: ["Next.js + React", "Vue + Nuxt", "Svelte + SvelteKit", "Angular", "Stitch", "Remix", "Astro"],
@@ -12,13 +13,15 @@ const DEFAULT_OPTIONS = {
 };
 
 export function FrontendForm({ projectId }: { projectId: string }) {
+  void projectId;
   const { data, updateField, getCategory } = useWizardStore();
+  const catalog = useWizardOptionsStore((state) => state.catalog);
   const fields = data?.steps["FRONTEND"]?.fields ?? {};
   const get = (key: string) => (fields[key] as string) ?? "";
-  const set = (key: string, val: any) => updateField("FRONTEND", key, val);
+  const set = (key: string, val: string | string[]) => updateField("FRONTEND", key, val);
 
   const category = getCategory();
-  const options = getFieldOptions(category, "FRONTEND") ?? DEFAULT_OPTIONS;
+  const options = getFieldOptionsFromCatalog(catalog, category, "FRONTEND") ?? DEFAULT_OPTIONS;
 
   return (
     <div className="space-y-5">

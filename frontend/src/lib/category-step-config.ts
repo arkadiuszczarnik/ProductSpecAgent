@@ -1,6 +1,6 @@
 // frontend/src/lib/category-step-config.ts
 
-import type { FeatureScope } from "./api";
+import type { FeatureScope, StepType, WizardOptionCatalog } from "./api";
 
 export type Category = "SaaS" | "Mobile App" | "CLI Tool" | "Library" | "Desktop App" | "API";
 
@@ -9,15 +9,17 @@ export const ALL_STEP_KEYS = [
   "ARCHITECTURE", "BACKEND", "FRONTEND",
 ] as const;
 
-const BASE_STEPS = ["IDEA", "PROBLEM", "FEATURES", "MVP"] as const;
+export const BASE_STEPS = ["IDEA", "PROBLEM", "FEATURES", "MVP"] as const;
 
 export type FieldOptions = Record<string, Record<string, string[]>>;
 
 export interface CategoryConfig {
-  visibleSteps: string[];
+  visibleSteps: StepType[];
   fieldOptions: FieldOptions;
   allowedScopes: FeatureScope[];
 }
+
+export type CategoryStepConfig = CategoryConfig;
 
 export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
   "SaaS": {
@@ -120,10 +122,12 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
   },
 };
 
-/** Default: all steps visible (no category selected) */
-export const DEFAULT_VISIBLE_STEPS: string[] = [...ALL_STEP_KEYS];
+export const DEFAULT_CATEGORY_STEP_CONFIG = CATEGORY_STEP_CONFIG;
 
-export function getVisibleSteps(category: string | undefined): string[] {
+/** Default: all steps visible (no category selected) */
+export const DEFAULT_VISIBLE_STEPS: StepType[] = [...ALL_STEP_KEYS];
+
+export function getVisibleSteps(category: string | undefined): StepType[] {
   if (!category) return [...DEFAULT_VISIBLE_STEPS];
   const config = CATEGORY_STEP_CONFIG[category as Category];
   return config ? config.visibleSteps : [...DEFAULT_VISIBLE_STEPS];
@@ -138,4 +142,97 @@ export function getFieldOptions(category: string | undefined, step: string): Rec
 export function getAllowedScopes(category: string | undefined): FeatureScope[] {
   if (!category) return ["FRONTEND", "BACKEND"];
   return CATEGORY_STEP_CONFIG[category as Category]?.allowedScopes ?? ["FRONTEND", "BACKEND"];
+}
+
+function isCategory(value: string): value is Category {
+  return value in CATEGORY_STEP_CONFIG;
+}
+
+function enabledOptionLabels(options: { label: string; enabled?: boolean }[]): string[] {
+  return options.filter((option) => option.enabled !== false).map((option) => option.label);
+}
+
+function toFeatureScopes(scopes: StepType[]): FeatureScope[] {
+  return scopes.filter((scope): scope is FeatureScope => scope === "FRONTEND" || scope === "BACKEND");
+}
+
+export function catalogToCategoryStepConfig(catalog: WizardOptionCatalog): Record<Category, CategoryStepConfig> {
+  const next: Record<Category, CategoryStepConfig> = Object.fromEntries(
+    (Object.entries(CATEGORY_STEP_CONFIG) as [Category, CategoryStepConfig][]).map(([category, config]) => [
+      category,
+      {
+        visibleSteps: [...config.visibleSteps],
+        allowedScopes: [...config.allowedScopes],
+        fieldOptions: Object.fromEntries(
+          Object.entries(config.fieldOptions).map(([step, fields]) => [
+            step,
+            Object.fromEntries(Object.entries(fields).map(([key, values]) => [key, [...values]])),
+          ]),
+        ),
+      },
+    ]),
+  ) as Record<Category, CategoryStepConfig>;
+
+  for (const category of catalog.categories) {
+    if (!isCategory(category.id)) continue;
+    const fallback = CATEGORY_STEP_CONFIG[category.id];
+    const fieldOptions: FieldOptions = {};
+
+    for (const step of category.visibleSteps) {
+      fieldOptions[step] = { ...(fallback.fieldOptions[step] ?? {}) };
+    }
+
+    for (const field of category.fields) {
+      const labels = enabledOptionLabels(field.options);
+      fieldOptions[field.step] = {
+        ...(fieldOptions[field.step] ?? fallback.fieldOptions[field.step] ?? {}),
+        [field.key]: labels,
+      };
+    }
+
+    next[category.id] = {
+      visibleSteps: category.visibleSteps.length > 0 ? [...category.visibleSteps] : [...fallback.visibleSteps],
+      allowedScopes: toFeatureScopes(category.allowedScopes),
+      fieldOptions,
+    };
+  }
+
+  return next;
+}
+
+export function getVisibleStepsFromCatalog(
+  catalog: WizardOptionCatalog | null,
+  category: Category | string | undefined,
+): StepType[] {
+  if (!catalog || !category || !isCategory(category)) return getVisibleSteps(category);
+  return catalog.categories.find((entry) => entry.id === category)?.visibleSteps ?? getVisibleSteps(category);
+}
+
+export function getFieldOptionsFromCatalog(
+  catalog: WizardOptionCatalog | null,
+  category: Category | string | undefined,
+  step: StepType | string,
+): Record<string, string[]> | undefined {
+  if (!catalog || !category || !isCategory(category)) return getFieldOptions(category, step);
+  const catalogCategory = catalog.categories.find((entry) => entry.id === category);
+  if (!catalogCategory) return getFieldOptions(category, step);
+
+  const fields = catalogCategory.fields.filter((field) => field.step === step);
+  if (fields.length === 0) return getFieldOptions(category, step);
+
+  const fallback = getFieldOptions(category, step) ?? {};
+  return fields.reduce<Record<string, string[]>>((acc, field) => {
+    acc[field.key] = enabledOptionLabels(field.options);
+    return acc;
+  }, { ...fallback });
+}
+
+export function getAllowedScopesFromCatalog(
+  catalog: WizardOptionCatalog | null,
+  category: Category | string | undefined,
+): FeatureScope[] {
+  if (!catalog || !category || !isCategory(category)) return getAllowedScopes(category);
+  const catalogCategory = catalog.categories.find((entry) => entry.id === category);
+  if (!catalogCategory) return getAllowedScopes(category);
+  return toFeatureScopes(catalogCategory.allowedScopes);
 }

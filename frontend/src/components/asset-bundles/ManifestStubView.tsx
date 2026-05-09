@@ -9,20 +9,21 @@ import {
   buildManifestStub,
   getAllPossibleTriples,
 } from "@/lib/asset-bundles/possible-triples";
+import type { WizardOptionCatalog } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-export function ManifestStubView() {
+export function ManifestStubView({ catalog }: { catalog?: WizardOptionCatalog | null }) {
   const selectedMissingTripleId = useAssetBundleStore((s) => s.selectedMissingTripleId);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   const triple = useMemo(() => {
     if (!selectedMissingTripleId) return null;
     return (
-      getAllPossibleTriples().find(
+      getAllPossibleTriples(catalog).find(
         (t) => bundleId(t.step, t.field, t.value) === selectedMissingTripleId,
       ) ?? null
     );
-  }, [selectedMissingTripleId]);
+  }, [catalog, selectedMissingTripleId]);
 
   if (!triple) {
     return (
@@ -77,7 +78,7 @@ export function ManifestStubView() {
         </div>
         <p className="text-xs text-muted-foreground">
           Lege diesen Inhalt als <code className="font-mono">manifest.json</code> im Root deines Bundle-Ordners ab.
-          Lade den ZIP anschließend über den „Hochgeladen"-Tab hoch.
+          Lade den ZIP anschließend über den &quot;Hochgeladen&quot;-Tab hoch.
         </p>
       </div>
     </div>

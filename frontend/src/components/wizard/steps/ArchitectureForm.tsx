@@ -3,7 +3,8 @@ import { FormField } from "../FormField";
 import { ChipSelect } from "../ChipSelect";
 import { Textarea } from "@/components/ui/textarea";
 import { useWizardStore } from "@/lib/stores/wizard-store";
-import { getFieldOptions } from "@/lib/category-step-config";
+import { getFieldOptionsFromCatalog } from "@/lib/category-step-config";
+import { useWizardOptionsStore } from "@/lib/stores/wizard-options-store";
 
 const DEFAULT_OPTIONS = {
   architecture: ["Monolith", "Microservices", "Serverless", "Hybrid"],
@@ -12,13 +13,15 @@ const DEFAULT_OPTIONS = {
 };
 
 export function ArchitectureForm({ projectId }: { projectId: string }) {
+  void projectId;
   const { data, updateField, getCategory } = useWizardStore();
+  const catalog = useWizardOptionsStore((state) => state.catalog);
   const fields = data?.steps["ARCHITECTURE"]?.fields ?? {};
   const get = (key: string) => (fields[key] as string) ?? "";
-  const set = (key: string, val: any) => updateField("ARCHITECTURE", key, val);
+  const set = (key: string, val: string | string[]) => updateField("ARCHITECTURE", key, val);
 
   const category = getCategory();
-  const options = getFieldOptions(category, "ARCHITECTURE") ?? DEFAULT_OPTIONS;
+  const options = getFieldOptionsFromCatalog(catalog, category, "ARCHITECTURE") ?? DEFAULT_OPTIONS;
 
   return (
     <div className="space-y-5">

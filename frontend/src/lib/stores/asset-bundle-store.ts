@@ -11,6 +11,7 @@ import {
   type AssetBundleListItem,
   type AssetBundleDetail,
   type StepType,
+  type WizardOptionCatalog,
 } from "@/lib/api";
 import {
   diffMissingTriples,
@@ -50,7 +51,7 @@ interface AssetBundleState {
 
   setActiveTab: (tab: "uploaded" | "missing") => void;
   selectMissingTriple: (id: string | null) => void;
-  getMissingTriples: () => BundleTriple[];
+  getMissingTriples: (catalog?: WizardOptionCatalog | null) => BundleTriple[];
 }
 
 export const useAssetBundleStore = create<AssetBundleState>((set, get) => ({
@@ -185,7 +186,7 @@ export const useAssetBundleStore = create<AssetBundleState>((set, get) => ({
     set({ selectedMissingTripleId: id });
   },
 
-  getMissingTriples() {
-    return diffMissingTriples(getAllPossibleTriples(), get().bundles);
+  getMissingTriples(catalog) {
+    return diffMissingTriples(getAllPossibleTriples(catalog), get().bundles);
   },
 }));

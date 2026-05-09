@@ -1,6 +1,6 @@
 // frontend/src/lib/asset-bundles/possible-triples.ts
-import type { StepType, AssetBundleManifest } from "@/lib/api";
-import { CATEGORY_STEP_CONFIG } from "@/lib/category-step-config";
+import type { StepType, AssetBundleManifest, WizardOptionCatalog } from "@/lib/api";
+import { catalogToCategoryStepConfig, CATEGORY_STEP_CONFIG } from "@/lib/category-step-config";
 
 export type RelevantStep = "ARCHITECTURE" | "BACKEND" | "FRONTEND";
 
@@ -25,9 +25,10 @@ export function bundleId(step: RelevantStep, field: string, value: string): stri
 }
 
 /** Aggregiert alle (step, field, value)-Triples aus allen Kategorien, dedupliziert über bundleId. */
-export function getAllPossibleTriples(): BundleTriple[] {
+export function getAllPossibleTriples(catalog?: WizardOptionCatalog | null): BundleTriple[] {
+  const configByCategory = catalog ? catalogToCategoryStepConfig(catalog) : CATEGORY_STEP_CONFIG;
   const seen = new Map<string, BundleTriple>();
-  for (const config of Object.values(CATEGORY_STEP_CONFIG)) {
+  for (const config of Object.values(configByCategory)) {
     for (const step of RELEVANT_STEPS) {
       const fields = config.fieldOptions[step];
       if (!fields) continue;

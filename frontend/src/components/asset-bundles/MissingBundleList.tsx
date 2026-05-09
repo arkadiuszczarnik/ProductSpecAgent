@@ -8,9 +8,10 @@ import {
   groupByStepAndField,
   RELEVANT_STEPS,
 } from "@/lib/asset-bundles/possible-triples";
+import type { WizardOptionCatalog } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-export function MissingBundleList() {
+export function MissingBundleList({ catalog }: { catalog?: WizardOptionCatalog | null }) {
   const selectedMissingTripleId = useAssetBundleStore((s) => s.selectedMissingTripleId);
   const selectMissingTriple = useAssetBundleStore((s) => s.selectMissingTriple);
   const getMissingTriples = useAssetBundleStore((s) => s.getMissingTriples);
@@ -18,7 +19,7 @@ export function MissingBundleList() {
   // dass der Component re-rendert, wenn sich die Bundle-Liste ändert.
   useAssetBundleStore((s) => s.bundles);
 
-  const missing = getMissingTriples();
+  const missing = getMissingTriples(catalog);
 
   if (missing.length === 0) {
     return (

@@ -1,3 +1,5 @@
+import type { Category } from "@/lib/category-step-config";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 let onUnauthorized: (() => void) | null = null;
@@ -54,6 +56,33 @@ export async function apiFetch<T>(
 export type StepType = "IDEA" | "PROBLEM" | "FEATURES" | "MVP" | "DESIGN"
   | "ARCHITECTURE" | "BACKEND" | "FRONTEND";
 export type StepStatus = "OPEN" | "IN_PROGRESS" | "COMPLETED";
+
+export interface WizardOption {
+  id: string;
+  label: string;
+  enabled: boolean;
+}
+
+export interface WizardOptionField {
+  step: StepType;
+  key: string;
+  label: string;
+  options: WizardOption[];
+}
+
+export interface WizardOptionCategory {
+  id: Category;
+  label: string;
+  visibleSteps: StepType[];
+  allowedScopes: StepType[];
+  fields: WizardOptionField[];
+}
+
+export interface WizardOptionCatalog {
+  version: number;
+  categories: WizardOptionCategory[];
+  updatedAt: string;
+}
 
 // ─── Feature Graph Types ──────────────────────────────────────────────────────
 
@@ -547,6 +576,25 @@ export async function getWizardData(projectId: string): Promise<WizardData> {
 
 export async function getWizardProgression(projectId: string): Promise<WizardProgressionView> {
   return apiFetch<WizardProgressionView>(`/api/v1/projects/${projectId}/wizard/progression`);
+}
+
+export async function getWizardOptions(): Promise<WizardOptionCatalog> {
+  return apiFetch<WizardOptionCatalog>("/api/v1/wizard-options");
+}
+
+export async function getAdminWizardOptions(): Promise<WizardOptionCatalog> {
+  return apiFetch<WizardOptionCatalog>("/api/v1/admin/wizard-options");
+}
+
+export async function saveAdminWizardOptions(catalog: WizardOptionCatalog): Promise<WizardOptionCatalog> {
+  return apiFetch<WizardOptionCatalog>("/api/v1/admin/wizard-options", {
+    method: "PUT",
+    body: JSON.stringify(catalog),
+  });
+}
+
+export async function resetAdminWizardOptions(): Promise<WizardOptionCatalog> {
+  return apiFetch<WizardOptionCatalog>("/api/v1/admin/wizard-options/reset", { method: "POST" });
 }
 
 export async function saveWizardData(projectId: string, data: WizardData): Promise<WizardData> {

@@ -5,12 +5,14 @@ import type {
   WizardFeatureEdge,
   WizardFeatureGraph,
   WizardProgressionView,
+  StepType,
 } from "@/lib/api";
 import { getWizardData, getWizardProgression, saveWizardStep, completeWizardStep } from "@/lib/api";
 import { wouldCreateCycle } from "@/lib/graph/cycleCheck";
 import { formatStepFields } from "@/lib/step-field-labels";
 import { useProjectStore } from "@/lib/stores/project-store";
-import { getVisibleSteps } from "@/lib/category-step-config";
+import { getVisibleStepsFromCatalog } from "@/lib/category-step-config";
+import { useWizardOptionsStore } from "@/lib/stores/wizard-options-store";
 
 export const WIZARD_STEPS = [
   { key: "IDEA", label: "Idee" },
@@ -80,7 +82,12 @@ export const useWizardStore = create<WizardState>((set, get) => ({
     try {
       const data = await getWizardData(projectId);
       const progression = await getWizardProgression(projectId).catch(() => null);
-      const fallbackSteps = getVisibleSteps(data.steps["IDEA"]?.fields?.category as string | undefined);
+      const optionsStore = useWizardOptionsStore.getState();
+      if (!optionsStore.catalog && !optionsStore.loading) {
+        await optionsStore.loadCatalog();
+      }
+      const catalog = useWizardOptionsStore.getState().catalog;
+      const fallbackSteps = getVisibleStepsFromCatalog(catalog, data.steps["IDEA"]?.fields?.category as string | undefined);
       const activeStep = progression?.currentStep
         ?? progression?.steps.find((step) => step.visible)?.step
         ?? fallbackSteps[0]
@@ -107,7 +114,8 @@ export const useWizardStore = create<WizardState>((set, get) => ({
     }
 
     const category = get().getCategory();
-    const visible = getVisibleSteps(category);
+    const catalog = useWizardOptionsStore.getState().catalog;
+    const visible = getVisibleStepsFromCatalog(catalog, category);
     return WIZARD_STEPS.filter((s) => visible.includes(s.key));
   },
 
@@ -129,8 +137,9 @@ export const useWizardStore = create<WizardState>((set, get) => ({
     if (step === "IDEA" && field === "category") {
       set({ progression: null });
       const { activeStep } = get();
-      const visible = getVisibleSteps(value as string);
-      if (!visible.includes(activeStep)) {
+      const catalog = useWizardOptionsStore.getState().catalog;
+      const visible = getVisibleStepsFromCatalog(catalog, value as string);
+      if (!visible.includes(activeStep as StepType)) {
         const wizardVisible = WIZARD_STEPS.filter((s) => visible.includes(s.key));
         set({ activeStep: wizardVisible[wizardVisible.length - 1].key });
       }
