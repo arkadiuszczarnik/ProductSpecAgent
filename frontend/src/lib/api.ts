@@ -915,6 +915,62 @@ export async function resetAgentModel(agentId: string): Promise<void> {
   await apiFetch<void>(`/api/v1/agent-models/${encodeURIComponent(agentId)}`, { method: "DELETE" });
 }
 
+// ─── Design Workbench Types ──────────────────────────────────────────────────
+
+export type DesignInputKind = "TEXT" | "IMAGE" | "HTML_CSS_SNIPPET";
+export type DesignInputCategory = "REFERENCE_IMAGE" | "ASSET_IMAGE" | "HTML_CSS_REFERENCE" | "UNCLEAR";
+export type DesignVariantStatus = "DRAFT" | "VALID" | "INVALID";
+
+export interface DesignInputClassification {
+  category: DesignInputCategory;
+  summary: string;
+  suggestedUse: string;
+  confidence: number;
+}
+
+export interface DesignInput {
+  id: string;
+  kind: DesignInputKind;
+  originalName?: string | null;
+  userLabel?: string | null;
+  classification?: DesignInputClassification | null;
+  contentRef: string;
+  createdAt: string;
+}
+
+export interface DesignVariant {
+  id: string;
+  screenId: string;
+  version: number;
+  title: string;
+  htmlPath: string;
+  status: DesignVariantStatus;
+  rationale: string;
+  createdAt: string;
+}
+
+export interface DesignScreen {
+  id: string;
+  name: string;
+  purpose: string;
+  variants: DesignVariant[];
+  activeVariantId?: string | null;
+}
+
+export interface DesignWorkbench {
+  projectId: string;
+  inputs: DesignInput[];
+  screens: DesignScreen[];
+  updatedAt: string;
+}
+
+export interface DesignCompleteResponse {
+  message: string;
+  nextStep?: string | null;
+  progression?: WizardProgressionView | null;
+  action?: WizardClientAction | null;
+}
+
 // ─── Design Bundle Types ─────────────────────────────────────────────────────
 
 export interface DesignPage {
@@ -942,13 +998,6 @@ export interface DesignBundle {
   files: DesignBundleFile[];
   entryUrl: string;
   bundleUrl: string;
-}
-
-export interface DesignCompleteResponse {
-  message: string;
-  nextStep?: StepType | null;
-  progression?: WizardProgressionView | null;
-  action?: WizardClientAction | null;
 }
 
 // ─── Design Bundle API ───────────────────────────────────────────────────────
@@ -994,6 +1043,45 @@ export async function completeDesignStep(projectId: string, locale: string): Pro
     { method: "POST", body: JSON.stringify({ locale }) },
   );
   return res;
+}
+
+// ─── Design Workbench API ────────────────────────────────────────────────────
+
+export async function getDesignWorkbench(projectId: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/workbench`);
+}
+
+export async function addDesignTextInput(projectId: string, text: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/inputs/text`, {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
+}
+
+export async function analyzeDesignInputs(projectId: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/analyze`, { method: "POST" });
+}
+
+export async function proposeDesignScreens(projectId: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/propose`, { method: "POST" });
+}
+
+export async function generateDesignVariant(projectId: string, screenId: string, prompt: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/${encodeURIComponent(screenId)}/variants`,
+    { method: "POST", body: JSON.stringify({ prompt }) },
+  );
+}
+
+export async function setActiveDesignVariant(projectId: string, screenId: string, variantId: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/${encodeURIComponent(screenId)}/active-variant`,
+    { method: "PATCH", body: JSON.stringify({ variantId }) },
+  );
+}
+
+export async function completeDesignWorkbench(projectId: string): Promise<DesignCompleteResponse> {
+  return apiFetch<DesignCompleteResponse>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/complete`, { method: "POST" });
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
