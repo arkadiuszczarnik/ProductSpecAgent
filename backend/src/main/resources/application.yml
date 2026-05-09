@@ -15,6 +15,7 @@ cors:
   allowed-origins: "https://productspecagent-backend.hackathon.netrtl.com"
 
 auth:
+  admin-emails: "${AUTH_ADMIN_EMAILS:}"
   jwt:
     secret: ${AUTH_JWT_SECRET:dev-secret-change-me-dev-secret-change-me-dev-secret}
     expiry-seconds: 604800
