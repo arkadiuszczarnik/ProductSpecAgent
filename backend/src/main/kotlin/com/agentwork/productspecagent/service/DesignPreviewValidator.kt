@@ -9,7 +9,7 @@ class DesignPreviewValidator {
     private val forbiddenPatterns = listOf(
         Regex("""(?i)\bhttps?://""") to "external URLs are not allowed",
         Regex("""(?i)\b(src|href)\s*=\s*["']\s*//""") to "protocol-relative URLs are not allowed",
-        Regex("""(?i)<script[^>]+\bsrc\s*=""") to "external scripts are not allowed",
+        Regex("""(?i)<script[^>]+\bsrc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)""") to "external scripts are not allowed",
         Regex("""(?i)\bfetch\s*\(""") to "fetch is not allowed",
         Regex("""(?i)\bXMLHttpRequest\b""") to "XMLHttpRequest is not allowed",
         Regex("""(?i)\bWebSocket\b""") to "WebSocket is not allowed",
@@ -17,9 +17,9 @@ class DesignPreviewValidator {
         Regex("""(?i)\blocalStorage\b""") to "localStorage is not allowed",
         Regex("""(?i)\bsessionStorage\b""") to "sessionStorage is not allowed",
         Regex("""(?i)\bdocument\.cookie\b""") to "cookie access is not allowed",
-        Regex("""(?i)\bwindow\.parent\b""") to "parent window access is not allowed",
+        Regex("""(?i)\b(?:window\.)?parent\s*\.""") to "parent window access is not allowed",
         Regex("""(?i)\bpostMessage\s*\(""") to "postMessage is not allowed",
-        Regex("""(?i)<form[^>]+\baction\s*=""") to "form actions are not allowed",
+        Regex("""(?i)<form[^>]+\baction\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)""") to "form actions are not allowed",
     )
 
     fun validate(html: String) {

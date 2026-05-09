@@ -51,4 +51,34 @@ class DesignPreviewValidatorTest {
             validator.validate("""<form action="/api/v1/projects"><script src="/x.js"></script></form>""")
         }
     }
+
+    @Test
+    fun `rejects single quoted and unquoted external script sources`() {
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script src='/x.js'></script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script src=/x.js></script>""")
+        }
+    }
+
+    @Test
+    fun `rejects direct parent access`() {
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>parent.document.body</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>parent.postMessage('x', '*')</script>""")
+        }
+    }
+
+    @Test
+    fun `rejects single quoted and unquoted form actions`() {
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<form action='/api/v1/projects'></form>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<form action=/api/v1/projects></form>""")
+        }
+    }
 }
