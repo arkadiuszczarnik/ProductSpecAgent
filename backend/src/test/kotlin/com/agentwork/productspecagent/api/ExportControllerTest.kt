@@ -280,6 +280,21 @@ class ExportControllerTest {
     }
 
     @Test
+    fun `POST export does not fail for pre-completion active design variant`() {
+        val pid = createProject()
+        saveActiveDesignScreen(pid)
+
+        val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+
+        kotlin.test.assertNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/landing/index.html") })
+        assertNotNull(readZipEntry(zipBytes) { it.endsWith("/docs/spec.md") })
+    }
+
+    @Test
     fun `POST export excludes stale design screens`() {
         val pid = createProject()
         saveActiveDesignScreen(pid)
@@ -437,22 +452,25 @@ class ExportControllerTest {
                     id = "landing",
                     name = "Landing",
                     purpose = "Explain value",
-                    variants = listOf(
-                        com.agentwork.productspecagent.domain.DesignVariant(
-                            id = "variant-1",
-                            screenId = "landing",
-                            version = 1,
-                            title = "Landing",
-                            htmlPath = designWorkbenchStorage.variantKey(projectId, "landing", "variant-1"),
-                            status = com.agentwork.productspecagent.domain.DesignVariantStatus.VALID,
-                            rationale = "Ready",
-                            createdAt = "2026-05-10T00:00:00Z",
-                        )
-                    ),
-                    activeVariantId = "variant-1",
                 )
             ),
         )
+        designWorkbenchStorage.saveVariant(
+            projectId,
+            "landing",
+            com.agentwork.productspecagent.domain.DesignVariant(
+                id = "variant-1",
+                screenId = "landing",
+                version = 1,
+                title = "Landing",
+                htmlPath = designWorkbenchStorage.variantKey(projectId, "landing", "variant-1"),
+                status = com.agentwork.productspecagent.domain.DesignVariantStatus.VALID,
+                rationale = "Ready",
+                createdAt = "2026-05-10T00:00:00Z",
+            ),
+            "<html><body>Variant design</body></html>".toByteArray(),
+        )
+        designWorkbenchStorage.setActiveVariant(projectId, "landing", "variant-1")
     }
 
 }

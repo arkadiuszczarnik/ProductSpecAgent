@@ -5,6 +5,8 @@ import com.agentwork.productspecagent.agent.GeneratedDesignVariant
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.service.WizardService
+import com.agentwork.productspecagent.domain.WizardStepData
+import kotlinx.serialization.json.JsonPrimitive
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.BeforeEach
@@ -72,6 +74,8 @@ class DesignWorkbenchControllerTest {
     }
 
     private fun createVariant(prompt: String = "valid-preview"): String {
+        advanceToDesign(projectId)
+
         mockMvc.perform(post("/api/v1/projects/$projectId/design/screens/propose"))
             .andExpect(status().isOk())
 
@@ -116,6 +120,8 @@ class DesignWorkbenchControllerTest {
 
     @Test
     fun `POST variant returns bad request when generated preview is invalid`() {
+        advanceToDesign(projectId)
+
         mockMvc.perform(post("/api/v1/projects/$projectId/design/screens/propose"))
             .andExpect(status().isOk())
 
@@ -125,6 +131,30 @@ class DesignWorkbenchControllerTest {
                 .content("""{"prompt":"invalid-preview"}"""),
         )
             .andExpect(status().isBadRequest())
+    }
+
+    @Test
+    fun `POST text input rejects before DESIGN is current`() {
+        mockMvc.perform(
+            post("/api/v1/projects/$projectId/design/inputs/text")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"text":"Reference notes"}"""),
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("WIZARD_STEP_NOT_CURRENT"))
+    }
+
+    @Test
+    fun `POST analyze rejects when DESIGN is hidden`() {
+        wizardService.saveStepData(
+            projectId,
+            FlowStepType.IDEA.name,
+            WizardStepData(fields = mapOf("category" to JsonPrimitive("Library"))),
+        )
+
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/analyze"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("WIZARD_STEP_NOT_VISIBLE"))
     }
 
     @Test
@@ -155,7 +185,6 @@ class DesignWorkbenchControllerTest {
                 .content("""{"variantId":"$variantId"}"""),
         )
             .andExpect(status().isOk())
-        advanceToDesign(projectId)
 
         mockMvc.perform(
             post("/api/v1/projects/$projectId/design/complete")

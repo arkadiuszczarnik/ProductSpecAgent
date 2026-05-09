@@ -262,6 +262,21 @@ class HandoffControllerTest {
     }
 
     @Test
+    fun `GET handoff zip does not fail for pre-completion active design variant`() {
+        val pid = createProject()
+        saveActiveDesignScreen(pid)
+
+        val result = mockMvc.perform(get("/api/v1/projects/$pid/handoff/handoff.zip"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+
+        kotlin.test.assertNull(readZipEntry(zipBytes) { it == "design/screens/landing/index.html" })
+        assertNotNull(readZipEntry(zipBytes) { it == "docs/spec.md" })
+    }
+
+    @Test
     fun `GET handoff zip excludes decisions and clarifications`() {
         val pid = createProject()
         decisionStorage.saveDecision(
@@ -446,21 +461,24 @@ class HandoffControllerTest {
                     id = "landing",
                     name = "Landing",
                     purpose = "Explain value",
-                    variants = listOf(
-                        com.agentwork.productspecagent.domain.DesignVariant(
-                            id = "variant-1",
-                            screenId = "landing",
-                            version = 1,
-                            title = "Landing",
-                            htmlPath = designWorkbenchStorage.variantKey(projectId, "landing", "variant-1"),
-                            status = com.agentwork.productspecagent.domain.DesignVariantStatus.VALID,
-                            rationale = "Ready",
-                            createdAt = "2026-05-10T00:00:00Z",
-                        )
-                    ),
-                    activeVariantId = "variant-1",
                 )
             ),
         )
+        designWorkbenchStorage.saveVariant(
+            projectId,
+            "landing",
+            com.agentwork.productspecagent.domain.DesignVariant(
+                id = "variant-1",
+                screenId = "landing",
+                version = 1,
+                title = "Landing",
+                htmlPath = designWorkbenchStorage.variantKey(projectId, "landing", "variant-1"),
+                status = com.agentwork.productspecagent.domain.DesignVariantStatus.VALID,
+                rationale = "Ready",
+                createdAt = "2026-05-10T00:00:00Z",
+            ),
+            "<html><body>Variant design</body></html>".toByteArray(),
+        )
+        designWorkbenchStorage.setActiveVariant(projectId, "landing", "variant-1")
     }
 }

@@ -116,6 +116,31 @@ class DesignPreviewValidatorTest {
     }
 
     @Test
+    fun `rejects root relative and local subresource urls`() {
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img src="/api/v1/projects">""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<iframe src="/api/v1/projects"></iframe>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<link rel="stylesheet" href="/x.css">""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<style>.avatar{background-image:url('/api/v1/projects')}</style>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img srcset="/api/v1/projects 1x">""")
+        }
+    }
+
+    @Test
+    fun `allows data images`() {
+        validator.validate("""<img src="data:image/png;base64,iVBORw0KGgo=">""")
+        validator.validate("""<style>.logo{background-image:url("data:image/svg+xml,%3Csvg%3E%3C/svg%3E")}</style>""")
+    }
+
+    @Test
     fun `rejects network apis`() {
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>fetch('/api/v1/projects')</script>""")

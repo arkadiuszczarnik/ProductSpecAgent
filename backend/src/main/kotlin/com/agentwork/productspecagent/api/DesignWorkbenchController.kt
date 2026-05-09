@@ -54,6 +54,7 @@ class DesignWorkbenchController(
         @PathVariable projectId: String,
         @RequestBody body: TextInputRequest,
     ): DesignWorkbench {
+        validateDesignAccess(projectId)
         if (body.text.isBlank()) {
             throw badRequest("Design input text must not be blank.")
         }
@@ -61,20 +62,26 @@ class DesignWorkbenchController(
     }
 
     @PostMapping("/analyze")
-    fun analyzeInputs(@PathVariable projectId: String): DesignWorkbench =
-        mapInvalidWorkbench { service.analyzeInputs(projectId) }
+    fun analyzeInputs(@PathVariable projectId: String): DesignWorkbench {
+        validateDesignAccess(projectId)
+        return mapInvalidWorkbench { service.analyzeInputs(projectId) }
+    }
 
     @PostMapping("/screens/propose")
-    fun proposeScreens(@PathVariable projectId: String): DesignWorkbench =
-        mapInvalidWorkbench { service.proposeScreens(projectId) }
+    fun proposeScreens(@PathVariable projectId: String): DesignWorkbench {
+        validateDesignAccess(projectId)
+        return mapInvalidWorkbench { service.proposeScreens(projectId) }
+    }
 
     @PostMapping("/screens/{screenId}/variants")
     fun generateVariant(
         @PathVariable projectId: String,
         @PathVariable screenId: String,
         @RequestBody body: VariantRequest,
-    ): DesignWorkbench =
-        mapInvalidWorkbench { service.generateVariant(projectId, screenId, body.prompt) }
+    ): DesignWorkbench {
+        validateDesignAccess(projectId)
+        return mapInvalidWorkbench { service.generateVariant(projectId, screenId, body.prompt) }
+    }
 
     @PatchMapping("/screens/{screenId}/active-variant")
     fun setActiveVariant(
@@ -82,6 +89,7 @@ class DesignWorkbenchController(
         @PathVariable screenId: String,
         @RequestBody body: ActiveVariantRequest,
     ): DesignWorkbench {
+        validateDesignAccess(projectId)
         if (body.variantId.isBlank()) {
             throw badRequest("Design variant ID must not be blank.")
         }
@@ -102,15 +110,17 @@ class DesignWorkbenchController(
         headers.cacheControl = "no-store"
         headers.set(
             "Content-Security-Policy",
-            "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; " +
-                "script-src 'unsafe-inline'; frame-ancestors 'self' $frontendOrigin",
+            "default-src 'none'; img-src data:; style-src 'unsafe-inline'; " +
+                "script-src 'unsafe-inline'; connect-src 'none'; frame-src 'none'; " +
+                "object-src 'none'; base-uri 'none'; form-action 'none'; " +
+                "frame-ancestors 'self' $frontendOrigin",
         )
         return ResponseEntity(bytes, headers, HttpStatus.OK)
     }
 
     @PostMapping("/complete")
     fun complete(@PathVariable projectId: String): CompleteResponse {
-        validateDesignCompletion(projectId)
+        validateDesignAccess(projectId)
         val workbench = mapInvalidWorkbench { service.complete(projectId) }
         val summary = renderDesignSummary(workbench)
         val fields: Map<String, JsonElement> = mapOf("summary" to JsonPrimitive(summary))
@@ -129,7 +139,7 @@ class DesignWorkbenchController(
         )
     }
 
-    private fun validateDesignCompletion(projectId: String) {
+    private fun validateDesignAccess(projectId: String) {
         val beforeAdvance = wizardProgression.snapshot(projectId)
         if (beforeAdvance.steps.none { it.step == FlowStepType.DESIGN.name }) {
             throw WizardStepNotVisibleException(

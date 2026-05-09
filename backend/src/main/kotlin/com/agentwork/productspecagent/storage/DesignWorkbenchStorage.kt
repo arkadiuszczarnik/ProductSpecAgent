@@ -155,7 +155,8 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
             if (!hasActiveValidVariant) return@mapNotNull null
 
             val key = activeScreenKey(projectId, screen.name.toSlug())
-            key.removePrefix("projects/$projectId/") to readByKey(key)
+            val content = objectStore.get(key) ?: return@mapNotNull null
+            key.removePrefix("projects/$projectId/") to content
         }
     }
 
