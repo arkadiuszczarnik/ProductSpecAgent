@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 data class AuthProperties(
     val jwt: Jwt = Jwt(),
     val cookie: Cookie = Cookie(),
+    val adminEmails: List<String> = emptyList(),
 ) {
     data class Jwt(
         val secret: String = "",

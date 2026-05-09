@@ -38,6 +38,24 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
+    fun `configured admin email receives admin authority`() {
+        val adminProps = props.copy(adminEmails = listOf("admin@example.com"))
+        val adminJwt = JwtService(adminProps)
+        val adminFilter = JwtAuthenticationFilter(adminJwt, adminProps)
+        val token = adminJwt.sign("u-admin", "admin@example.com")
+        val req = MockHttpServletRequest().apply { setCookies(Cookie("session", token)) }
+        val res = MockHttpServletResponse()
+        val chain: FilterChain = mock()
+
+        adminFilter.doFilter(req, res, chain)
+
+        val auth = SecurityContextHolder.getContext().authentication
+        assertNotNull(auth)
+        assertTrue(auth!!.authorities.any { it.authority == "ROLE_ADMIN" })
+        verify(chain).doFilter(req, res)
+    }
+
+    @Test
     fun `missing cookie leaves SecurityContext empty`() {
         val req = MockHttpServletRequest()
         val res = MockHttpServletResponse()

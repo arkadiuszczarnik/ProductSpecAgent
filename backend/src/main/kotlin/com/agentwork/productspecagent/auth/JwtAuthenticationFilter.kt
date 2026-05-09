@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
@@ -20,15 +21,28 @@ class JwtAuthenticationFilter(
         if (token != null) {
             val payload = jwtService.parse(token)
             if (payload != null) {
+                val authorities = if (isAdminEmail(payload.email)) {
+                    listOf(SimpleGrantedAuthority("ROLE_ADMIN"))
+                } else {
+                    emptyList()
+                }
                 val auth = UsernamePasswordAuthenticationToken(
                     payload.userId,
                     null,
-                    emptyList()
+                    authorities
                 )
                 SecurityContextHolder.getContext().authentication = auth
                 request.setAttribute("authEmail", payload.email)
             }
         }
         filterChain.doFilter(request, response)
+    }
+
+    private fun isAdminEmail(email: String): Boolean {
+        val normalizedEmail = email.trim().lowercase()
+        return props.adminEmails.any { configured ->
+            val normalizedConfigured = configured.trim().lowercase()
+            normalizedConfigured == "*" || normalizedConfigured == normalizedEmail
+        }
     }
 }

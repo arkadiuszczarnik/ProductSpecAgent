@@ -27,7 +27,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@WithMockUser
 class WizardOptionCatalogControllerTest {
 
     @Autowired lateinit var mockMvc: MockMvc
@@ -50,6 +49,7 @@ class WizardOptionCatalogControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = ["ADMIN"])
     fun `GET admin wizard-options returns catalog`() {
         mockMvc.perform(get("/api/v1/admin/wizard-options"))
             .andExpect(status().isOk)
@@ -57,6 +57,7 @@ class WizardOptionCatalogControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = ["ADMIN"])
     fun `PUT admin wizard-options persists catalog`() {
         val updated = service.getCatalog()
             .withOption("SaaS", FlowStepType.BACKEND, "framework", WizardOption("elixir-phoenix", "Elixir + Phoenix"))
@@ -75,6 +76,7 @@ class WizardOptionCatalogControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = ["ADMIN"])
     fun `POST admin wizard-options reset restores defaults`() {
         val updated = service.getCatalog()
             .withOption("SaaS", FlowStepType.BACKEND, "framework", WizardOption("elixir-phoenix", "Elixir + Phoenix"))
@@ -91,6 +93,7 @@ class WizardOptionCatalogControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = ["ADMIN"])
     fun `PUT admin wizard-options returns 400 for invalid catalog`() {
         val catalog = service.getCatalog()
         val invalid = catalog.copy(categories = catalog.categories + catalog.categories.first().copy(label = "Duplicate SaaS"))
@@ -113,6 +116,17 @@ class WizardOptionCatalogControllerTest {
                 .content("""{"version":1,"categories":[],"updatedAt":"2026-05-09T00:00:00Z"}""")
         )
             .andExpect(status().isUnauthorized)
+    }
+
+    @WithMockUser
+    @Test
+    fun `PUT admin wizard-options rejects non-admin users`() {
+        mockMvc.perform(
+            put("/api/v1/admin/wizard-options")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"version":1,"categories":[],"updatedAt":"2026-05-09T00:00:00Z"}""")
+        )
+            .andExpect(status().isForbidden)
     }
 }
 
