@@ -8,7 +8,7 @@ class InvalidDesignPreviewException(reason: String) : RuntimeException("Invalid 
 class DesignPreviewValidator {
     private val forbiddenPatterns = listOf(
         Regex("""(?i)\bhttps?://""") to "external URLs are not allowed",
-        Regex("""(?i)\b(src|href)\s*=\s*["']\s*//""") to "protocol-relative URLs are not allowed",
+        Regex("""(?i)\b(src|href)\s*=\s*["']?\s*//""") to "protocol-relative URLs are not allowed",
         Regex("""(?i)<script[^>]+\bsrc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)""") to "external scripts are not allowed",
         Regex("""(?i)\bfetch\s*\(""") to "fetch is not allowed",
         Regex("""(?i)\bXMLHttpRequest\b""") to "XMLHttpRequest is not allowed",

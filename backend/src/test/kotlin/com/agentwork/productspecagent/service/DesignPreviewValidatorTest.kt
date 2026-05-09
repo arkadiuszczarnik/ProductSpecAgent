@@ -32,6 +32,16 @@ class DesignPreviewValidatorTest {
     }
 
     @Test
+    fun `rejects unquoted protocol relative urls`() {
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img src=//example.com/a.png>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<a href=//example.com>Example</a>""")
+        }
+    }
+
+    @Test
     fun `rejects network apis`() {
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>fetch('/api/v1/projects')</script>""")
