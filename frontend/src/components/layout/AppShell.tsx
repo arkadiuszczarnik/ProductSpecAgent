@@ -28,6 +28,7 @@ function NavItem({ href, icon, label, active }: NavItemProps) {
           : "text-sidebar-foreground hover:text-zinc-200"
       )}
       title={label}
+      aria-label={label}
     >
       {active && (
         <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-sidebar-primary" />

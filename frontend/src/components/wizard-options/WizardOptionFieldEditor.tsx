@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 interface WizardOptionFieldEditorProps {
   field: WizardOptionField;
+  disabled?: boolean;
   onChange: (field: WizardOptionField) => void;
 }
 
@@ -50,22 +51,28 @@ function replaceOption(
 
 export function WizardOptionFieldEditor({
   field,
+  disabled = false,
   onChange,
 }: WizardOptionFieldEditorProps) {
   const [newLabel, setNewLabel] = useState("");
+  const trimmedNewLabel = newLabel.trim();
+  const nextNewOptionId = nextOptionId(trimmedNewLabel, field.options);
+  const canAddOption = Boolean(trimmedNewLabel) && Boolean(nextNewOptionId) && !disabled;
 
   function updateOptions(options: WizardOption[]) {
+    if (disabled) return;
     onChange({ ...field, options });
   }
 
   function handleAddOption() {
-    const label = newLabel.trim();
-    if (!label) return;
+    const label = trimmedNewLabel;
+    const optionId = nextOptionId(label, field.options);
+    if (!label || !optionId || disabled) return;
 
     updateOptions([
       ...field.options,
       {
-        id: nextOptionId(label, field.options),
+        id: optionId,
         label,
         enabled: true,
       },
@@ -103,12 +110,13 @@ export function WizardOptionFieldEditor({
               value={newLabel}
               onChange={(event) => setNewLabel(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter") {
+                if (event.key === "Enter" && canAddOption) {
                   event.preventDefault();
                   handleAddOption();
                 }
               }}
               placeholder="Neue Option"
+              disabled={disabled}
             />
           </div>
           <Button
@@ -116,7 +124,7 @@ export function WizardOptionFieldEditor({
             size="icon"
             variant="outline"
             onClick={handleAddOption}
-            disabled={!newLabel.trim()}
+            disabled={!canAddOption}
             aria-label="Option hinzufuegen"
             title="Option hinzufuegen"
           >
@@ -155,6 +163,7 @@ export function WizardOptionFieldEditor({
                     }));
                   }}
                   aria-label={`Label fuer ${option.id}`}
+                  disabled={disabled}
                 />
                 <div className="mt-1 truncate text-[11px] text-muted-foreground">
                   {option.id}
@@ -171,6 +180,8 @@ export function WizardOptionFieldEditor({
                     }));
                   }}
                   className="size-4 rounded border-input"
+                  disabled={disabled}
+                  aria-label={`${option.label} aktiv`}
                 />
                 Aktiv
               </label>
@@ -180,7 +191,7 @@ export function WizardOptionFieldEditor({
                   size="icon-xs"
                   variant="ghost"
                   onClick={() => handleMove(index, -1)}
-                  disabled={index === 0}
+                  disabled={disabled || index === 0}
                   aria-label={`${option.label} nach oben`}
                   title="Nach oben"
                 >
@@ -191,7 +202,7 @@ export function WizardOptionFieldEditor({
                   size="icon-xs"
                   variant="ghost"
                   onClick={() => handleMove(index, 1)}
-                  disabled={index === field.options.length - 1}
+                  disabled={disabled || index === field.options.length - 1}
                   aria-label={`${option.label} nach unten`}
                   title="Nach unten"
                 >
@@ -208,6 +219,7 @@ export function WizardOptionFieldEditor({
                       optionIndex !== index
                     )));
                   }}
+                  disabled={disabled}
                   aria-label={`${option.label} entfernen`}
                   title="Entfernen"
                 >

@@ -110,6 +110,7 @@ export function WizardOptionsAdminPage() {
   const dirty = useMemo(() => (
     catalogFingerprint(draft) !== catalogFingerprint(adminCatalog)
   ), [adminCatalog, draft]);
+  const busy = saving || loading;
 
   const selectedCategory = draft?.categories.find((category) => (
     category.id === selectedCategoryId
@@ -151,6 +152,10 @@ export function WizardOptionsAdminPage() {
   }
 
   async function handleReset() {
+    if (!window.confirm("Wizard Optionen wirklich zuruecksetzen?")) {
+      return;
+    }
+
     try {
       await resetAdminCatalog();
       const nextCatalog = useWizardOptionsStore.getState().adminCatalog;
@@ -176,7 +181,7 @@ export function WizardOptionsAdminPage() {
             type="button"
             variant="outline"
             onClick={discardDraft}
-            disabled={!dirty || !adminCatalog || saving}
+            disabled={!dirty || !adminCatalog || busy}
           >
             Aenderungen verwerfen
           </Button>
@@ -184,14 +189,14 @@ export function WizardOptionsAdminPage() {
             type="button"
             variant="outline"
             onClick={handleReset}
-            disabled={saving || loading}
+            disabled={busy}
           >
             Zuruecksetzen
           </Button>
           <Button
             type="button"
             onClick={handleSave}
-            disabled={!draft || saving}
+            disabled={!draft || busy}
           >
             {saving ? "Speichert..." : "Speichern"}
           </Button>
@@ -215,11 +220,13 @@ export function WizardOptionsAdminPage() {
                 key={category.id}
                 type="button"
                 onClick={() => setSelectedCategoryId(category.id)}
+                disabled={busy}
                 className={cn(
                   "flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm transition-colors",
                   category.id === selectedCategoryId
                     ? "bg-secondary text-secondary-foreground"
                     : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                  busy && "cursor-not-allowed opacity-60",
                 )}
               >
                 <span className="truncate">{category.label}</span>
@@ -267,8 +274,9 @@ export function WizardOptionsAdminPage() {
                     <div className="px-3">
                       {group.fields.map((field) => (
                         <WizardOptionFieldEditor
-                          key={`${field.step}-${field.key}`}
+                          key={`${selectedCategory.id}-${field.step}-${field.key}`}
                           field={field}
+                          disabled={busy}
                           onChange={(nextField) => {
                             updateSelectedCategory(replaceField(selectedCategory, nextField));
                           }}
