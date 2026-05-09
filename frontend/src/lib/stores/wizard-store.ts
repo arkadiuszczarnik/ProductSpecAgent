@@ -171,15 +171,30 @@ export const useWizardStore = create<WizardState>((set, get) => ({
     const { data, visibleSteps } = get();
     if (!data) return null;
 
-    // DESIGN step: skip generic wizard save, use dedicated endpoint
+    // DESIGN step: skip generic wizard save, use dedicated workbench completion endpoint
     if (step === "DESIGN") {
-      const { useDesignBundleStore } = await import("@/lib/stores/design-bundle-store");
-      const bundle = useDesignBundleStore.getState().bundle;
-      const { completeDesignStep } = await import("@/lib/api");
-
-      const chatMessage = bundle
-        ? `**Design**\n\nBundle: ${bundle.originalFilename} (${bundle.pages.length} Pages)`
-        : `**Design** — übersprungen, kein Bundle hochgeladen`;
+      const { useDesignWorkbenchStore } = await import("@/lib/stores/design-workbench-store");
+      const { completeDesignWorkbench } = await import("@/lib/api");
+      const workbench = useDesignWorkbenchStore.getState().workbench;
+      const activeScreens = workbench?.screens
+        .flatMap((screen) => {
+          const variant = screen.variants.find((item) => item.id === screen.activeVariantId);
+          return variant ? [{ screen, variant }] : [];
+        }) ?? [];
+      const variantCount = workbench?.screens.reduce((sum, screen) => sum + screen.variants.length, 0) ?? 0;
+      const activeSummary = activeScreens.length
+        ? activeScreens.map(({ screen, variant }) => `- ${screen.name}: ${variant.title}`).join("\n")
+        : "- Keine aktive Variante";
+      const chatMessage = [
+        "**Design**",
+        "",
+        `Inputs: ${workbench?.inputs.length ?? 0}`,
+        `Screens: ${workbench?.screens.length ?? 0}`,
+        `Varianten: ${variantCount}`,
+        "",
+        "Aktive Varianten:",
+        activeSummary,
+      ].join("\n");
 
       const userMsg = {
         id: `wizard-${Date.now()}`,
@@ -195,9 +210,9 @@ export const useWizardStore = create<WizardState>((set, get) => ({
       set({ chatPending: true });
       let exportTriggered = false;
       try {
-        const locale = typeof navigator !== "undefined" ? navigator.language : "de";
-        const response = await completeDesignStep(projectId, locale);
-        exportTriggered = response.action?.type === "OPEN_EXPORT";
+        const response = await completeDesignWorkbench(projectId);
+        const refreshedProgression = response.progression ?? await getWizardProgression(projectId).catch(() => null);
+        exportTriggered = response.action?.type === "OPEN_EXPORT" || refreshedProgression?.primaryAction.type === "OPEN_EXPORT";
         const agentMsg = {
           id: `wizard-agent-${Date.now()}`,
           role: "agent" as const,
@@ -209,17 +224,20 @@ export const useWizardStore = create<WizardState>((set, get) => ({
           chatSending: false,
         }));
 
-        // Mark DESIGN as completed locally; the backend persists the DESIGN step while
-        // storing the generated design summary.
+        // Mark DESIGN as completed locally; the backend persists the DESIGN step and summary.
         const completedAt = new Date().toISOString();
         const designStepData = data.steps.DESIGN ?? { fields: {}, completedAt: null };
-        const updatedDesign = { ...designStepData, completedAt };
+        const updatedDesign = {
+          ...designStepData,
+          fields: { ...designStepData.fields, summary: chatMessage },
+          completedAt,
+        };
         set({
           data: { ...data, steps: { ...data.steps, DESIGN: updatedDesign } },
         });
 
-        if (response.progression) {
-          set({ progression: response.progression });
+        if (refreshedProgression) {
+          set({ progression: refreshedProgression });
         }
 
         if (response.action?.type === "SHOW_STEP" && response.action.step) {
@@ -228,6 +246,18 @@ export const useWizardStore = create<WizardState>((set, get) => ({
           const visible = get().visibleSteps();
           const nextVisible = visible.find((v) => v.key === response.nextStep);
           if (nextVisible) set({ activeStep: response.nextStep });
+        }
+
+        if (exportTriggered) {
+          const systemMsg = {
+            id: `wizard-export-${Date.now()}`,
+            role: "system" as const,
+            content: "Spezifikation abgeschlossen. Du kannst das Projekt jetzt exportieren.",
+            timestamp: Date.now(),
+          };
+          useProjectStore.setState((s) => ({
+            messages: [...s.messages, systemMsg],
+          }));
         }
       } catch (err) {
         const errMsg = {
