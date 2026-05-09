@@ -32,6 +32,16 @@ class DesignPreviewValidatorTest {
     }
 
     @Test
+    fun `rejects html entity encoded external urls`() {
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img src="https&#x3a;//example.com/a.png">""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img src="https&colon;//example.com/a.png">""")
+        }
+    }
+
+    @Test
     fun `rejects blank html`() {
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("   ")
@@ -42,6 +52,13 @@ class DesignPreviewValidatorTest {
     fun `rejects html over 500 kb`() {
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("a".repeat(500_001))
+        }
+    }
+
+    @Test
+    fun `rejects html over 500 kb by utf 8 byte size`() {
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("é".repeat(250_001))
         }
     }
 
@@ -62,6 +79,22 @@ class DesignPreviewValidatorTest {
     }
 
     @Test
+    fun `rejects external urls in srcset and css imports`() {
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img srcset="//example.com/a.png 1x">""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<style>.hero{background-image:url(//example.com/a.png)}</style>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<style>@import "//example.com/a.css";</style>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<style>@import url(https://example.com/a.css);</style>""")
+        }
+    }
+
+    @Test
     fun `rejects network apis`() {
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>fetch('/api/v1/projects')</script>""")
@@ -74,6 +107,15 @@ class DesignPreviewValidatorTest {
         }
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>new EventSource('/events')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>window['fetch']('/api/v1/projects')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>navigator.sendBeacon('/api/v1/projects')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>import('/x.js')</script>""")
         }
     }
 
