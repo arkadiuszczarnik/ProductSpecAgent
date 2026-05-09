@@ -32,7 +32,27 @@ class DesignPreviewValidatorTest {
     }
 
     @Test
-    fun `rejects unquoted protocol relative urls`() {
+    fun `rejects blank html`() {
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("   ")
+        }
+    }
+
+    @Test
+    fun `rejects html over 500 kb`() {
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("a".repeat(500_001))
+        }
+    }
+
+    @Test
+    fun `rejects protocol relative urls`() {
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img src="//example.com/a.png">""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<a href='//example.com'>Example</a>""")
+        }
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<img src=//example.com/a.png>""")
         }
@@ -46,12 +66,27 @@ class DesignPreviewValidatorTest {
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>fetch('/api/v1/projects')</script>""")
         }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>new XMLHttpRequest()</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>new WebSocket('ws://example.com')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>new EventSource('/events')</script>""")
+        }
     }
 
     @Test
     fun `rejects browser storage and parent access`() {
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>window.parent.postMessage(localStorage.token, '*')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>sessionStorage.token</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>document.cookie</script>""")
         }
     }
 
