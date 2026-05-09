@@ -15,8 +15,10 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class DesignWorkbenchServiceTest {
     private val objectStore = InMemoryObjectStore()
@@ -47,6 +49,19 @@ class DesignWorkbenchServiceTest {
 
         val variant = workbench.screens.single().variants.single()
         assertEquals(DesignVariantStatus.VALID, variant.status)
+    }
+
+    @Test
+    fun `fallback variant agent escapes prompt markup`() {
+        val service = service(designVariantAgent = DesignVariantAgent(null))
+        service.proposeScreens("p1")
+        val workbench = service.generateVariant("p1", "landing", "<strong>x</strong>")
+        val variant = workbench.screens.single().variants.single()
+
+        val html = service.readVariant("p1", variant.htmlPath).toString(Charsets.UTF_8)
+
+        assertTrue(html.contains("&lt;strong&gt;x&lt;/strong&gt;"))
+        assertFalse(html.contains("<strong>x</strong>"))
     }
 
     @Test
@@ -131,6 +146,19 @@ class DesignWorkbenchServiceTest {
         val activeHtml = objectStore.get(storage.activeScreenKey("p1", "landing"))
         assertNotNull(activeHtml)
         assertContentEquals(validGeneratedVariant().html.toByteArray(), activeHtml)
+    }
+
+    @Test
+    fun `complete converts missing active variant html to workbench exception`() {
+        service.proposeScreens("p1")
+        val workbench = service.generateVariant("p1", "landing", null)
+        val variant = workbench.screens.single().variants.single()
+        service.setActiveVariant("p1", "landing", variant.id)
+        objectStore.delete(variant.htmlPath)
+
+        assertFailsWith<InvalidDesignWorkbenchException> {
+            service.complete("p1")
+        }
     }
 
     @Test

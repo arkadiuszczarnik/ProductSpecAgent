@@ -23,9 +23,17 @@ open class DesignVariantAgent(private val koogRunner: KoogAgentRunner? = null) {
                 <!doctype html>
                 <html>
                   <head><meta charset="utf-8"><style>body{font-family:system-ui;margin:32px}</style></head>
-                  <body><main><h1>${screenId.replaceFirstChar { it.uppercase() }}</h1><p>${prompt ?: "Generated design variant"}</p></main></body>
+                  <body><main><h1>${screenId.replaceFirstChar { it.uppercase() }}</h1><p>${escapeHtml(prompt ?: "Generated design variant")}</p></main></body>
                 </html>
             """.trimIndent(),
             rationale = "Fallback generated from screen name and prompt.",
         )
+
+    private fun escapeHtml(value: String): String =
+        value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;")
 }

@@ -104,7 +104,12 @@ class DesignWorkbenchService(
         }
         activeScreens.forEach { screen ->
             val variant = screen.variants.first { it.id == screen.activeVariantId }
-            storage.writeActiveScreen(projectId, screen.name.toSlug(), storage.readByKey(variant.htmlPath))
+            val html = try {
+                storage.readByKey(variant.htmlPath)
+            } catch (e: NoSuchElementException) {
+                throw InvalidDesignWorkbenchException(e.message ?: "Design variant content not found.")
+            }
+            storage.writeActiveScreen(projectId, screen.name.toSlug(), html)
         }
         return workbench
     }
