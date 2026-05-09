@@ -45,6 +45,9 @@ class DesignPreviewValidatorTest {
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<img src="https&#58&#47&#x2fexample.com/a.png">""")
         }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img src="https:&#10;//example.com/a.png">""")
+        }
     }
 
     @Test
@@ -109,6 +112,12 @@ class DesignPreviewValidatorTest {
             validator.validate("""<script>fetch('/api/v1/projects')</script>""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>(0, fetch)('/api/v1/projects')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>fetch?.('/api/v1/projects')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>new XMLHttpRequest()</script>""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
@@ -124,10 +133,16 @@ class DesignPreviewValidatorTest {
             validator.validate("""<script>globalThis['fetch']('/api/v1/projects')</script>""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>globalThis['fetch'].call(globalThis, '/api/v1/projects')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>navigator.sendBeacon('/api/v1/projects')</script>""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>navigator['sendBeacon']('/api/v1/projects')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>navigator['sendBeacon'].call(navigator, '/api/v1/projects')</script>""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>import('/x.js')</script>""")
@@ -144,6 +159,15 @@ class DesignPreviewValidatorTest {
         }
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>document.cookie</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>document['cookie']</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>parent['postMessage']('x', '*')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>window['parent']['postMessage']('x', '*')</script>""")
         }
     }
 

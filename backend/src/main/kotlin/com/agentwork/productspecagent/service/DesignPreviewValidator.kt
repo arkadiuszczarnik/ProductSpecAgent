@@ -13,19 +13,17 @@ class DesignPreviewValidator {
         Regex("""(?i)\burl\s*\(\s*["']?\s*//""") to "protocol-relative CSS URLs are not allowed",
         Regex("""(?i)@import\s+(?:url\s*\(\s*)?["']?\s*(?:https?://|//)""") to "external CSS imports are not allowed",
         Regex("""(?i)<script[^>]+\bsrc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)""") to "external scripts are not allowed",
-        Regex("""(?i)\bfetch\s*\(""") to "fetch is not allowed",
-        Regex("""(?i)\[\s*["']fetch["']\s*]\s*\(""") to "fetch is not allowed",
-        Regex("""(?i)\bXMLHttpRequest\b""") to "XMLHttpRequest is not allowed",
-        Regex("""(?i)\bWebSocket\b""") to "WebSocket is not allowed",
-        Regex("""(?i)\bEventSource\b""") to "EventSource is not allowed",
-        Regex("""(?i)\bnavigator\.sendBeacon\s*\(""") to "sendBeacon is not allowed",
-        Regex("""(?i)\[\s*["']sendBeacon["']\s*]\s*\(""") to "sendBeacon is not allowed",
+        Regex("""(?i)(?:\bfetch\b|["']fetch["'])""") to "fetch is not allowed",
+        Regex("""(?i)(?:\bXMLHttpRequest\b|["']XMLHttpRequest["'])""") to "XMLHttpRequest is not allowed",
+        Regex("""(?i)(?:\bWebSocket\b|["']WebSocket["'])""") to "WebSocket is not allowed",
+        Regex("""(?i)(?:\bEventSource\b|["']EventSource["'])""") to "EventSource is not allowed",
+        Regex("""(?i)(?:\bsendBeacon\b|["']sendBeacon["'])""") to "sendBeacon is not allowed",
         Regex("""(?i)\bimport\s*\(""") to "dynamic import is not allowed",
         Regex("""(?i)\blocalStorage\b""") to "localStorage is not allowed",
         Regex("""(?i)\bsessionStorage\b""") to "sessionStorage is not allowed",
-        Regex("""(?i)\bdocument\.cookie\b""") to "cookie access is not allowed",
-        Regex("""(?i)\b(?:window\.)?parent\s*\.""") to "parent window access is not allowed",
-        Regex("""(?i)\bpostMessage\s*\(""") to "postMessage is not allowed",
+        Regex("""(?i)(?:\bcookie\b|["']cookie["'])""") to "cookie access is not allowed",
+        Regex("""(?i)(?:\bparent\b|["']parent["'])""") to "parent window access is not allowed",
+        Regex("""(?i)(?:\bpostMessage\b|["']postMessage["'])""") to "postMessage is not allowed",
         Regex("""(?i)<form[^>]+\baction\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)""") to "form actions are not allowed",
     )
 
@@ -36,7 +34,7 @@ class DesignPreviewValidator {
         if (html.toByteArray(Charsets.UTF_8).size > 500_000) {
             throw InvalidDesignPreviewException("html exceeds 500 KB")
         }
-        val normalizedHtml = decodeHtmlEntities(html)
+        val normalizedHtml = removeAsciiControlCharacters(decodeHtmlEntities(html))
         val hit = forbiddenPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(normalizedHtml) }
         if (hit != null) {
             throw InvalidDesignPreviewException(hit.second)
@@ -72,7 +70,12 @@ class DesignPreviewValidator {
         return runCatching { String(Character.toChars(codePoint)) }.getOrNull()
     }
 
+    private fun removeAsciiControlCharacters(html: String): String {
+        return asciiControlCharacters.replace(html, "")
+    }
+
     private companion object {
+        private val asciiControlCharacters = Regex("""[\u0000-\u001F\u007F]""")
         private val htmlEntityPattern = Regex(
             """&(#x[0-9a-fA-F]+;?|#[0-9]+;?|amp;|lt;|gt;|quot;|apos;|colon;)""",
             RegexOption.IGNORE_CASE,
