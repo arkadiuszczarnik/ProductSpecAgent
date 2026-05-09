@@ -9,12 +9,11 @@ import {
   selectFeatures,
   selectEdges,
 } from "@/lib/stores/wizard-store";
-import { getAllowedScopes } from "@/lib/category-step-config";
+import { useWizardOptionsStore } from "@/lib/stores/wizard-options-store";
+import { getAllowedScopesFromCatalog } from "@/lib/category-step-config";
 import type { FeatureScope } from "@/lib/api";
 
-interface Props { projectId: string }
-
-export function FeaturesFallbackList({ projectId: _projectId }: Props) {
+export function FeaturesFallbackList() {
   const features = useWizardStore(useShallow(selectFeatures));
   const edges = useWizardStore(useShallow(selectEdges));
   const category = useWizardStore((s) => s.data?.steps.IDEA?.fields.category as string | undefined);
@@ -23,7 +22,8 @@ export function FeaturesFallbackList({ projectId: _projectId }: Props) {
   const removeFeature = useWizardStore((s) => s.removeFeature);
   const addEdge = useWizardStore((s) => s.addEdge);
   const removeEdge = useWizardStore((s) => s.removeEdge);
-  const allowedScopes = getAllowedScopes(category);
+  const catalog = useWizardOptionsStore((s) => s.catalog);
+  const allowedScopes = getAllowedScopesFromCatalog(catalog, category);
 
   return (
     <div className="space-y-4">

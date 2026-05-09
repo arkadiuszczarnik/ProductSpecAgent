@@ -10,8 +10,9 @@ import {
   selectEdges,
   selectFeatureById,
 } from "@/lib/stores/wizard-store";
+import { useWizardOptionsStore } from "@/lib/stores/wizard-options-store";
 import { proposeFeatures } from "@/lib/api";
-import { getAllowedScopes } from "@/lib/category-step-config";
+import { getAllowedScopesFromCatalog } from "@/lib/category-step-config";
 import { createFeaturesEditor, type FeaturesEditorContext } from "./editor";
 import { FeatureEditDialog } from "./FeatureEditDialog";
 import { FeaturesFallbackList } from "./FeaturesFallbackList";
@@ -37,8 +38,12 @@ export function FeaturesGraphEditor({ projectId }: Props) {
   const moveFeature = useWizardStore((s) => s.moveFeature);
   const updateFeature = useWizardStore((s) => s.updateFeature);
   const applyProposal = useWizardStore((s) => s.applyProposal);
+  const catalog = useWizardOptionsStore((s) => s.catalog);
 
-  const allowedScopes = useMemo(() => getAllowedScopes(category), [category]);
+  const allowedScopes = useMemo(
+    () => getAllowedScopesFromCatalog(catalog, category),
+    [catalog, category],
+  );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewportWide, setViewportWide] = useState(true);
@@ -122,7 +127,7 @@ export function FeaturesGraphEditor({ projectId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fingerprint]);
 
-  if (!viewportWide) return <FeaturesFallbackList projectId={projectId} />;
+  if (!viewportWide) return <FeaturesFallbackList />;
 
   return (
     <div className="flex h-full min-h-[400px] rounded-lg border bg-background overflow-hidden">

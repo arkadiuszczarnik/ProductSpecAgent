@@ -25,10 +25,10 @@ export function AssetBundlesPage() {
   }, [load]);
 
   useEffect(() => {
-    if (activeTab === "missing" && !catalog && !catalogLoading) {
+    if (!catalog && !catalogLoading) {
       void loadCatalog();
     }
-  }, [activeTab, catalog, catalogLoading, loadCatalog]);
+  }, [catalog, catalogLoading, loadCatalog]);
 
   const missingCount = getMissingTriples(catalog).length;
 
