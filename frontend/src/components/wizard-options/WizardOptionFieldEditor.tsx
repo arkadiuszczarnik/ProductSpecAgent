@@ -22,7 +22,7 @@ function slugifyOptionLabel(label: string): string {
 }
 
 function nextOptionId(label: string, options: WizardOption[]): string {
-  const baseSlug = slugifyOptionLabel(label) || "option";
+  const baseSlug = slugifyOptionLabel(label);
   const existingIds = new Set(options.map((option) => option.id));
 
   if (!existingIds.has(baseSlug)) {
