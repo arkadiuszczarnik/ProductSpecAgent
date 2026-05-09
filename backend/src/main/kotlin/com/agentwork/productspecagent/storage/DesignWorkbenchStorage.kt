@@ -144,4 +144,11 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
     fun writeActiveScreen(projectId: String, screenSlug: String, html: ByteArray) {
         objectStore.put(activeScreenKey(projectId, screenSlug), html, "text/html")
     }
+
+    fun listActiveOutputFiles(projectId: String): List<Pair<String, ByteArray>> {
+        val outputPrefix = "projects/$projectId/design/screens/"
+        return objectStore.listKeys(outputPrefix).map { key ->
+            key.removePrefix("projects/$projectId/") to (objectStore.get(key) ?: ByteArray(0))
+        }
+    }
 }

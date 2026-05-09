@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import java.io.ByteArrayInputStream
 import java.util.zip.ZipInputStream
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @SpringBootTest
@@ -24,6 +25,7 @@ class HandoffControllerTest {
     @Autowired lateinit var projectService: com.agentwork.productspecagent.service.ProjectService
     @Autowired lateinit var decisionStorage: com.agentwork.productspecagent.storage.DecisionStorage
     @Autowired lateinit var clarificationStorage: com.agentwork.productspecagent.storage.ClarificationStorage
+    @Autowired lateinit var designWorkbenchStorage: com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 
     private fun createProject(): String {
         val result = mockMvc.perform(
@@ -236,6 +238,25 @@ class HandoffControllerTest {
             entries.none { it.startsWith("handoff-test/") },
             "No entry should be under the slug folder, got: $entries"
         )
+    }
+
+    @Test
+    fun `GET handoff zip includes active design screens and docs spec`() {
+        val pid = createProject()
+        designWorkbenchStorage.writeActiveScreen(
+            pid,
+            "landing",
+            "<html><body>Landing design</body></html>".toByteArray(),
+        )
+
+        val result = mockMvc.perform(get("/api/v1/projects/$pid/handoff/handoff.zip"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+
+        assertNotNull(readZipEntry(zipBytes) { it == "design/screens/landing/index.html" })
+        assertNotNull(readZipEntry(zipBytes) { it == "docs/spec.md" })
     }
 
     @Test

@@ -27,6 +27,7 @@ class ExportControllerTest {
     @Autowired lateinit var wizardService: com.agentwork.productspecagent.service.WizardService
     @Autowired lateinit var projectService: com.agentwork.productspecagent.service.ProjectService
     @Autowired lateinit var projectStorage: com.agentwork.productspecagent.storage.ProjectStorage
+    @Autowired lateinit var designWorkbenchStorage: com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 
     private val createdProjectIds = mutableListOf<String>()
 
@@ -258,6 +259,25 @@ class ExportControllerTest {
     }
 
     @Test
+    fun `POST export includes active design screens and docs spec`() {
+        val pid = createProject()
+        designWorkbenchStorage.writeActiveScreen(
+            pid,
+            "landing",
+            "<html><body>Landing design</body></html>".toByteArray(),
+        )
+
+        val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+
+        assertNotNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/landing/index.html") })
+        assertNotNull(readZipEntry(zipBytes) { it.endsWith("/docs/spec.md") })
+    }
+
+    @Test
     fun `POST export bundles uploads under docs-uploads`() {
         val pid = createProject()
         uploadStorage.save(pid, "d1", "a.pdf", "application/pdf", byteArrayOf(1, 2, 3), "2026-04-27T10:00:00Z")
@@ -369,6 +389,17 @@ class ExportControllerTest {
         val readme = entries[readmeKey]!!.toString(Charsets.UTF_8)
         assertTrue(readme.contains("## Included Asset Bundles"), "expected bundle section in README; got:\n$readme")
         assertTrue(readme.contains("Spring Boot Skills"), "expected bundle title in README; got:\n$readme")
+    }
+
+    private fun readZipEntry(zipBytes: ByteArray, predicate: (String) -> Boolean): String? {
+        ZipInputStream(ByteArrayInputStream(zipBytes)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (predicate(entry.name)) return zis.readBytes().toString(Charsets.UTF_8)
+                entry = zis.nextEntry
+            }
+        }
+        return null
     }
 
 }

@@ -14,6 +14,7 @@ import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.service.TaskService
 import com.agentwork.productspecagent.service.WizardMarkdown
 import com.agentwork.productspecagent.service.WizardService
+import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 import com.github.mustachejava.DefaultMustacheFactory
 import com.github.mustachejava.MustacheFactory
 import org.springframework.stereotype.Service
@@ -42,6 +43,7 @@ class ProjectPackageAssembler(
     private val taskService: TaskService,
     private val wizardService: WizardService,
     private val assetBundleExporter: AssetBundleExporter,
+    private val designWorkbenchStorage: DesignWorkbenchStorage,
 ) {
     private val mf: MustacheFactory = DefaultMustacheFactory("templates/export")
     private val handoffMf: MustacheFactory = DefaultMustacheFactory("templates/handoff")
@@ -75,6 +77,10 @@ class ProjectPackageAssembler(
             .filterNot { it.first in deprecatedScaffoldDocs }
             .filterNot { isGeneratedExportDoc(it.first) }
         for ((relativePath, content) in docsFiles) {
+            writer.addBytes(relativePath, content)
+        }
+
+        designWorkbenchStorage.listActiveOutputFiles(projectId).forEach { (relativePath, content) ->
             writer.addBytes(relativePath, content)
         }
 
