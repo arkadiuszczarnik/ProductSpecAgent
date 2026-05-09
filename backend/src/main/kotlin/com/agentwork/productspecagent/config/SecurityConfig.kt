@@ -29,6 +29,7 @@ class SecurityConfig(private val jwtAuthenticationFilter: JwtAuthenticationFilte
                 auth
                     .requestMatchers("/api/health").permitAll()
                     .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/logout").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/wizard-options").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/projects/*/handoff/handoff.zip").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/projects/*/living-sync/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/mcp").permitAll()

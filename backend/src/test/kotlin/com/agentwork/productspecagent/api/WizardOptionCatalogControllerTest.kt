@@ -42,6 +42,7 @@ class WizardOptionCatalogControllerTest {
     }
 
     @Test
+    @WithAnonymousUser
     fun `GET public wizard-options returns catalog`() {
         mockMvc.perform(get("/api/v1/wizard-options"))
             .andExpect(status().isOk)
