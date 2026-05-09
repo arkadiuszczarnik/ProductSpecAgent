@@ -957,10 +957,19 @@ export interface DesignScreen {
   activeVariantId?: string | null;
 }
 
+export interface DesignSuggestion {
+  id: string;
+  screenId: string;
+  title: string;
+  description: string;
+  createdAt: string;
+}
+
 export interface DesignWorkbench {
   projectId: string;
   inputs: DesignInput[];
   screens: DesignScreen[];
+  suggestions: DesignSuggestion[];
   updatedAt: string;
 }
 
