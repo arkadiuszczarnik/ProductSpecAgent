@@ -51,11 +51,11 @@ class DesignWorkbenchService(
     }
 
     fun generateVariant(projectId: String, screenId: String, prompt: String?): DesignWorkbench {
-        val generated = designVariantAgent.generate(projectId, screenId, prompt)
-        previewValidator.validate(generated.html)
         val workbench = storage.load(projectId)
         val screen = workbench.screens.firstOrNull { it.id == screenId }
             ?: throw InvalidDesignWorkbenchException("Screen not found: $screenId")
+        val generated = designVariantAgent.generate(projectId, screenId, prompt)
+        previewValidator.validate(generated.html)
         val variantId = UUID.randomUUID().toString()
         val variant = DesignVariant(
             id = variantId,
@@ -71,9 +71,27 @@ class DesignWorkbenchService(
     }
 
     fun setActiveVariant(projectId: String, screenId: String, variantId: String): DesignWorkbench =
-        storage.setActiveVariant(projectId, screenId, variantId)
+        try {
+            storage.setActiveVariant(projectId, screenId, variantId)
+        } catch (e: NoSuchElementException) {
+            throw InvalidDesignWorkbenchException(e.message ?: "Design screen or variant not found.")
+        } catch (e: IllegalArgumentException) {
+            throw InvalidDesignWorkbenchException(e.message ?: "Design screen or variant not found.")
+        }
 
-    fun readVariant(projectId: String, htmlPath: String): ByteArray = storage.readByKey(htmlPath)
+    fun readVariant(projectId: String, htmlPath: String): ByteArray {
+        val ownsVariant = storage.load(projectId).screens.any { screen ->
+            screen.variants.any { it.htmlPath == htmlPath }
+        }
+        if (!ownsVariant) {
+            throw InvalidDesignWorkbenchException("Design variant not found in project: $htmlPath")
+        }
+        return try {
+            storage.readByKey(htmlPath)
+        } catch (e: NoSuchElementException) {
+            throw InvalidDesignWorkbenchException(e.message ?: "Design variant content not found.")
+        }
+    }
 
     fun complete(projectId: String): DesignWorkbench {
         val workbench = storage.load(projectId)
