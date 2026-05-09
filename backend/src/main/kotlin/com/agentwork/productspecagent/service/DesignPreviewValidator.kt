@@ -9,15 +9,17 @@ class DesignPreviewValidator {
     private val forbiddenPatterns = listOf(
         Regex("""(?i)\bhttps?://""") to "external URLs are not allowed",
         Regex("""(?i)\b(src|href|srcset)\s*=\s*["']?\s*//""") to "protocol-relative URLs are not allowed",
+        Regex("""(?i)\bsrcset\s*=\s*(?:"[^"]*//|'[^']*//|[^>]*//)""") to "protocol-relative URLs are not allowed",
         Regex("""(?i)\burl\s*\(\s*["']?\s*//""") to "protocol-relative CSS URLs are not allowed",
         Regex("""(?i)@import\s+(?:url\s*\(\s*)?["']?\s*(?:https?://|//)""") to "external CSS imports are not allowed",
         Regex("""(?i)<script[^>]+\bsrc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)""") to "external scripts are not allowed",
         Regex("""(?i)\bfetch\s*\(""") to "fetch is not allowed",
-        Regex("""(?i)\bwindow\s*\[\s*["']fetch["']\s*]\s*\(""") to "fetch is not allowed",
+        Regex("""(?i)\[\s*["']fetch["']\s*]\s*\(""") to "fetch is not allowed",
         Regex("""(?i)\bXMLHttpRequest\b""") to "XMLHttpRequest is not allowed",
         Regex("""(?i)\bWebSocket\b""") to "WebSocket is not allowed",
         Regex("""(?i)\bEventSource\b""") to "EventSource is not allowed",
         Regex("""(?i)\bnavigator\.sendBeacon\s*\(""") to "sendBeacon is not allowed",
+        Regex("""(?i)\[\s*["']sendBeacon["']\s*]\s*\(""") to "sendBeacon is not allowed",
         Regex("""(?i)\bimport\s*\(""") to "dynamic import is not allowed",
         Regex("""(?i)\blocalStorage\b""") to "localStorage is not allowed",
         Regex("""(?i)\bsessionStorage\b""") to "sessionStorage is not allowed",
@@ -42,8 +44,14 @@ class DesignPreviewValidator {
     }
 
     private fun decodeHtmlEntities(html: String): String {
-        return htmlEntityPattern.replace(html) { match ->
-            when (val entity = match.groupValues[1].lowercase()) {
+        val urlNormalizedHtml = html
+            .replace(semicolonlessHexColonPattern, ":")
+            .replace(semicolonlessDecimalColonPattern, ":")
+            .replace(semicolonlessHexSlashPattern, "/")
+            .replace(semicolonlessDecimalSlashPattern, "/")
+
+        return htmlEntityPattern.replace(urlNormalizedHtml) { match ->
+            when (val entity = match.groupValues[1].removeSuffix(";").lowercase()) {
                 "amp" -> "&"
                 "lt" -> "<"
                 "gt" -> ">"
@@ -66,8 +74,12 @@ class DesignPreviewValidator {
 
     private companion object {
         private val htmlEntityPattern = Regex(
-            """&(#x[0-9a-fA-F]+|#[0-9]+|amp|lt|gt|quot|apos|colon);""",
+            """&(#x[0-9a-fA-F]+;?|#[0-9]+;?|amp;|lt;|gt;|quot;|apos;|colon;)""",
             RegexOption.IGNORE_CASE,
         )
+        private val semicolonlessHexColonPattern = Regex("""&#x0*3a;?""", RegexOption.IGNORE_CASE)
+        private val semicolonlessDecimalColonPattern = Regex("""&#0*58;?""")
+        private val semicolonlessHexSlashPattern = Regex("""&#x0*2f;?""", RegexOption.IGNORE_CASE)
+        private val semicolonlessDecimalSlashPattern = Regex("""&#0*47;?""")
     }
 }

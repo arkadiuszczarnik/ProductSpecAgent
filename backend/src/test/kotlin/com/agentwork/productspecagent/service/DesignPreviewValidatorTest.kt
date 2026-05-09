@@ -39,6 +39,12 @@ class DesignPreviewValidatorTest {
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<img src="https&colon;//example.com/a.png">""")
         }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img src="https&#x3a//example.com/a.png">""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img src="https&#58&#47&#x2fexample.com/a.png">""")
+        }
     }
 
     @Test
@@ -84,6 +90,9 @@ class DesignPreviewValidatorTest {
             validator.validate("""<img srcset="//example.com/a.png 1x">""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<img srcset="/local.png 1x, //attacker.test/remote.png 2x">""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<style>.hero{background-image:url(//example.com/a.png)}</style>""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
@@ -112,7 +121,13 @@ class DesignPreviewValidatorTest {
             validator.validate("""<script>window['fetch']('/api/v1/projects')</script>""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>globalThis['fetch']('/api/v1/projects')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>navigator.sendBeacon('/api/v1/projects')</script>""")
+        }
+        assertFailsWith<InvalidDesignPreviewException> {
+            validator.validate("""<script>navigator['sendBeacon']('/api/v1/projects')</script>""")
         }
         assertFailsWith<InvalidDesignPreviewException> {
             validator.validate("""<script>import('/x.js')</script>""")
