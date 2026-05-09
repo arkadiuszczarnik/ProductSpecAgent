@@ -87,7 +87,7 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
             workbench.copy(
                 inputs = workbench.inputs.map {
                     if (it.id == inputId) {
-                        it.copy(classification = classification, userLabel = userLabel ?: it.userLabel)
+                        it.copy(classification = classification, userLabel = userLabel)
                     } else {
                         it
                     }
@@ -100,13 +100,14 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         save(load(projectId).copy(screens = screens))
 
     fun saveVariant(projectId: String, screenId: String, variant: DesignVariant, html: ByteArray): DesignWorkbench {
-        objectStore.put(variant.htmlPath, html, "text/html")
+        val normalizedVariant = variant.copy(htmlPath = variantKey(projectId, screenId, variant.id))
+        objectStore.put(normalizedVariant.htmlPath, html, "text/html")
         val workbench = load(projectId)
         return save(
             workbench.copy(
                 screens = workbench.screens.map { screen ->
                     if (screen.id == screenId) {
-                        screen.copy(variants = screen.variants.filterNot { it.id == variant.id } + variant)
+                        screen.copy(variants = screen.variants.filterNot { it.id == normalizedVariant.id } + normalizedVariant)
                     } else {
                         screen
                     }
