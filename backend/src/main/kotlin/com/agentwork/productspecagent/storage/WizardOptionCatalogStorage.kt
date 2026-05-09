@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service
 class WizardOptionCatalogStorage(private val objectStore: ObjectStore) {
 
     private val json = Json {
+        encodeDefaults = true
         ignoreUnknownKeys = true
         prettyPrint = true
     }

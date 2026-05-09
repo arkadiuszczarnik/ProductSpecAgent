@@ -15,7 +15,7 @@ class WizardOptionCatalogService(
 ) {
 
     fun getCatalog(): WizardOptionCatalog =
-        storage.load() ?: WizardOptionCatalogDefaults.create()
+        storage.load()?.also { validate(it) } ?: WizardOptionCatalogDefaults.create()
 
     fun saveCatalog(catalog: WizardOptionCatalog): WizardOptionCatalog {
         validate(catalog)

@@ -52,6 +52,30 @@ class WizardOptionCatalogServiceTest {
     }
 
     @Test
+    fun `saved catalog json includes default values`() {
+        val objectStore = InMemoryObjectStore()
+        val catalog = service(objectStore).getCatalog()
+
+        service(objectStore).saveCatalog(catalog)
+
+        val storedJson = objectStore.get(WizardOptionCatalogStorage.KEY)!!.toString(Charsets.UTF_8)
+        assertTrue(storedJson.contains(""""version": 1"""))
+        assertTrue(storedJson.contains(""""enabled": true"""))
+    }
+
+    @Test
+    fun `rejects invalid persisted catalog on load`() {
+        val objectStore = InMemoryObjectStore()
+        val defaultCatalog = service(objectStore).getCatalog()
+        val invalid = defaultCatalog.copy(categories = defaultCatalog.categories + defaultCatalog.categories.first())
+        WizardOptionCatalogStorage(objectStore).save(invalid)
+
+        assertFailsWith<WizardOptionCatalogValidationException> {
+            service(objectStore).getCatalog()
+        }
+    }
+
+    @Test
     fun `reset replaces persisted catalog with defaults`() {
         val objectStore = InMemoryObjectStore()
         val updated = service(objectStore)

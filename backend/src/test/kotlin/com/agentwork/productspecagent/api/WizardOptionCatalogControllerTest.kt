@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
+import org.springframework.security.test.context.support.WithAnonymousUser
 import org.springframework.security.test.context.support.WithMockUser
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -100,6 +101,17 @@ class WizardOptionCatalogControllerTest {
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.message").value(containsString("Duplicate category id")))
+    }
+
+    @WithAnonymousUser
+    @Test
+    fun `PUT admin wizard-options rejects unauthenticated requests`() {
+        mockMvc.perform(
+            put("/api/v1/admin/wizard-options")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"version":1,"categories":[],"updatedAt":"2026-05-09T00:00:00Z"}""")
+        )
+            .andExpect(status().isUnauthorized)
     }
 }
 
