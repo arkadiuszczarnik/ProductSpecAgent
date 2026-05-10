@@ -4,6 +4,7 @@ import com.agentwork.productspecagent.agent.DesignGenerationInput
 import com.agentwork.productspecagent.agent.DesignGenerationResult
 import com.agentwork.productspecagent.agent.DesignVariantAgent
 import com.agentwork.productspecagent.domain.DesignAnalysis
+import com.agentwork.productspecagent.domain.DesignImageAnalysis
 import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import kotlin.test.Test
@@ -44,13 +45,27 @@ class DesignWorkbenchServiceTest {
     }
 
     @Test
-    fun `description only input replaces previous image`() {
+    fun `description only input preserves previous image and image analysis`() {
         service.saveInput("p1", null, "dash.png", byteArrayOf(1, 2), "image/png")
+        storage.saveImageAnalysis(
+            "p1",
+            DesignImageAnalysis(
+                summary = "Dashboard reference",
+                palette = emptyList(),
+                typography = emptyList(),
+                layoutHierarchy = emptyList(),
+                components = emptyList(),
+                moodTags = emptyList(),
+                brandSignals = emptyList(),
+                designBrief = "Use the uploaded dashboard reference.",
+            ),
+        )
 
         val workbench = service.saveInput("p1", "Use text only", null, null, null)
 
         assertEquals("Use text only", workbench.description)
-        assertNull(workbench.imageInput)
+        assertEquals("dash.png", workbench.imageInput?.originalName)
+        assertEquals("Dashboard reference", workbench.imageAnalysis?.summary)
     }
 
     @Test
