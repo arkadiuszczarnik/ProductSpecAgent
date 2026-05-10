@@ -71,7 +71,11 @@ class DesignWorkbenchController(
         if (service.get(projectId).currentDesign == null) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Current design not found.")
         }
-        val bytes = mapInvalidWorkbench { service.readPreview(projectId) }
+        val bytes = try {
+            service.readPreview(projectId)
+        } catch (e: InvalidDesignWorkbenchException) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, e.message ?: "Current design not found.")
+        }
         val headers = HttpHeaders()
         headers.contentType = MediaType.parseMediaType("text/html; charset=utf-8")
         headers.set("X-Content-Type-Options", "nosniff")

@@ -8,6 +8,8 @@ import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.service.ProjectService
 import com.agentwork.productspecagent.service.WizardService
+import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
+import com.agentwork.productspecagent.storage.ObjectStore
 import kotlinx.serialization.json.JsonPrimitive
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsString
@@ -63,6 +65,8 @@ class DesignWorkbenchControllerTest {
     @Autowired private lateinit var ctx: WebApplicationContext
     @Autowired private lateinit var projectService: ProjectService
     @Autowired private lateinit var wizardService: WizardService
+    @Autowired private lateinit var designWorkbenchStorage: DesignWorkbenchStorage
+    @Autowired private lateinit var objectStore: ObjectStore
     private lateinit var mockMvc: MockMvc
     private lateinit var projectId: String
 
@@ -196,6 +200,30 @@ class DesignWorkbenchControllerTest {
     @Test
     fun `GET preview returns not found when no current design exists`() {
         mockMvc.perform(get("/api/v1/projects/$projectId/design/preview"))
+            .andExpect(status().isNotFound())
+    }
+
+    @Test
+    fun `GET preview returns not found when generated html object is missing`() {
+        advanceToDesign(projectId)
+        mockMvc.perform(putInput(description = "Build a compact pricing page"))
+            .andExpect(status().isOk())
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/generate"))
+            .andExpect(status().isOk())
+
+        objectStore.delete(designWorkbenchStorage.currentDesignKey(projectId))
+
+        mockMvc.perform(get("/api/v1/projects/$projectId/design/preview"))
+            .andExpect(status().isNotFound())
+    }
+
+    @Test
+    fun `POST legacy text input endpoint returns not found`() {
+        mockMvc.perform(
+            post("/api/v1/projects/$projectId/design/inputs/text")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"text":"Reference notes"}"""),
+        )
             .andExpect(status().isNotFound())
     }
 
