@@ -41,6 +41,7 @@ agent:
       feature-proposal: MEDIUM
       plan-generator: LARGE
       design-summary: MEDIUM
+      design-variant: MEDIUM
 app:
   frontend-origin: ${APP_FRONTEND_ORIGIN:https://productspecagent-frontend.hackathon.netrtl.com}
   storage:

@@ -51,7 +51,7 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         return save(
             existing.copy(
                 description = trimmed,
-                imageInput = imageInput ?: existing.imageInput,
+                imageInput = imageInput,
                 analysis = null,
                 currentDesign = null,
             ),

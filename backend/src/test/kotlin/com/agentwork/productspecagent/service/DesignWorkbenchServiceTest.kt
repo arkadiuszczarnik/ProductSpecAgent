@@ -44,6 +44,16 @@ class DesignWorkbenchServiceTest {
     }
 
     @Test
+    fun `description only input replaces previous image`() {
+        service.saveInput("p1", null, "dash.png", byteArrayOf(1, 2), "image/png")
+
+        val workbench = service.saveInput("p1", "Use text only", null, null, null)
+
+        assertEquals("Use text only", workbench.description)
+        assertNull(workbench.imageInput)
+    }
+
+    @Test
     fun `generate creates current design from combined input`() {
         val service = service(
             designVariantAgent = object : DesignVariantAgent(null) {

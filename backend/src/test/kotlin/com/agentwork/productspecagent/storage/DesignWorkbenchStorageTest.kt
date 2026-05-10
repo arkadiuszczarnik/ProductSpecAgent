@@ -44,8 +44,8 @@ class DesignWorkbenchStorageTest {
     }
 
     @Test
-    fun `save input preserves existing image when no replacement image is supplied`() {
-        val withImage = storage.saveImageInput(
+    fun `save input clears existing image when no replacement image is supplied`() {
+        storage.saveImageInput(
             projectId = "p1",
             originalName = "reference.png",
             bytes = byteArrayOf(1, 2, 3),
@@ -54,7 +54,7 @@ class DesignWorkbenchStorageTest {
 
         val updated = storage.saveInput("p1", "Use the same reference", null)
 
-        assertEquals(withImage.imageInput, updated.imageInput)
+        assertNull(updated.imageInput)
     }
 
     @Test

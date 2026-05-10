@@ -2,7 +2,11 @@ package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.domain.DesignAnalysis
 import com.agentwork.productspecagent.domain.DesignImageInput
+import com.agentwork.productspecagent.service.PromptService
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Component
 
 @Serializable
@@ -29,12 +33,39 @@ data class GeneratedDesignVariant(
 )
 
 @Component
-open class DesignVariantAgent(private val koogRunner: KoogAgentRunner? = null) {
+open class DesignVariantAgent(
+    private val koogRunner: KoogAgentRunner? = null,
+    private val promptService: PromptService? = null,
+) {
     companion object {
         const val AGENT_ID = "design-variant"
     }
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     open fun generate(input: DesignGenerationInput): DesignGenerationResult {
+        val prompt = buildPrompt(input)
+        val raw = runBlocking { runAgent(prompt) }
+        if (raw != null) {
+            runCatching { return parseResponse(raw) }
+        }
+        return fallback(input)
+    }
+
+    protected open suspend fun runAgent(prompt: String): String? =
+        koogRunner?.run(AGENT_ID, promptService?.get("design-variant-system") ?: defaultSystemPrompt(), prompt)
+
+    private fun parseResponse(raw: String): DesignGenerationResult {
+        val jsonStr = raw.replace("```json", "").replace("```", "").trim()
+        val parsed = json.decodeFromString<DesignGenerationResult>(jsonStr)
+        return parsed.copy(
+            title = parsed.title.trim().ifBlank { "Generated Design" },
+            html = parsed.html.trim(),
+            rationale = parsed.rationale.trim().ifBlank { "Generated from current design input." },
+        )
+    }
+
+    private fun fallback(input: DesignGenerationInput): DesignGenerationResult {
         val subject = input.description?.take(120)
             ?: input.image?.originalName?.let { "Reference image $it" }
             ?: "Generated design"
@@ -77,6 +108,32 @@ open class DesignVariantAgent(private val koogRunner: KoogAgentRunner? = null) {
             rationale = "Fallback generated from the current V1 input.",
         )
     }
+
+    private fun buildPrompt(input: DesignGenerationInput): String = buildString {
+        appendLine("Project ID: ${input.projectId}")
+        appendLine()
+        appendLine("Description:")
+        appendLine(input.description?.takeIf { it.isNotBlank() } ?: "No written description provided.")
+        appendLine()
+        appendLine("Reference image:")
+        if (input.image != null) {
+            appendLine("Name: ${input.image.originalName}")
+            appendLine("Content type: ${input.image.contentType}")
+            appendLine("Size bytes: ${input.image.sizeBytes}")
+            appendLine("Stored reference: ${input.image.contentRef}")
+        } else {
+            appendLine("No image provided.")
+        }
+        appendLine()
+        appendLine("Return exactly this JSON shape without markdown:")
+        appendLine(
+            """{"analysis":{"summary":"...","visualDirection":"...","rationale":"..."},"title":"...","html":"<!doctype html>...","rationale":"..."}""",
+        )
+    }
+
+    private fun defaultSystemPrompt(): String =
+        "You generate one secure standalone HTML layout preview from a product design description and optional image metadata. " +
+            "Return only valid JSON with analysis, title, html, and rationale. Do not include external URLs."
 
     @Deprecated("Temporary compatibility for legacy design workbench tests until Simple Design Generator V1 controller migration removes callers.")
     open fun generate(projectId: String, screenId: String, prompt: String?): GeneratedDesignVariant {

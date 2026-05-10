@@ -40,7 +40,11 @@ export function DesignInputPanel({
 
   async function handleGenerate() {
     if (!canGenerate || actionDisabled) return;
-    await saveInput(projectId, description, imageFile);
+    const descriptionChanged = description.trim() !== (workbench?.description ?? "");
+    const shouldSaveInput = Boolean(imageFile || descriptionChanged || !workbench);
+    if (shouldSaveInput) {
+      await saveInput(projectId, description, imageFile);
+    }
     if (!useDesignWorkbenchStore.getState().error) {
       setImageFile(null);
       setImageInputKey((current) => current + 1);
