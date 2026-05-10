@@ -27,7 +27,9 @@ export function DesignInputPanel({
   onComplete,
 }: DesignInputPanelProps) {
   const saveInput = useDesignWorkbenchStore((s) => s.saveInput);
+  const analyzeImage = useDesignWorkbenchStore((s) => s.analyzeImage);
   const generate = useDesignWorkbenchStore((s) => s.generate);
+  const analyzingImage = useDesignWorkbenchStore((s) => s.analyzingImage);
   const [description, setDescription] = useState(workbench?.description ?? "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageInputKey, setImageInputKey] = useState(0);
@@ -35,21 +37,31 @@ export function DesignInputPanel({
   const hasExistingImage = Boolean(workbench?.imageInput);
   const canGenerate = Boolean(description.trim() || imageFile || hasExistingImage);
   const hasCurrentDesign = Boolean(workbench?.currentDesign);
-  const actionDisabled = working || completing;
-  const completeDisabled = blocked || working || completing || !hasCurrentDesign;
+  const actionDisabled = working || completing || analyzingImage;
+  const completeDisabled = blocked || working || completing || analyzingImage || !hasCurrentDesign;
 
   async function handleGenerate() {
     if (!canGenerate || actionDisabled) return;
     const descriptionChanged = description.trim() !== (workbench?.description ?? "");
     const shouldSaveInput = Boolean(imageFile || descriptionChanged || !workbench);
+    let shouldAnalyze = Boolean(imageFile);
     if (shouldSaveInput) {
       await saveInput(projectId, description, imageFile);
     }
-    if (!useDesignWorkbenchStore.getState().error) {
-      setImageFile(null);
-      setImageInputKey((current) => current + 1);
-      await generate(projectId);
+    if (useDesignWorkbenchStore.getState().error) return;
+
+    const latest = useDesignWorkbenchStore.getState().workbench;
+    if (latest?.imageInput && !latest.imageAnalysis) {
+      shouldAnalyze = true;
     }
+    if (shouldAnalyze) {
+      const analyzed = await analyzeImage(projectId);
+      if (!analyzed) return;
+    }
+
+    setImageFile(null);
+    setImageInputKey((current) => current + 1);
+    await generate(projectId);
   }
 
   const generateLabel = hasCurrentDesign ? "Neu generieren" : "Design generieren";
@@ -97,6 +109,59 @@ export function DesignInputPanel({
           )}
         </div>
 
+        {analyzingImage && (
+          <div className="rounded-md border border-border bg-background p-3 text-xs text-muted-foreground">
+            Bild wird analysiert...
+          </div>
+        )}
+
+        {workbench?.imageAnalysis && !analyzingImage && (
+          <div className="grid gap-2 rounded-md border border-border bg-background p-3 text-xs">
+            <div className="min-w-0">
+              <div className="mb-1 font-medium text-foreground">Bildanalyse</div>
+              <p className="line-clamp-3 break-words text-muted-foreground">
+                {workbench.imageAnalysis.summary}
+              </p>
+            </div>
+            {workbench.imageAnalysis.palette.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {workbench.imageAnalysis.palette.slice(0, 6).map((color) => (
+                  <span
+                    key={`${color.hex}-${color.role}`}
+                    title={`${color.role}: ${color.hex}`}
+                    className="h-5 w-5 shrink-0 rounded border border-border"
+                    style={{ backgroundColor: color.hex }}
+                  />
+                ))}
+              </div>
+            )}
+            {workbench.imageAnalysis.layoutHierarchy.length > 0 && (
+              <div className="min-w-0 text-[11px] leading-4 text-muted-foreground">
+                <span className="font-medium text-foreground/80">Layout: </span>
+                <span className="break-words">
+                  {workbench.imageAnalysis.layoutHierarchy.slice(0, 3).map((region) => region.name).join(", ")}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {workbench?.imageAnalysisError && !analyzingImage && (
+          <div className="grid gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+            <p className="break-words">{workbench.imageAnalysisError}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => analyzeImage(projectId)}
+              disabled={actionDisabled}
+              className="min-w-0 justify-center whitespace-normal text-xs"
+            >
+              Analyse erneut versuchen
+            </Button>
+          </div>
+        )}
+
         {workbench?.analysis && (
           <div className="grid gap-2 rounded-md border border-border bg-background p-3 text-xs">
             <div>
@@ -124,7 +189,7 @@ export function DesignInputPanel({
             disabled={actionDisabled || !canGenerate}
             className="w-full gap-1.5"
           >
-            {working ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            {working || analyzingImage ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
             {generateLabel}
           </Button>
           <Button

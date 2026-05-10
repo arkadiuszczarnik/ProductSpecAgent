@@ -934,6 +934,44 @@ export interface DesignImageInput {
   uploadedAt: string;
 }
 
+export interface DesignColor {
+  hex: string;
+  role: string;
+  weight: string;
+  notes: string;
+}
+
+export interface DesignTypographySignal {
+  category: string;
+  role: string;
+  weight: string;
+  notes: string;
+}
+
+export interface DesignLayoutRegion {
+  name: string;
+  order: number;
+  priority: number;
+  description: string;
+}
+
+export interface DesignComponentSignal {
+  name: string;
+  role: string;
+  description: string;
+}
+
+export interface DesignImageAnalysis {
+  summary: string;
+  palette: DesignColor[];
+  typography: DesignTypographySignal[];
+  layoutHierarchy: DesignLayoutRegion[];
+  components: DesignComponentSignal[];
+  moodTags: string[];
+  brandSignals: string[];
+  designBrief: string;
+}
+
 export interface DesignAnalysis {
   summary: string;
   visualDirection: string;
@@ -952,6 +990,8 @@ export interface DesignWorkbench {
   projectId: string;
   description?: string | null;
   imageInput?: DesignImageInput | null;
+  imageAnalysis?: DesignImageAnalysis | null;
+  imageAnalysisError?: string | null;
   analysis?: DesignAnalysis | null;
   currentDesign?: GeneratedDesign | null;
   updatedAt: string;
@@ -1066,6 +1106,10 @@ export async function saveDesignInput(
 
 export async function generateDesign(projectId: string): Promise<DesignWorkbench> {
   return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/generate`, { method: "POST" });
+}
+
+export async function analyzeDesignImage(projectId: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/image/analyze`, { method: "POST" });
 }
 
 export function designPreviewUrl(projectId: string): string {
