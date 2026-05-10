@@ -125,6 +125,28 @@ class DesignWorkbenchServiceTest {
     }
 
     @Test
+    fun `read preview converts missing current design html to workbench exception`() {
+        service.saveInput("p1", "Build page", null, null, null)
+        service.generate("p1")
+        objectStore.delete(storage.currentDesignKey("p1"))
+
+        assertFailsWith<InvalidDesignWorkbenchException> {
+            service.readPreview("p1")
+        }
+    }
+
+    @Test
+    fun `complete converts missing current design html to workbench exception`() {
+        service.saveInput("p1", "Build page", null, null, null)
+        service.generate("p1")
+        objectStore.delete(storage.currentDesignKey("p1"))
+
+        assertFailsWith<InvalidDesignWorkbenchException> {
+            service.complete("p1")
+        }
+    }
+
+    @Test
     fun `fallback generation escapes user text`() {
         val result = DesignVariantAgent(null).generate(
             DesignGenerationInput(

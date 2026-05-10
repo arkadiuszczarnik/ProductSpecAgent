@@ -96,7 +96,11 @@ class DesignWorkbenchService(
         if (storage.load(projectId).currentDesign == null) {
             throw InvalidDesignWorkbenchException("No generated design exists.")
         }
-        return storage.readCurrentDesign(projectId)
+        return try {
+            storage.readCurrentDesign(projectId)
+        } catch (e: NoSuchElementException) {
+            throw InvalidDesignWorkbenchException(e.message ?: "Generated design HTML is missing.")
+        }
     }
 
     fun complete(projectId: String): DesignWorkbench {
@@ -104,7 +108,12 @@ class DesignWorkbenchService(
         if (workbench.currentDesign == null) {
             throw InvalidDesignWorkbenchException("Generate a design before completing the DESIGN step.")
         }
-        storage.writeActiveScreen(projectId, storage.readCurrentDesign(projectId))
+        val html = try {
+            storage.readCurrentDesign(projectId)
+        } catch (e: NoSuchElementException) {
+            throw InvalidDesignWorkbenchException(e.message ?: "Generated design HTML is missing.")
+        }
+        storage.writeActiveScreen(projectId, html)
         return workbench
     }
 
