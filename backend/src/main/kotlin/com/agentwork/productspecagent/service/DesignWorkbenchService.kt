@@ -112,6 +112,7 @@ class DesignWorkbenchService(
                 projectId = projectId,
                 description = readyWorkbench.description,
                 image = readyWorkbench.imageInput,
+                imageAnalysis = readyWorkbench.imageAnalysis,
             ),
         )
         previewValidator.validate(result.html)

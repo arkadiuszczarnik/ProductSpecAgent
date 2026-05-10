@@ -154,6 +154,7 @@ class DesignWorkbenchServiceTest {
     @Test
     fun `generate analyzes image when analysis is missing`() {
         var analyzeCalled = false
+        var generationInput: DesignGenerationInput? = null
         val service = service(
             imageAnalysisAgent = object : DesignImageAnalysisAgent(null, null) {
                 override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult {
@@ -162,13 +163,15 @@ class DesignWorkbenchServiceTest {
                 }
             },
             designVariantAgent = object : DesignVariantAgent(null) {
-                override fun generate(input: DesignGenerationInput): DesignGenerationResult =
-                    DesignGenerationResult(
+                override fun generate(input: DesignGenerationInput): DesignGenerationResult {
+                    generationInput = input
+                    return DesignGenerationResult(
                         analysis = DesignAnalysis("Generated", "Direction", "Because"),
                         title = "Generated",
                         html = validHtml("Generated"),
                         rationale = "Used analysis",
                     )
+                }
             },
         )
         service.saveInput("p1", "Build dashboard", "dash.png", byteArrayOf(1, 2, 3), "image/png")
@@ -177,6 +180,8 @@ class DesignWorkbenchServiceTest {
 
         assertTrue(analyzeCalled)
         assertEquals("Dashboard image", workbench.imageAnalysis?.summary)
+        assertEquals("Dashboard image", generationInput?.imageAnalysis?.summary)
+        assertEquals("Use dark navigation and compact KPI cards.", generationInput?.imageAnalysis?.designBrief)
         assertEquals("Generated", workbench.currentDesign?.title)
     }
 
@@ -314,6 +319,7 @@ class DesignWorkbenchServiceTest {
                 projectId = "p1",
                 description = "<strong>x</strong>",
                 image = null,
+                imageAnalysis = null,
             ),
         )
 

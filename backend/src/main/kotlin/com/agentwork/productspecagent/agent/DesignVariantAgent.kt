@@ -1,11 +1,13 @@
 package com.agentwork.productspecagent.agent
 
 import com.agentwork.productspecagent.domain.DesignAnalysis
+import com.agentwork.productspecagent.domain.DesignImageAnalysis
 import com.agentwork.productspecagent.domain.DesignImageInput
 import com.agentwork.productspecagent.service.PromptService
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Component
 
@@ -14,6 +16,7 @@ data class DesignGenerationInput(
     val projectId: String,
     val description: String?,
     val image: DesignImageInput?,
+    val imageAnalysis: DesignImageAnalysis?,
 )
 
 @Serializable
@@ -115,6 +118,17 @@ open class DesignVariantAgent(
             appendLine("Stored reference: ${input.image.contentRef}")
         } else {
             appendLine("No image provided.")
+        }
+        appendLine()
+        appendLine("Image analysis:")
+        if (input.imageAnalysis != null) {
+            appendLine("Design brief:")
+            appendLine(input.imageAnalysis.designBrief)
+            appendLine()
+            appendLine("Full image analysis JSON:")
+            appendLine(json.encodeToString(input.imageAnalysis))
+        } else {
+            appendLine("No image analysis provided.")
         }
         appendLine()
         appendLine("Return exactly this JSON shape without markdown:")
