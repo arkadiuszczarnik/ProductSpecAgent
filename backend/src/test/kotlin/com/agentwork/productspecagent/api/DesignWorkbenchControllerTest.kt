@@ -1,8 +1,9 @@
 package com.agentwork.productspecagent.api
 
+import com.agentwork.productspecagent.agent.DesignGenerationInput
+import com.agentwork.productspecagent.agent.DesignGenerationResult
 import com.agentwork.productspecagent.agent.DesignVariantAgent
-import com.agentwork.productspecagent.agent.GeneratedDesignVariant
-import com.agentwork.productspecagent.domain.DesignInputCategory
+import com.agentwork.productspecagent.domain.DesignAnalysis
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.service.ProjectService
@@ -20,10 +21,8 @@ import org.springframework.context.annotation.Primary
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
@@ -41,16 +40,23 @@ class DesignWorkbenchControllerTest {
         @Primary
         fun testDesignVariantAgent(): DesignVariantAgent =
             object : DesignVariantAgent(null) {
-                override fun generate(projectId: String, screenId: String, prompt: String?): GeneratedDesignVariant {
-                    if (prompt == "invalid-preview") {
-                        return GeneratedDesignVariant(
-                            title = "Invalid",
-                            html = """<!doctype html><html><body><img src="https://example.com/x.png"></body></html>""",
-                            rationale = "Invalid remote image.",
-                        )
-                    }
-                    return super.generate(projectId, screenId, prompt)
-                }
+                override fun generate(input: DesignGenerationInput): DesignGenerationResult =
+                    DesignGenerationResult(
+                        analysis = DesignAnalysis(
+                            summary = "Generated layout from test input.",
+                            visualDirection = "Focused product UI.",
+                            rationale = "Matches the submitted material.",
+                        ),
+                        title = "Controller Test Design",
+                        html = """
+                            <!doctype html>
+                            <html>
+                              <head><meta charset="utf-8"><style>body{font-family:system-ui}</style></head>
+                              <body><main>${input.description ?: input.image?.originalName}</main></body>
+                            </html>
+                        """.trimIndent(),
+                        rationale = "Generated in controller test.",
+                    )
             }
     }
 
@@ -68,17 +74,6 @@ class DesignWorkbenchControllerTest {
 
     private fun createProject(name: String): String = projectService.createProject(name).project.id
 
-    private fun inputId(): String =
-        """"id"\s*:\s*"([^"]+)"""".toRegex()
-            .find(
-                mockMvc.perform(get("/api/v1/projects/$projectId/design/workbench"))
-                    .andExpect(status().isOk())
-                    .andReturn()
-                    .response
-                    .contentAsString,
-            )!!
-            .groupValues[1]
-
     private fun advanceToDesign(projectId: String) {
         listOf(
             FlowStepType.IDEA,
@@ -88,189 +83,104 @@ class DesignWorkbenchControllerTest {
         ).forEach { step -> projectService.advanceStep(projectId, step) }
     }
 
-    private fun createVariant(prompt: String = "valid-preview"): String {
-        advanceToDesign(projectId)
-
-        mockMvc.perform(post("/api/v1/projects/$projectId/design/screens/propose"))
-            .andExpect(status().isOk())
-
-        val result = mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/screens/landing/variants")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"prompt":"$prompt"}"""),
-        )
-            .andExpect(status().isOk())
-            .andReturn()
-
-        return """"variants"\s*:\s*\[\s*\{[^}]*"id"\s*:\s*"([^"]+)"""".toRegex()
-            .find(result.response.contentAsString)!!
-            .groupValues[1]
-    }
+    private fun putInput(
+        description: String? = null,
+        file: MockMultipartFile? = null,
+    ) = multipart("/api/v1/projects/$projectId/design/input")
+        .apply {
+            description?.let { param("description", it) }
+            file?.let { file(it) }
+        }
+        .with { request ->
+            request.method = "PUT"
+            request
+        }
 
     @Test
-    fun `GET workbench returns empty workbench`() {
+    fun `GET workbench returns simplified workbench`() {
         mockMvc.perform(get("/api/v1/projects/$projectId/design/workbench"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.projectId").value(projectId))
-            .andExpect(jsonPath("$.inputs").isArray)
+            .andExpect(jsonPath("$.description").doesNotExist())
+            .andExpect(jsonPath("$.imageInput").doesNotExist())
+            .andExpect(jsonPath("$.currentDesign").doesNotExist())
     }
 
     @Test
-    fun `POST complete rejects workbench without active variant`() {
+    fun `PUT input rejects empty description and missing image`() {
         advanceToDesign(projectId)
 
-        mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{}"),
-        )
+        mockMvc.perform(putInput(description = "  "))
             .andExpect(status().isBadRequest())
     }
 
     @Test
-    fun `GET old design endpoint no longer exposes zip upload as primary state`() {
-        mockMvc.perform(get("/api/v1/projects/$projectId/design"))
-            .andExpect(status().isNotFound())
-    }
-
-    @Test
-    fun `POST variant returns bad request when generated preview is invalid`() {
+    fun `PUT input accepts description only`() {
         advanceToDesign(projectId)
 
-        mockMvc.perform(post("/api/v1/projects/$projectId/design/screens/propose"))
+        mockMvc.perform(putInput(description = "Build a compact pricing page"))
             .andExpect(status().isOk())
-
-        mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/screens/landing/variants")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"prompt":"invalid-preview"}"""),
-        )
-            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.description").value("Build a compact pricing page"))
+            .andExpect(jsonPath("$.imageInput").doesNotExist())
+            .andExpect(jsonPath("$.currentDesign").doesNotExist())
     }
 
     @Test
-    fun `POST text input rejects before DESIGN is current`() {
-        mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/inputs/text")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"text":"Reference notes"}"""),
-        )
+    fun `PUT input accepts image only`() {
+        advanceToDesign(projectId)
+        val image = MockMultipartFile("file", "dashboard.png", "image/png", byteArrayOf(1, 2, 3))
+
+        mockMvc.perform(putInput(file = image))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.description").doesNotExist())
+            .andExpect(jsonPath("$.imageInput.originalName").value("dashboard.png"))
+            .andExpect(jsonPath("$.imageInput.contentType").value("image/png"))
+            .andExpect(jsonPath("$.imageInput.sizeBytes").value(3))
+            .andExpect(jsonPath("$.currentDesign").doesNotExist())
+    }
+
+    @Test
+    fun `PUT input rejects before DESIGN is current`() {
+        mockMvc.perform(putInput(description = "Reference notes"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("WIZARD_STEP_NOT_CURRENT"))
     }
 
     @Test
-    fun `POST image input adds image input`() {
+    fun `POST generate creates current design`() {
         advanceToDesign(projectId)
-        val image = MockMultipartFile("file", "dashboard.png", "image/png", byteArrayOf(1, 2, 3))
-
-        mockMvc.perform(multipart("/api/v1/projects/$projectId/design/inputs/image").file(image))
+        mockMvc.perform(putInput(description = "Build a compact pricing page"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.inputs[0].kind").value("IMAGE"))
-            .andExpect(jsonPath("$.inputs[0].originalName").value("dashboard.png"))
+
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/generate"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.currentDesign.title").value("Controller Test Design"))
+            .andExpect(jsonPath("$.currentDesign.rationale").value("Generated in controller test."))
+            .andExpect(jsonPath("$.analysis.summary").value("Generated layout from test input."))
     }
 
     @Test
-    fun `POST snippet input adds html css snippet input`() {
-        advanceToDesign(projectId)
-
-        mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/inputs/snippet")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"pricing.html","snippet":"<style>.hero{color:red}</style><section>Pricing</section>"}"""),
-        )
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.inputs[0].kind").value("HTML_CSS_SNIPPET"))
-            .andExpect(jsonPath("$.inputs[0].originalName").value("pricing.html"))
-    }
-
-    @Test
-    fun `PATCH input updates user label and classification`() {
-        advanceToDesign(projectId)
-        mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/inputs/snippet")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"snippet":"<button>Buy</button>"}"""),
-        )
-            .andExpect(status().isOk())
-
-        mockMvc.perform(
-            patch("/api/v1/projects/$projectId/design/inputs/{inputId}", inputId())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    """
-                    {
-                      "userLabel":"Checkout reference",
-                      "category":"HTML_CSS_REFERENCE",
-                      "summary":"Compact checkout section",
-                      "suggestedUse":"Use button density",
-                      "confidence":0.9
-                    }
-                    """.trimIndent(),
-                ),
-        )
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.inputs[0].userLabel").value("Checkout reference"))
-            .andExpect(jsonPath("$.inputs[0].classification.category").value(DesignInputCategory.HTML_CSS_REFERENCE.name))
-            .andExpect(jsonPath("$.inputs[0].classification.summary").value("Compact checkout section"))
-            .andExpect(jsonPath("$.inputs[0].classification.suggestedUse").value("Use button density"))
-            .andExpect(jsonPath("$.inputs[0].classification.confidence").value(0.9))
-    }
-
-    @Test
-    fun `manual screen add update and delete works`() {
-        advanceToDesign(projectId)
-
-        mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/screens")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Settings","purpose":"Manage account preferences"}"""),
-        )
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.screens[0].id").value("settings"))
-            .andExpect(jsonPath("$.screens[0].name").value("Settings"))
-
-        mockMvc.perform(
-            patch("/api/v1/projects/$projectId/design/screens/settings")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Account Settings","purpose":"Tune workspace preferences"}"""),
-        )
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.screens[0].name").value("Account Settings"))
-            .andExpect(jsonPath("$.screens[0].purpose").value("Tune workspace preferences"))
-
-        mockMvc.perform(delete("/api/v1/projects/$projectId/design/screens/settings"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.screens").isEmpty)
-    }
-
-    @Test
-    fun `POST image input rejects before DESIGN is current`() {
-        val image = MockMultipartFile("file", "dashboard.png", "image/png", byteArrayOf(1, 2, 3))
-
-        mockMvc.perform(multipart("/api/v1/projects/$projectId/design/inputs/image").file(image))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.error").value("WIZARD_STEP_NOT_CURRENT"))
-    }
-
-    @Test
-    fun `POST analyze rejects when DESIGN is hidden`() {
+    fun `POST generate rejects when DESIGN is hidden`() {
         wizardService.saveStepData(
             projectId,
             FlowStepType.IDEA.name,
             WizardStepData(fields = mapOf("category" to JsonPrimitive("Library"))),
         )
 
-        mockMvc.perform(post("/api/v1/projects/$projectId/design/analyze"))
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/generate"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("WIZARD_STEP_NOT_VISIBLE"))
     }
 
     @Test
-    fun `GET preview returns html with security headers`() {
-        val variantId = createVariant()
+    fun `GET preview returns active generated html with CSP`() {
+        advanceToDesign(projectId)
+        mockMvc.perform(putInput(description = "Build a compact pricing page"))
+            .andExpect(status().isOk())
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/generate"))
+            .andExpect(status().isOk())
 
-        mockMvc.perform(get("/api/v1/projects/$projectId/design/preview/$variantId"))
+        mockMvc.perform(get("/api/v1/projects/$projectId/design/preview"))
             .andExpect(status().isOk())
             .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
             .andExpect(header().string("X-Content-Type-Options", "nosniff"))
@@ -278,36 +188,42 @@ class DesignWorkbenchControllerTest {
             .andExpect(header().string("Content-Security-Policy", containsString("frame-ancestors 'self' http://localhost:3001")))
             .andExpect(header().string("Content-Security-Policy", containsString("img-src data:")))
             .andExpect(header().string("Content-Security-Policy", containsString("connect-src 'none'")))
-            .andExpect(header().string("Content-Security-Policy", containsString("frame-src 'none'")))
+            .andExpect(header().string("Content-Security-Policy", containsString("form-action 'none'")))
             .andExpect(header().string("Content-Security-Policy", containsString("object-src 'none'")))
-            .andExpect(content().string(containsString("valid-preview")))
+            .andExpect(content().string(containsString("Build a compact pricing page")))
     }
 
     @Test
-    fun `GET preview returns not found for unknown variant`() {
-        mockMvc.perform(get("/api/v1/projects/$projectId/design/preview/missing"))
+    fun `GET preview returns not found when no current design exists`() {
+        mockMvc.perform(get("/api/v1/projects/$projectId/design/preview"))
             .andExpect(status().isNotFound())
     }
 
     @Test
-    fun `POST complete saves active design summary and advances flow`() {
-        val variantId = createVariant()
-        mockMvc.perform(
-            patch("/api/v1/projects/$projectId/design/screens/landing/active-variant")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"variantId":"$variantId"}"""),
-        )
+    fun `POST complete rejects before generate`() {
+        advanceToDesign(projectId)
+        mockMvc.perform(putInput(description = "Build a compact pricing page"))
             .andExpect(status().isOk())
 
-        mockMvc.perform(
-            post("/api/v1/projects/$projectId/design/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{}"),
-        )
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/complete"))
+            .andExpect(status().isBadRequest())
+    }
+
+    @Test
+    fun `POST complete saves current design summary and advances flow`() {
+        advanceToDesign(projectId)
+        mockMvc.perform(putInput(description = "Build a compact pricing page"))
             .andExpect(status().isOk())
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/generate"))
+            .andExpect(status().isOk())
+
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/complete"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.message").value("Design workbench completed. Spec updated."))
             .andExpect(jsonPath("$.nextStep").value("ARCHITECTURE"))
 
-        assertThat(projectService.readSpecFile(projectId, "design.md")).contains("Landing", "Initial")
+        assertThat(projectService.readSpecFile(projectId, "design.md"))
+            .contains("Controller Test Design", "Generated in controller test.")
         assertThat(wizardService.getWizardData(projectId).steps["DESIGN"]?.fields?.get("summary")).isNotNull()
     }
 }

@@ -1,8 +1,6 @@
 package com.agentwork.productspecagent.api
 
-import com.agentwork.productspecagent.domain.DesignVariant
 import com.agentwork.productspecagent.domain.DesignWorkbench
-import com.agentwork.productspecagent.domain.DesignInputCategory
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.ProductCategory
 import com.agentwork.productspecagent.domain.WizardStepData
@@ -21,12 +19,10 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -44,157 +40,38 @@ class DesignWorkbenchController(
     @Value("\${app.frontend-origin:http://localhost:3001}") private val frontendOrigin: String,
 ) {
 
-    data class TextInputRequest(val text: String = "")
-    data class SnippetInputRequest(val snippet: String = "", val name: String? = null)
-    data class InputPatchRequest(
-        val userLabel: String? = null,
-        val category: DesignInputCategory? = null,
-        val summary: String? = null,
-        val suggestedUse: String? = null,
-        val confidence: Double? = null,
-    )
-    data class ScreenRequest(val name: String? = null, val purpose: String? = null)
-    data class VariantRequest(val prompt: String? = null)
-    data class ActiveVariantRequest(val variantId: String = "")
     data class CompleteResponse(val message: String, val nextStep: String?)
 
     @GetMapping("/workbench")
     fun get(@PathVariable projectId: String): DesignWorkbench =
         service.get(projectId)
 
-    @PostMapping("/inputs/text")
-    fun addTextInput(
+    @PutMapping("/input", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun saveInput(
         @PathVariable projectId: String,
-        @RequestBody body: TextInputRequest,
-    ): DesignWorkbench {
-        validateDesignAccess(projectId)
-        if (body.text.isBlank()) {
-            throw badRequest("Design input text must not be blank.")
-        }
-        return mapInvalidWorkbench { service.addTextInput(projectId, body.text) }
-    }
-
-    @PostMapping("/inputs/image", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun addImageInput(
-        @PathVariable projectId: String,
-        @RequestParam("file") file: MultipartFile,
+        @RequestParam("description", required = false) description: String?,
+        @RequestParam("file", required = false) file: MultipartFile?,
     ): DesignWorkbench {
         validateDesignAccess(projectId)
         return mapInvalidWorkbench {
-            service.addImageInput(projectId, file.originalFilename, file.bytes, file.contentType)
+            service.saveInput(projectId, description, file?.originalFilename, file?.bytes, file?.contentType)
         }
     }
 
-    @PostMapping("/inputs/snippet")
-    fun addSnippetInput(
-        @PathVariable projectId: String,
-        @RequestBody body: SnippetInputRequest,
-    ): DesignWorkbench {
+    @PostMapping("/generate")
+    fun generate(@PathVariable projectId: String): DesignWorkbench {
         validateDesignAccess(projectId)
-        return mapInvalidWorkbench { service.addSnippetInput(projectId, body.snippet, body.name) }
+        return mapInvalidWorkbench { service.generate(projectId) }
     }
 
-    @PatchMapping("/inputs/{inputId}")
-    fun updateInput(
-        @PathVariable projectId: String,
-        @PathVariable inputId: String,
-        @RequestBody body: InputPatchRequest,
-    ): DesignWorkbench {
-        validateDesignAccess(projectId)
-        return mapInvalidWorkbench {
-            service.updateInput(
-                projectId = projectId,
-                inputId = inputId,
-                userLabel = body.userLabel,
-                category = body.category,
-                summary = body.summary,
-                suggestedUse = body.suggestedUse,
-                confidence = body.confidence,
-            )
-        }
-    }
-
-    @PostMapping("/analyze")
-    fun analyzeInputs(@PathVariable projectId: String): DesignWorkbench {
-        validateDesignAccess(projectId)
-        return mapInvalidWorkbench { service.analyzeInputs(projectId) }
-    }
-
-    @PostMapping("/screens/propose")
-    fun proposeScreens(@PathVariable projectId: String): DesignWorkbench {
-        validateDesignAccess(projectId)
-        return mapInvalidWorkbench { service.proposeScreens(projectId) }
-    }
-
-    @PostMapping("/screens")
-    fun addScreen(
-        @PathVariable projectId: String,
-        @RequestBody body: ScreenRequest,
-    ): DesignWorkbench {
-        validateDesignAccess(projectId)
-        return mapInvalidWorkbench { service.addScreen(projectId, body.name.orEmpty(), body.purpose) }
-    }
-
-    @PatchMapping("/screens/{screenId}")
-    fun updateScreen(
-        @PathVariable projectId: String,
-        @PathVariable screenId: String,
-        @RequestBody body: ScreenRequest,
-    ): DesignWorkbench {
-        validateDesignAccess(projectId)
-        return mapInvalidWorkbench { service.updateScreen(projectId, screenId, body.name, body.purpose) }
-    }
-
-    @DeleteMapping("/screens/{screenId}")
-    fun removeScreen(
-        @PathVariable projectId: String,
-        @PathVariable screenId: String,
-    ): DesignWorkbench {
-        validateDesignAccess(projectId)
-        return mapInvalidWorkbench { service.removeScreen(projectId, screenId) }
-    }
-
-    @PostMapping("/screens/{screenId}/variants")
-    fun generateVariant(
-        @PathVariable projectId: String,
-        @PathVariable screenId: String,
-        @RequestBody body: VariantRequest,
-    ): DesignWorkbench {
-        validateDesignAccess(projectId)
-        return mapInvalidWorkbench { service.generateVariant(projectId, screenId, body.prompt) }
-    }
-
-    @PostMapping("/screens/{screenId}/suggestions/{suggestionId}/apply")
-    fun applySuggestion(
-        @PathVariable projectId: String,
-        @PathVariable screenId: String,
-        @PathVariable suggestionId: String,
-    ): DesignWorkbench {
-        validateDesignAccess(projectId)
-        return mapInvalidWorkbench { service.applySuggestion(projectId, screenId, suggestionId) }
-    }
-
-    @PatchMapping("/screens/{screenId}/active-variant")
-    fun setActiveVariant(
-        @PathVariable projectId: String,
-        @PathVariable screenId: String,
-        @RequestBody body: ActiveVariantRequest,
-    ): DesignWorkbench {
-        validateDesignAccess(projectId)
-        if (body.variantId.isBlank()) {
-            throw badRequest("Design variant ID must not be blank.")
-        }
-        return mapInvalidWorkbench { service.setActiveVariant(projectId, screenId, body.variantId) }
-    }
-
-    @GetMapping("/preview/{variantId}")
+    @GetMapping("/preview")
     fun preview(
         @PathVariable projectId: String,
-        @PathVariable variantId: String,
     ): ResponseEntity<ByteArray> {
-        val variant = service.get(projectId).findVariant(variantId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Design variant not found: $variantId")
-        val bytes = mapInvalidWorkbench { service.readVariant(projectId, variant.htmlPath) }
+        if (service.get(projectId).currentDesign == null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Current design not found.")
+        }
+        val bytes = mapInvalidWorkbench { service.readPreview(projectId) }
         val headers = HttpHeaders()
         headers.contentType = MediaType.parseMediaType("text/html; charset=utf-8")
         headers.set("X-Content-Type-Options", "nosniff")
@@ -244,33 +121,30 @@ class DesignWorkbenchController(
     }
 
     private fun renderDesignSummary(workbench: DesignWorkbench): String {
-        val activeScreens = workbench.screens.mapNotNull { screen ->
-            val variant = screen.variants.firstOrNull { it.id == screen.activeVariantId }
-                ?: return@mapNotNull null
-            screen to variant
-        }
+        val design = workbench.currentDesign ?: throw badRequest("Generate a design before completing the DESIGN step.")
         return buildString {
             appendLine("# Design")
             appendLine()
-            appendLine("Selected design variants:")
-            activeScreens.forEach { (screen, variant) ->
-                appendLine()
-                appendLine("## ${screen.name}")
-                appendLine()
-                appendLine("- Purpose: ${screen.purpose}")
-                appendLine("- Variant: ${variant.title}")
-                if (variant.rationale.isNotBlank()) {
-                    appendLine("- Rationale: ${variant.rationale}")
-                }
-                appendLine("- Preview source: ${variant.htmlPath}")
+            appendLine("Generated design:")
+            appendLine()
+            appendLine("## ${design.title}")
+            appendLine()
+            if (!workbench.description.isNullOrBlank()) {
+                appendLine("- Description: ${workbench.description}")
             }
+            workbench.imageInput?.let { image ->
+                appendLine("- Reference image: ${image.originalName}")
+            }
+            workbench.analysis?.let { analysis ->
+                appendLine("- Summary: ${analysis.summary}")
+                appendLine("- Visual direction: ${analysis.visualDirection}")
+            }
+            if (design.rationale.isNotBlank()) {
+                appendLine("- Rationale: ${design.rationale}")
+            }
+            appendLine("- Preview source: ${design.htmlPath}")
         }.trim()
     }
-
-    private fun DesignWorkbench.findVariant(variantId: String): DesignVariant? =
-        screens.asSequence()
-            .flatMap { it.variants.asSequence() }
-            .firstOrNull { it.id == variantId }
 
     private fun <T> mapInvalidWorkbench(block: () -> T): T =
         try {
