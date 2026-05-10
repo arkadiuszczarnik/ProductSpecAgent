@@ -917,59 +917,34 @@ export async function resetAgentModel(agentId: string): Promise<void> {
 
 // ─── Design Workbench Types ──────────────────────────────────────────────────
 
-export type DesignInputKind = "TEXT" | "IMAGE" | "HTML_CSS_SNIPPET";
-export type DesignInputCategory = "REFERENCE_IMAGE" | "ASSET_IMAGE" | "HTML_CSS_REFERENCE" | "UNCLEAR";
-export type DesignVariantStatus = "DRAFT" | "VALID" | "INVALID";
-
-export interface DesignInputClassification {
-  category: DesignInputCategory;
-  summary: string;
-  suggestedUse: string;
-  confidence: number;
-}
-
-export interface DesignInput {
-  id: string;
-  kind: DesignInputKind;
-  originalName?: string | null;
-  userLabel?: string | null;
-  classification?: DesignInputClassification | null;
+export interface DesignImageInput {
+  originalName: string;
   contentRef: string;
-  createdAt: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedAt: string;
 }
 
-export interface DesignVariant {
+export interface DesignAnalysis {
+  summary: string;
+  visualDirection: string;
+  rationale: string;
+}
+
+export interface GeneratedDesign {
   id: string;
-  screenId: string;
-  version: number;
   title: string;
   htmlPath: string;
-  status: DesignVariantStatus;
   rationale: string;
-  createdAt: string;
-}
-
-export interface DesignScreen {
-  id: string;
-  name: string;
-  purpose: string;
-  variants: DesignVariant[];
-  activeVariantId?: string | null;
-}
-
-export interface DesignSuggestion {
-  id: string;
-  screenId: string;
-  title: string;
-  description: string;
   createdAt: string;
 }
 
 export interface DesignWorkbench {
   projectId: string;
-  inputs: DesignInput[];
-  screens: DesignScreen[];
-  suggestions: DesignSuggestion[];
+  description?: string | null;
+  imageInput?: DesignImageInput | null;
+  analysis?: DesignAnalysis | null;
+  currentDesign?: GeneratedDesign | null;
   updatedAt: string;
 }
 
@@ -978,14 +953,6 @@ export interface DesignCompleteResponse {
   nextStep?: string | null;
   progression?: WizardProgressionView | null;
   action?: WizardClientAction | null;
-}
-
-export interface UpdateDesignInputRequest {
-  userLabel?: string | null;
-  category?: DesignInputCategory;
-  summary?: string;
-  suggestedUse?: string;
-  confidence?: number;
 }
 
 // ─── Design Bundle Types ─────────────────────────────────────────────────────
@@ -1068,18 +1035,22 @@ export async function getDesignWorkbench(projectId: string): Promise<DesignWorkb
   return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/workbench`);
 }
 
-export async function addDesignTextInput(projectId: string, text: string): Promise<DesignWorkbench> {
-  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/inputs/text`, {
-    method: "POST",
-    body: JSON.stringify({ text }),
-  });
-}
-
-export async function addDesignImageInput(projectId: string, file: File): Promise<DesignWorkbench> {
+export async function saveDesignInput(
+  projectId: string,
+  description: string,
+  file?: File | null,
+): Promise<DesignWorkbench> {
   const fd = new FormData();
-  fd.append("file", file);
-  const res = await fetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design/inputs/image`, {
-    method: "POST",
+  const trimmedDescription = description.trim();
+  if (trimmedDescription) {
+    fd.append("description", trimmedDescription);
+  }
+  if (file) {
+    fd.append("file", file);
+  }
+
+  const res = await fetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design/input`, {
+    method: "PUT",
     credentials: "include",
     body: fd,
   });
@@ -1095,72 +1066,12 @@ export async function addDesignImageInput(projectId: string, file: File): Promis
   return (await res.json()) as DesignWorkbench;
 }
 
-export async function addDesignSnippetInput(projectId: string, snippet: string, name?: string): Promise<DesignWorkbench> {
-  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/inputs/snippet`, {
-    method: "POST",
-    body: JSON.stringify({ snippet, name }),
-  });
+export async function generateDesign(projectId: string): Promise<DesignWorkbench> {
+  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/generate`, { method: "POST" });
 }
 
-export async function updateDesignInput(
-  projectId: string,
-  inputId: string,
-  request: UpdateDesignInputRequest,
-): Promise<DesignWorkbench> {
-  return apiFetch<DesignWorkbench>(
-    `/api/v1/projects/${encodeURIComponent(projectId)}/design/inputs/${encodeURIComponent(inputId)}`,
-    { method: "PATCH", body: JSON.stringify(request) },
-  );
-}
-
-export async function analyzeDesignInputs(projectId: string): Promise<DesignWorkbench> {
-  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/analyze`, { method: "POST" });
-}
-
-export async function proposeDesignScreens(projectId: string): Promise<DesignWorkbench> {
-  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/propose`, { method: "POST" });
-}
-
-export async function addDesignScreen(projectId: string, name: string, purpose: string): Promise<DesignWorkbench> {
-  return apiFetch<DesignWorkbench>(`/api/v1/projects/${encodeURIComponent(projectId)}/design/screens`, {
-    method: "POST",
-    body: JSON.stringify({ name, purpose }),
-  });
-}
-
-export async function updateDesignScreen(projectId: string, screenId: string, name: string, purpose: string): Promise<DesignWorkbench> {
-  return apiFetch<DesignWorkbench>(
-    `/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/${encodeURIComponent(screenId)}`,
-    { method: "PATCH", body: JSON.stringify({ name, purpose }) },
-  );
-}
-
-export async function deleteDesignScreen(projectId: string, screenId: string): Promise<DesignWorkbench> {
-  return apiFetch<DesignWorkbench>(
-    `/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/${encodeURIComponent(screenId)}`,
-    { method: "DELETE" },
-  );
-}
-
-export async function generateDesignVariant(projectId: string, screenId: string, prompt: string): Promise<DesignWorkbench> {
-  return apiFetch<DesignWorkbench>(
-    `/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/${encodeURIComponent(screenId)}/variants`,
-    { method: "POST", body: JSON.stringify({ prompt }) },
-  );
-}
-
-export async function applyDesignSuggestion(projectId: string, screenId: string, suggestionId: string): Promise<DesignWorkbench> {
-  return apiFetch<DesignWorkbench>(
-    `/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/${encodeURIComponent(screenId)}/suggestions/${encodeURIComponent(suggestionId)}/apply`,
-    { method: "POST" },
-  );
-}
-
-export async function setActiveDesignVariant(projectId: string, screenId: string, variantId: string): Promise<DesignWorkbench> {
-  return apiFetch<DesignWorkbench>(
-    `/api/v1/projects/${encodeURIComponent(projectId)}/design/screens/${encodeURIComponent(screenId)}/active-variant`,
-    { method: "PATCH", body: JSON.stringify({ variantId }) },
-  );
+export function designPreviewUrl(projectId: string): string {
+  return `${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design/preview`;
 }
 
 export async function completeDesignWorkbench(projectId: string): Promise<DesignCompleteResponse> {
