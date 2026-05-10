@@ -1,19 +1,17 @@
 package com.agentwork.productspecagent.service
 
+import com.agentwork.productspecagent.agent.DesignGenerationInput
 import com.agentwork.productspecagent.agent.DesignVariantAgent
-import com.agentwork.productspecagent.agent.ReferenceAnalysisAgent
-import com.agentwork.productspecagent.agent.ScreenProposalAgent
 import com.agentwork.productspecagent.domain.DesignInputCategory
-import com.agentwork.productspecagent.domain.DesignInputClassification
-import com.agentwork.productspecagent.domain.DesignInputKind
-import com.agentwork.productspecagent.domain.DesignScreen
-import com.agentwork.productspecagent.domain.DesignVariant
-import com.agentwork.productspecagent.domain.DesignVariantStatus
 import com.agentwork.productspecagent.domain.DesignWorkbench
+import com.agentwork.productspecagent.domain.GeneratedDesign
 import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
+
+private const val LEGACY_DESIGN_COMPAT_MESSAGE =
+    "Temporary compatibility for legacy design workbench flow until Simple Design Generator V1 controller migration removes callers."
 
 class InvalidDesignWorkbenchException(message: String) : RuntimeException(message)
 
@@ -21,57 +19,108 @@ class InvalidDesignWorkbenchException(message: String) : RuntimeException(messag
 class DesignWorkbenchService(
     private val storage: DesignWorkbenchStorage,
     private val previewValidator: DesignPreviewValidator,
-    private val referenceAnalysisAgent: ReferenceAnalysisAgent,
-    private val screenProposalAgent: ScreenProposalAgent,
     private val designVariantAgent: DesignVariantAgent,
 ) {
     private val maxImageInputBytes = 5 * 1024 * 1024
 
     fun get(projectId: String): DesignWorkbench = storage.load(projectId)
 
-    fun addTextInput(projectId: String, text: String): DesignWorkbench {
-        if (text.isBlank()) {
-            throw InvalidDesignWorkbenchException("Design input text must not be blank.")
+    fun saveInput(
+        projectId: String,
+        description: String?,
+        originalName: String?,
+        bytes: ByteArray?,
+        contentType: String?,
+    ): DesignWorkbench {
+        val trimmed = description?.trim()?.takeIf { it.isNotBlank() }
+        if (trimmed == null && (bytes == null || bytes.isEmpty())) {
+            throw InvalidDesignWorkbenchException("Design input requires a description or image.")
         }
-        storage.addTextInput(projectId, text)
-        return storage.load(projectId)
-    }
 
-    fun addImageInput(projectId: String, originalName: String?, bytes: ByteArray, contentType: String?): DesignWorkbench {
-        if (bytes.isEmpty()) {
-            throw InvalidDesignWorkbenchException("Design image input must not be empty.")
+        val normalizedContentType = if (bytes != null) {
+            if (bytes.isEmpty()) {
+                throw InvalidDesignWorkbenchException("Design image input must not be empty.")
+            }
+            if (bytes.size > maxImageInputBytes) {
+                throw InvalidDesignWorkbenchException("Design image input must not exceed 5 MB.")
+            }
+            val normalized = contentType?.trim()?.lowercase().orEmpty()
+            if (!normalized.startsWith("image/")) {
+                throw InvalidDesignWorkbenchException("Design image input must use an image content type.")
+            }
+            normalized
+        } else {
+            null
         }
-        if (bytes.size > maxImageInputBytes) {
-            throw InvalidDesignWorkbenchException("Design image input must not exceed 5 MB.")
-        }
-        val normalizedContentType = contentType?.trim()?.lowercase().orEmpty()
-        if (!normalizedContentType.startsWith("image/")) {
-            throw InvalidDesignWorkbenchException("Design image input must use an image content type.")
-        }
-        storage.addBinaryInput(
+
+        val base = storage.saveInput(projectId, trimmed, null)
+        if (bytes == null) return base
+        return storage.saveImageInput(
             projectId = projectId,
-            kind = DesignInputKind.IMAGE,
             originalName = originalName?.trim()?.takeIf { it.isNotBlank() } ?: "image-upload",
             bytes = bytes,
-            contentType = normalizedContentType,
+            contentType = normalizedContentType ?: error("validated image content type is missing"),
         )
-        return storage.load(projectId)
     }
 
-    fun addSnippetInput(projectId: String, snippet: String, name: String?): DesignWorkbench {
-        if (snippet.isBlank()) {
-            throw InvalidDesignWorkbenchException("Design snippet input must not be blank.")
+    fun generate(projectId: String): DesignWorkbench {
+        val workbench = storage.load(projectId)
+        if (workbench.description.isNullOrBlank() && workbench.imageInput == null) {
+            throw InvalidDesignWorkbenchException("Design generation requires a description or image.")
         }
-        storage.addBinaryInput(
-            projectId = projectId,
-            kind = DesignInputKind.HTML_CSS_SNIPPET,
-            originalName = name?.trim()?.takeIf { it.isNotBlank() } ?: "snippet.html",
-            bytes = snippet.toByteArray(),
-            contentType = "text/html; charset=utf-8",
+
+        val result = designVariantAgent.generate(
+            DesignGenerationInput(
+                projectId = projectId,
+                description = workbench.description,
+                image = workbench.imageInput,
+            ),
         )
-        return storage.load(projectId)
+        previewValidator.validate(result.html)
+
+        return storage.saveGeneratedDesign(
+            projectId = projectId,
+            analysis = result.analysis,
+            generated = GeneratedDesign(
+                id = UUID.randomUUID().toString(),
+                title = result.title.trim().ifBlank { "Generated Design" },
+                htmlPath = storage.currentDesignKey(projectId),
+                rationale = result.rationale,
+                createdAt = Instant.now().toString(),
+            ),
+            html = result.html.toByteArray(Charsets.UTF_8),
+        )
     }
 
+    fun readPreview(projectId: String): ByteArray {
+        if (storage.load(projectId).currentDesign == null) {
+            throw InvalidDesignWorkbenchException("No generated design exists.")
+        }
+        return storage.readCurrentDesign(projectId)
+    }
+
+    fun complete(projectId: String): DesignWorkbench {
+        val workbench = storage.load(projectId)
+        if (workbench.currentDesign == null) {
+            throw InvalidDesignWorkbenchException("Generate a design before completing the DESIGN step.")
+        }
+        storage.writeActiveScreen(projectId, storage.readCurrentDesign(projectId))
+        return workbench
+    }
+
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
+    fun addTextInput(projectId: String, text: String): DesignWorkbench =
+        saveInput(projectId, text, null, null, null)
+
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
+    fun addImageInput(projectId: String, originalName: String?, bytes: ByteArray, contentType: String?): DesignWorkbench =
+        saveInput(projectId, null, originalName, bytes, contentType)
+
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
+    fun addSnippetInput(projectId: String, snippet: String, name: String?): DesignWorkbench =
+        throw InvalidDesignWorkbenchException("Legacy design snippet inputs are not supported by the V1 generator.")
+
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     fun updateInput(
         projectId: String,
         inputId: String,
@@ -80,191 +129,42 @@ class DesignWorkbenchService(
         summary: String?,
         suggestedUse: String?,
         confidence: Double?,
-    ): DesignWorkbench {
-        if (confidence != null && confidence !in 0.0..1.0) {
-            throw InvalidDesignWorkbenchException("Design input confidence must be between 0 and 1.")
-        }
-        val workbench = storage.load(projectId)
-        val input = workbench.inputs.firstOrNull { it.id == inputId }
-            ?: throw InvalidDesignWorkbenchException("Design input not found: $inputId")
-        val existingClassification = input.classification
-        val classification = if (
-            category != null ||
-            summary != null ||
-            suggestedUse != null ||
-            confidence != null ||
-            existingClassification != null
-        ) {
-            DesignInputClassification(
-                category = category ?: existingClassification?.category ?: DesignInputCategory.UNCLEAR,
-                summary = summary?.trim()?.takeIf { it.isNotBlank() }
-                    ?: existingClassification?.summary
-                    ?: "User supplied classification",
-                suggestedUse = suggestedUse?.trim()?.takeIf { it.isNotBlank() }
-                    ?: existingClassification?.suggestedUse
-                    ?: "Use as a manually curated design reference.",
-                confidence = confidence ?: existingClassification?.confidence ?: 1.0,
-            )
-        } else {
-            null
-        }
-        val updatedLabel = when {
-            userLabel == null -> input.userLabel
-            userLabel.isBlank() -> null
-            else -> userLabel.trim()
-        }
+    ): DesignWorkbench =
+        throw InvalidDesignWorkbenchException("Legacy design input updates are not supported by the V1 generator.")
 
-        return storage.save(
-            workbench.copy(
-                inputs = workbench.inputs.map {
-                    if (it.id == inputId) it.copy(userLabel = updatedLabel, classification = classification) else it
-                },
-            ),
-        )
-    }
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
+    fun analyzeInputs(projectId: String): DesignWorkbench =
+        throw InvalidDesignWorkbenchException("Legacy design analysis is not supported by the V1 generator.")
 
-    fun analyzeInputs(projectId: String): DesignWorkbench {
-        val workbench = storage.load(projectId)
-        val analyses = referenceAnalysisAgent.analyze(projectId)
-        var updated = workbench
-        workbench.inputs.forEachIndexed { index, input ->
-            val analysis = analyses.getOrNull(index) ?: analyses.lastOrNull() ?: return@forEachIndexed
-            updated = storage.updateInputClassification(projectId, input.id, analysis, input.userLabel)
-        }
-        return updated
-    }
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
+    fun proposeScreens(projectId: String): DesignWorkbench =
+        throw InvalidDesignWorkbenchException("Legacy design screen proposals are not supported by the V1 generator.")
 
-    fun proposeScreens(projectId: String): DesignWorkbench {
-        val screens = screenProposalAgent.propose(projectId).map {
-            DesignScreen(id = it.id, name = it.name, purpose = it.purpose)
-        }
-        return storage.saveScreens(projectId, screens)
-    }
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
+    fun addScreen(projectId: String, name: String, purpose: String?): DesignWorkbench =
+        throw InvalidDesignWorkbenchException("Legacy design screens are not supported by the V1 generator.")
 
-    fun addScreen(projectId: String, name: String, purpose: String?): DesignWorkbench {
-        if (name.isBlank()) {
-            throw InvalidDesignWorkbenchException("Design screen name must not be blank.")
-        }
-        val workbench = storage.load(projectId)
-        val baseId = name.toSlug().ifBlank { "screen" }
-        val existingIds = workbench.screens.map { it.id }.toSet()
-        val screen = DesignScreen(
-            id = uniqueId(baseId, existingIds),
-            name = name.trim(),
-            purpose = purpose?.trim()?.takeIf { it.isNotBlank() } ?: "Manual screen",
-        )
-        return storage.saveScreens(projectId, workbench.screens + screen)
-    }
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
+    fun updateScreen(projectId: String, screenId: String, name: String?, purpose: String?): DesignWorkbench =
+        throw InvalidDesignWorkbenchException("Legacy design screens are not supported by the V1 generator.")
 
-    fun updateScreen(projectId: String, screenId: String, name: String?, purpose: String?): DesignWorkbench {
-        val workbench = storage.load(projectId)
-        val screen = workbench.screens.firstOrNull { it.id == screenId }
-            ?: throw InvalidDesignWorkbenchException("Screen not found: $screenId")
-        val updatedName = name?.trim()?.takeIf { it.isNotBlank() } ?: screen.name
-        return storage.saveScreens(
-            projectId,
-            workbench.screens.map {
-                if (it.id == screenId) {
-                    it.copy(
-                        name = updatedName,
-                        purpose = purpose?.trim()?.takeIf { text -> text.isNotBlank() } ?: it.purpose,
-                    )
-                } else {
-                    it
-                }
-            },
-        )
-    }
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
+    fun removeScreen(projectId: String, screenId: String): DesignWorkbench =
+        throw InvalidDesignWorkbenchException("Legacy design screens are not supported by the V1 generator.")
 
-    fun removeScreen(projectId: String, screenId: String): DesignWorkbench {
-        val workbench = storage.load(projectId)
-        if (workbench.screens.none { it.id == screenId }) {
-            throw InvalidDesignWorkbenchException("Screen not found: $screenId")
-        }
-        return storage.saveScreens(projectId, workbench.screens.filterNot { it.id == screenId })
-    }
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
+    fun generateVariant(projectId: String, screenId: String, prompt: String?): DesignWorkbench =
+        throw InvalidDesignWorkbenchException("Legacy design variants are not supported by the V1 generator.")
 
-    fun generateVariant(projectId: String, screenId: String, prompt: String?): DesignWorkbench {
-        val workbench = storage.load(projectId)
-        val screen = workbench.screens.firstOrNull { it.id == screenId }
-            ?: throw InvalidDesignWorkbenchException("Screen not found: $screenId")
-        val generated = designVariantAgent.generate(projectId, screenId, prompt)
-        previewValidator.validate(generated.html)
-        val variantId = UUID.randomUUID().toString()
-        val variant = DesignVariant(
-            id = variantId,
-            screenId = screenId,
-            version = screen.variants.size + 1,
-            title = generated.title,
-            htmlPath = storage.variantKey(projectId, screenId, variantId),
-            status = DesignVariantStatus.VALID,
-            rationale = generated.rationale,
-            createdAt = Instant.now().toString(),
-        )
-        return storage.saveVariant(projectId, screenId, variant, generated.html.toByteArray())
-    }
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
+    fun applySuggestion(projectId: String, screenId: String, suggestionId: String): DesignWorkbench =
+        throw InvalidDesignWorkbenchException("Legacy design suggestions are not supported by the V1 generator.")
 
-    fun applySuggestion(projectId: String, screenId: String, suggestionId: String): DesignWorkbench {
-        val workbench = storage.load(projectId)
-        val suggestion = workbench.suggestions.firstOrNull { it.id == suggestionId && it.screenId == screenId }
-            ?: throw InvalidDesignWorkbenchException("Design suggestion not found: $suggestionId")
-        return generateVariant(projectId, screenId, "${suggestion.title}\n\n${suggestion.description}")
-    }
-
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     fun setActiveVariant(projectId: String, screenId: String, variantId: String): DesignWorkbench =
-        try {
-            storage.setActiveVariant(projectId, screenId, variantId)
-        } catch (e: NoSuchElementException) {
-            throw InvalidDesignWorkbenchException(e.message ?: "Design screen or variant not found.")
-        } catch (e: IllegalArgumentException) {
-            throw InvalidDesignWorkbenchException(e.message ?: "Design screen or variant not found.")
-        }
+        throw InvalidDesignWorkbenchException("Legacy design variants are not supported by the V1 generator.")
 
-    fun readVariant(projectId: String, htmlPath: String): ByteArray {
-        val ownsVariant = storage.load(projectId).screens.any { screen ->
-            screen.variants.any { it.htmlPath == htmlPath }
-        }
-        if (!ownsVariant) {
-            throw InvalidDesignWorkbenchException("Design variant not found in project: $htmlPath")
-        }
-        return try {
-            storage.readByKey(htmlPath)
-        } catch (e: NoSuchElementException) {
-            throw InvalidDesignWorkbenchException(e.message ?: "Design variant content not found.")
-        }
-    }
-
-    fun complete(projectId: String): DesignWorkbench {
-        val workbench = storage.load(projectId)
-        val activeScreens = workbench.screens.filter { screen ->
-            screen.activeVariantId != null &&
-                screen.variants.any { it.id == screen.activeVariantId && it.status == DesignVariantStatus.VALID }
-        }
-        if (activeScreens.isEmpty()) {
-            throw InvalidDesignWorkbenchException("At least one active valid design screen is required.")
-        }
-        activeScreens.forEach { screen ->
-            val variant = screen.variants.first { it.id == screen.activeVariantId }
-            val html = try {
-                storage.readByKey(variant.htmlPath)
-            } catch (e: NoSuchElementException) {
-                throw InvalidDesignWorkbenchException(e.message ?: "Design variant content not found.")
-            }
-            storage.writeActiveScreen(projectId, screen.name.toSlug(), html)
-        }
-        return workbench
-    }
-
-    private fun String.toSlug(): String =
-        lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
-
-    private fun uniqueId(baseId: String, existingIds: Set<String>): String {
-        var candidate = baseId
-        var suffix = 2
-        while (candidate in existingIds) {
-            candidate = "$baseId-$suffix"
-            suffix += 1
-        }
-        return candidate
-    }
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
+    fun readVariant(projectId: String, htmlPath: String): ByteArray =
+        throw InvalidDesignWorkbenchException("Legacy design variant previews are not supported by the V1 generator.")
 }

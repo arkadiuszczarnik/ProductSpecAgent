@@ -1,16 +1,9 @@
 package com.agentwork.productspecagent.service
 
+import com.agentwork.productspecagent.agent.DesignGenerationInput
+import com.agentwork.productspecagent.agent.DesignGenerationResult
 import com.agentwork.productspecagent.agent.DesignVariantAgent
-import com.agentwork.productspecagent.agent.GeneratedDesignVariant
-import com.agentwork.productspecagent.agent.ReferenceAnalysisAgent
-import com.agentwork.productspecagent.agent.ScreenProposal
-import com.agentwork.productspecagent.agent.ScreenProposalAgent
-import com.agentwork.productspecagent.domain.DesignInputCategory
-import com.agentwork.productspecagent.domain.DesignInputClassification
-import com.agentwork.productspecagent.domain.DesignInputKind
-import com.agentwork.productspecagent.domain.DesignScreen
-import com.agentwork.productspecagent.domain.DesignSuggestion
-import com.agentwork.productspecagent.domain.DesignVariantStatus
+import com.agentwork.productspecagent.domain.DesignAnalysis
 import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import kotlin.test.Test
@@ -28,238 +21,139 @@ class DesignWorkbenchServiceTest {
     private val service = service()
 
     @Test
-    fun `analyze assigns visible input classification`() {
-        storage.addBinaryInput("p1", DesignInputKind.IMAGE, "dash.png", "x".toByteArray(), "image/png")
-
-        val workbench = service.analyzeInputs("p1")
-
-        assertEquals(DesignInputCategory.REFERENCE_IMAGE, workbench.inputs.single().classification?.category)
+    fun `save input rejects missing description and image`() {
+        assertFailsWith<InvalidDesignWorkbenchException> {
+            service.saveInput("p1", " ", null, null, null)
+        }
     }
 
     @Test
-    fun `propose screens writes curated starting screens`() {
-        val workbench = service.proposeScreens("p1")
+    fun `save input accepts description only`() {
+        val workbench = service.saveInput("p1", "A calm SaaS dashboard", null, null, null)
 
-        assertEquals("Landing", workbench.screens.single().name)
+        assertEquals("A calm SaaS dashboard", workbench.description)
+        assertNull(workbench.imageInput)
     }
 
     @Test
-    fun `generate variant validates and stores variant`() {
-        service.proposeScreens("p1")
+    fun `save input accepts image only`() {
+        val workbench = service.saveInput("p1", null, "dash.png", byteArrayOf(1, 2), "image/png")
 
-        val workbench = service.generateVariant("p1", "landing", "compact SaaS")
-
-        val variant = workbench.screens.single().variants.single()
-        assertEquals(DesignVariantStatus.VALID, variant.status)
+        assertEquals("dash.png", workbench.imageInput?.originalName)
+        assertNull(workbench.description)
     }
 
     @Test
-    fun `fallback variant agent escapes prompt markup`() {
-        val service = service(designVariantAgent = DesignVariantAgent(null))
-        service.proposeScreens("p1")
-        val workbench = service.generateVariant("p1", "landing", "<strong>x</strong>")
-        val variant = workbench.screens.single().variants.single()
-
-        val html = service.readVariant("p1", variant.htmlPath).toString(Charsets.UTF_8)
-
-        assertTrue(html.contains("&lt;strong&gt;x&lt;/strong&gt;"))
-        assertFalse(html.contains("<strong>x</strong>"))
-    }
-
-    @Test
-    fun `generate variant rejects missing screen before invoking agent`() {
-        var generateCalls = 0
+    fun `generate creates current design from combined input`() {
         val service = service(
             designVariantAgent = object : DesignVariantAgent(null) {
-                override fun generate(projectId: String, screenId: String, prompt: String?): GeneratedDesignVariant {
-                    generateCalls += 1
-                    return validGeneratedVariant()
-                }
-            },
-        )
-
-        assertFailsWith<InvalidDesignWorkbenchException> {
-            service.generateVariant("p1", "missing", null)
-        }
-
-        assertEquals(0, generateCalls)
-    }
-
-    @Test
-    fun `read variant returns project owned variant html`() {
-        service.proposeScreens("p1")
-        val workbench = service.generateVariant("p1", "landing", null)
-        val variant = workbench.screens.single().variants.single()
-
-        val html = service.readVariant("p1", variant.htmlPath)
-
-        assertContentEquals(validGeneratedVariant().html.toByteArray(), html)
-    }
-
-    @Test
-    fun `read variant rejects variant from another project`() {
-        service.proposeScreens("p1")
-        val workbench = service.generateVariant("p1", "landing", null)
-        val variant = workbench.screens.single().variants.single()
-
-        assertFailsWith<InvalidDesignWorkbenchException> {
-            service.readVariant("p2", variant.htmlPath)
-        }
-    }
-
-    @Test
-    fun `read variant rejects object path that is not a project variant`() {
-        val objectPath = "projects/p1/design/inputs/input/content"
-        objectStore.put(objectPath, "not a variant".toByteArray(), "text/plain")
-
-        assertFailsWith<InvalidDesignWorkbenchException> {
-            service.readVariant("p1", objectPath)
-        }
-    }
-
-    @Test
-    fun `set active variant converts storage lookup failures`() {
-        service.proposeScreens("p1")
-
-        assertFailsWith<InvalidDesignWorkbenchException> {
-            service.setActiveVariant("p1", "missing", "variant")
-        }
-        assertFailsWith<InvalidDesignWorkbenchException> {
-            service.setActiveVariant("p1", "landing", "missing")
-        }
-    }
-
-    @Test
-    fun `apply suggestion generates variant with suggestion prompt`() {
-        storage.save(
-            storage.load("p1").copy(
-                screens = listOf(DesignScreen(id = "settings", name = "Settings", purpose = "Manage preferences")),
-                suggestions = listOf(
-                    DesignSuggestion(
-                        id = "tighten",
-                        screenId = "settings",
-                        title = "Tighten controls",
-                        description = "Make density higher and reduce empty space.",
-                        createdAt = "now",
-                    ),
-                ),
-            ),
-        )
-        var capturedPrompt: String? = null
-        val service = service(
-            designVariantAgent = object : DesignVariantAgent(null) {
-                override fun generate(projectId: String, screenId: String, prompt: String?): GeneratedDesignVariant {
-                    capturedPrompt = prompt
-                    return validGeneratedVariant()
-                }
-            },
-        )
-
-        val workbench = service.applySuggestion("p1", "settings", "tighten")
-
-        assertEquals("Tighten controls\n\nMake density higher and reduce empty space.", capturedPrompt)
-        assertEquals(1, workbench.screens.single().variants.size)
-    }
-
-    @Test
-    fun `apply suggestion rejects missing suggestion`() {
-        storage.save(
-            storage.load("p1").copy(
-                screens = listOf(DesignScreen(id = "settings", name = "Settings", purpose = "Manage preferences")),
-            ),
-        )
-
-        assertFailsWith<InvalidDesignWorkbenchException> {
-            service.applySuggestion("p1", "settings", "missing")
-        }
-    }
-
-    @Test
-    fun `complete rejects missing active screen`() {
-        assertFailsWith<InvalidDesignWorkbenchException> {
-            service.complete("p1")
-        }
-    }
-
-    @Test
-    fun `complete writes active screen html to storage`() {
-        service.proposeScreens("p1")
-        val workbench = service.generateVariant("p1", "landing", null)
-        val variant = workbench.screens.single().variants.single()
-        service.setActiveVariant("p1", "landing", variant.id)
-
-        service.complete("p1")
-
-        val activeHtml = objectStore.get(storage.activeScreenKey("p1", "landing"))
-        assertNotNull(activeHtml)
-        assertContentEquals(validGeneratedVariant().html.toByteArray(), activeHtml)
-    }
-
-    @Test
-    fun `complete converts missing active variant html to workbench exception`() {
-        service.proposeScreens("p1")
-        val workbench = service.generateVariant("p1", "landing", null)
-        val variant = workbench.screens.single().variants.single()
-        service.setActiveVariant("p1", "landing", variant.id)
-        objectStore.delete(variant.htmlPath)
-
-        assertFailsWith<InvalidDesignWorkbenchException> {
-            service.complete("p1")
-        }
-    }
-
-    @Test
-    fun `invalid generated html does not persist variant`() {
-        val service = service(
-            designVariantAgent = object : DesignVariantAgent(null) {
-                override fun generate(projectId: String, screenId: String, prompt: String?) =
-                    GeneratedDesignVariant(
-                        title = "Invalid",
-                        html = """<!doctype html><html><body><img src="https://example.com/x.png"></body></html>""",
-                        rationale = "Invalid remote image",
+                override fun generate(input: DesignGenerationInput): DesignGenerationResult =
+                    DesignGenerationResult(
+                        analysis = DesignAnalysis("Dashboard", "Dense operations UI", "Uses both inputs"),
+                        title = "Dashboard",
+                        html = validHtml("Dashboard"),
+                        rationale = "Generated from description and image.",
                     )
             },
         )
-        service.proposeScreens("p1")
+        service.saveInput("p1", "Build dashboard", "dash.png", byteArrayOf(1), "image/png")
+
+        val workbench = service.generate("p1")
+
+        assertEquals("Dashboard", workbench.analysis?.summary)
+        assertEquals("Dashboard", workbench.currentDesign?.title)
+    }
+
+    @Test
+    fun `regenerate replaces current design`() {
+        service.saveInput("p1", "Build dashboard", null, null, null)
+
+        val first = service.generate("p1").currentDesign?.id
+        val second = service.generate("p1").currentDesign?.id
+
+        assertNotNull(first)
+        assertNotNull(second)
+        assertTrue(first != second)
+    }
+
+    @Test
+    fun `invalid generated html preserves previous current design`() {
+        var invalid = false
+        val service = service(
+            designVariantAgent = object : DesignVariantAgent(null) {
+                override fun generate(input: DesignGenerationInput): DesignGenerationResult =
+                    DesignGenerationResult(
+                        analysis = DesignAnalysis("Summary", "Direction", "Rationale"),
+                        title = "Generated",
+                        html = if (invalid) {
+                            """<!doctype html><html><body><img src="https://example.com/x.png"></body></html>"""
+                        } else {
+                            validHtml("Safe")
+                        },
+                        rationale = "Result",
+                    )
+            },
+        )
+        service.saveInput("p1", "Build page", null, null, null)
+        val previous = service.generate("p1").currentDesign
+        invalid = true
 
         assertFailsWith<InvalidDesignPreviewException> {
-            service.generateVariant("p1", "landing", null)
+            service.generate("p1")
         }
 
-        val workbench = storage.load("p1")
-        assertEquals(0, workbench.screens.single().variants.size)
-        assertNull(objectStore.listKeys("projects/p1/design/variants/landing/").singleOrNull())
+        assertEquals(previous, service.get("p1").currentDesign)
+    }
+
+    @Test
+    fun `complete rejects missing generated design`() {
+        service.saveInput("p1", "Build page", null, null, null)
+
+        assertFailsWith<InvalidDesignWorkbenchException> {
+            service.complete("p1")
+        }
+    }
+
+    @Test
+    fun `complete writes generated design to active output`() {
+        service.saveInput("p1", "Build page", null, null, null)
+        service.generate("p1")
+
+        service.complete("p1")
+
+        assertContentEquals(service.readPreview("p1"), objectStore.get(storage.activeScreenKey("p1", "design")))
+    }
+
+    @Test
+    fun `fallback generation escapes user text`() {
+        val result = DesignVariantAgent(null).generate(
+            DesignGenerationInput(
+                projectId = "p1",
+                description = "<strong>x</strong>",
+                image = null,
+            ),
+        )
+
+        assertTrue(result.html.contains("&lt;strong&gt;x&lt;/strong&gt;"))
+        assertFalse(result.html.contains("<strong>x</strong>"))
     }
 
     private fun service(
         designVariantAgent: DesignVariantAgent = object : DesignVariantAgent(null) {
-            override fun generate(projectId: String, screenId: String, prompt: String?) = validGeneratedVariant()
+            override fun generate(input: DesignGenerationInput): DesignGenerationResult =
+                DesignGenerationResult(
+                    analysis = DesignAnalysis("Initial", "Clean", "Fallback"),
+                    title = "Initial",
+                    html = validHtml("Initial"),
+                    rationale = "Initial design",
+                )
         },
     ) = DesignWorkbenchService(
         storage = storage,
         previewValidator = DesignPreviewValidator(),
-        referenceAnalysisAgent = object : ReferenceAnalysisAgent(null) {
-            override fun analyze(projectId: String) = listOf(
-                DesignInputClassification(
-                    category = DesignInputCategory.REFERENCE_IMAGE,
-                    summary = "Dashboard reference",
-                    suggestedUse = "Use density and navigation pattern",
-                    confidence = 0.8,
-                ),
-            )
-        },
-        screenProposalAgent = object : ScreenProposalAgent(null) {
-            override fun propose(projectId: String) = listOf(
-                ScreenProposal(id = "landing", name = "Landing", purpose = "Explain value"),
-            )
-        },
         designVariantAgent = designVariantAgent,
     )
 
-    private fun validGeneratedVariant() =
-        GeneratedDesignVariant(
-            title = "Initial",
-            html = "<!doctype html><html><body><main>Landing</main></body></html>",
-            rationale = "Initial landing",
-        )
+    private fun validHtml(title: String) =
+        "<!doctype html><html><head><meta charset=\"utf-8\"></head><body><main><h1>$title</h1></main></body></html>"
 }
