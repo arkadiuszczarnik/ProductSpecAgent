@@ -6,6 +6,7 @@ import com.agentwork.productspecagent.agent.DesignImageAnalysisResult
 import com.agentwork.productspecagent.agent.DesignGenerationInput
 import com.agentwork.productspecagent.agent.DesignGenerationResult
 import com.agentwork.productspecagent.agent.DesignVariantAgent
+import com.agentwork.productspecagent.agent.InvalidDesignImageAnalysisException
 import com.agentwork.productspecagent.domain.DesignAnalysis
 import com.agentwork.productspecagent.domain.DesignColor
 import com.agentwork.productspecagent.domain.DesignComponentSignal
@@ -43,6 +44,9 @@ import org.springframework.web.context.WebApplicationContext
 
 @SpringBootTest
 class DesignWorkbenchControllerTest {
+    companion object {
+        private var failImageAnalysis = false
+    }
 
     @TestConfiguration
     class TestAgentConfig {
@@ -73,8 +77,11 @@ class DesignWorkbenchControllerTest {
         @Primary
         fun testDesignImageAnalysisAgent(): DesignImageAnalysisAgent =
             object : DesignImageAnalysisAgent(null, null) {
-                override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult =
-                    DesignImageAnalysisResult(
+                override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult {
+                    if (failImageAnalysis) {
+                        throw InvalidDesignImageAnalysisException("Image analysis returned invalid JSON.")
+                    }
+                    return DesignImageAnalysisResult(
                         DesignImageAnalysis(
                             summary = "Controller image analysis",
                             palette = listOf(DesignColor("#111827", "background", "dominant", "Dark shell")),
@@ -86,6 +93,7 @@ class DesignWorkbenchControllerTest {
                             designBrief = "Use dark navigation and compact KPI cards.",
                         ),
                     )
+                }
             }
     }
 
@@ -99,6 +107,7 @@ class DesignWorkbenchControllerTest {
 
     @BeforeEach
     fun setUp() {
+        failImageAnalysis = false
         mockMvc = MockMvcBuilders.webAppContextSetup(ctx).build()
         projectId = createProject("Design Workbench Controller Test")
     }
@@ -225,6 +234,24 @@ class DesignWorkbenchControllerTest {
 
         mockMvc.perform(post("/api/v1/projects/$projectId/design/image/analyze"))
             .andExpect(status().isBadRequest())
+    }
+
+    @Test
+    fun `POST image analyze failure preserves existing image analysis and stores error`() {
+        advanceToDesign(projectId)
+        val image = MockMultipartFile("file", "dashboard.png", "image/png", byteArrayOf(1, 2, 3))
+        mockMvc.perform(putInput(file = image))
+            .andExpect(status().isOk())
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/image/analyze"))
+            .andExpect(status().isOk())
+        failImageAnalysis = true
+
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/image/analyze"))
+            .andExpect(status().isBadRequest())
+
+        val workbench = designWorkbenchStorage.load(projectId)
+        assertThat(workbench.imageAnalysis?.summary).isEqualTo("Controller image analysis")
+        assertThat(workbench.imageAnalysisError).isEqualTo("Image analysis returned invalid JSON.")
     }
 
     @Test
