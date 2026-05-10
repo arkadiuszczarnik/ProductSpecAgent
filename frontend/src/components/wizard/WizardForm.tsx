@@ -48,7 +48,7 @@ const STEP_HELP: Record<string, string> = {
   PROBLEM: "Klaere Problem, Zielgruppe und messbaren Nutzen, bevor Features entstehen.",
   FEATURES: "Priorisiere den Funktionsumfang und halte Abhaengigkeiten sichtbar.",
   MVP: "Lege fest, was in die erste umsetzbare Version gehoert.",
-  DESIGN: "Verbinde Produktanforderungen mit UI-Richtung, Screens und Assets.",
+  DESIGN: "Beschreibe die UI-Richtung oder lade ein Bild hoch und generiere ein Design.",
   ARCHITECTURE: "Definiere Systemform, Datenhaltung und Deployment-Rahmen.",
   BACKEND: "Spezifiziere API, Authentifizierung und serverseitige Komponenten.",
   FRONTEND: "Schaerfe Framework, UI-Bibliothek, Styling und Frontend-Schnittstellen.",

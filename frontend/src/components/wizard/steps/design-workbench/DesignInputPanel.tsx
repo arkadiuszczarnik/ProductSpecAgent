@@ -35,7 +35,7 @@ export function DesignInputPanel({
   const hasExistingImage = Boolean(workbench?.imageInput);
   const canGenerate = Boolean(description.trim() || imageFile || hasExistingImage);
   const hasCurrentDesign = Boolean(workbench?.currentDesign);
-  const actionDisabled = working;
+  const actionDisabled = working || completing;
   const completeDisabled = blocked || working || completing || !hasCurrentDesign;
 
   async function handleGenerate() {

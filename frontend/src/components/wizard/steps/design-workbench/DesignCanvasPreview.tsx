@@ -28,7 +28,7 @@ export function DesignCanvasPreview({ projectId, workbench, working }: DesignCan
               {currentDesign?.title ?? "Canvas Preview"}
             </div>
             <div className="truncate text-[11px] text-muted-foreground">
-              {currentDesign ? "Generiertes Design" : "Noch kein Design"}
+              {currentDesign ? "Generiertes Design" : "Noch kein Design generiert"}
             </div>
           </div>
         </div>
