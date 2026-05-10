@@ -144,7 +144,7 @@ class DesignWorkbenchControllerTest {
     }
 
     @Test
-    fun `PUT input description only replaces previous image`() {
+    fun `PUT input description only preserves previous image`() {
         advanceToDesign(projectId)
         val image = MockMultipartFile("file", "dashboard.png", "image/png", byteArrayOf(1, 2, 3))
         mockMvc.perform(putInput(file = image))
@@ -153,7 +153,7 @@ class DesignWorkbenchControllerTest {
         mockMvc.perform(putInput(description = "Switch to text only"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.description").value("Switch to text only"))
-            .andExpect(jsonPath("$.imageInput").doesNotExist())
+            .andExpect(jsonPath("$.imageInput.originalName").value("dashboard.png"))
     }
 
     @Test
