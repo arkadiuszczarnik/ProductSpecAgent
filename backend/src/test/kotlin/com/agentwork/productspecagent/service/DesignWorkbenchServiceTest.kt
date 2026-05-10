@@ -15,6 +15,7 @@ import com.agentwork.productspecagent.domain.DesignLayoutRegion
 import com.agentwork.productspecagent.domain.DesignTypographySignal
 import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 import com.agentwork.productspecagent.storage.InMemoryObjectStore
+import com.agentwork.productspecagent.storage.ObjectStore
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -132,6 +133,22 @@ class DesignWorkbenchServiceTest {
 
         assertEquals("Stored dashboard analysis", failingService.get("p1").imageAnalysis?.summary)
         assertEquals("Image analysis returned invalid JSON.", failingService.get("p1").imageAnalysisError)
+    }
+
+    @Test
+    fun `analyze image does not convert persistence failure into image analysis error`() {
+        val objectStore = FailingWorkbenchSaveObjectStore()
+        val storage = DesignWorkbenchStorage(objectStore)
+        val service = service(workbenchStorage = storage)
+        service.saveInput("p1", null, "dash.png", byteArrayOf(1, 2, 3), "image/png")
+        objectStore.failNextWorkbenchSave = true
+
+        val error = assertFailsWith<IllegalStateException> {
+            service.analyzeImage("p1")
+        }
+
+        assertEquals("storage unavailable", error.message)
+        assertNull(storage.load("p1").imageAnalysisError)
     }
 
     @Test
@@ -305,6 +322,7 @@ class DesignWorkbenchServiceTest {
     }
 
     private fun service(
+        workbenchStorage: DesignWorkbenchStorage = storage,
         imageAnalysisAgent: DesignImageAnalysisAgent = object : DesignImageAnalysisAgent(null, null) {
             override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult =
                 DesignImageAnalysisResult(imageAnalysis())
@@ -319,7 +337,7 @@ class DesignWorkbenchServiceTest {
                 )
         },
     ) = DesignWorkbenchService(
-        storage = storage,
+        storage = workbenchStorage,
         previewValidator = DesignPreviewValidator(),
         imageAnalysisAgent = imageAnalysisAgent,
         designVariantAgent = designVariantAgent,
@@ -341,4 +359,18 @@ class DesignWorkbenchServiceTest {
 
     private fun validHtml(title: String) =
         "<!doctype html><html><head><meta charset=\"utf-8\"></head><body><main><h1>$title</h1></main></body></html>"
+
+    private class FailingWorkbenchSaveObjectStore(
+        private val delegate: ObjectStore = InMemoryObjectStore(),
+    ) : ObjectStore by delegate {
+        var failNextWorkbenchSave = false
+
+        override fun put(key: String, bytes: ByteArray, contentType: String?) {
+            if (failNextWorkbenchSave && key.endsWith("/design/workbench.json")) {
+                failNextWorkbenchSave = false
+                throw IllegalStateException("storage unavailable")
+            }
+            delegate.put(key, bytes, contentType)
+        }
+    }
 }

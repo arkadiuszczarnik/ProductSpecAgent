@@ -75,15 +75,14 @@ class DesignWorkbenchService(
             throw InvalidDesignWorkbenchException(message)
         }
 
-        return try {
-            val result = imageAnalysisAgent.analyze(
+        val result = try {
+            imageAnalysisAgent.analyze(
                 DesignImageAnalysisInput(
                     projectId = projectId,
                     image = image,
                     imageBytes = bytes,
                 ),
             )
-            storage.saveImageAnalysis(projectId, result.analysis)
         } catch (e: InvalidDesignImageAnalysisException) {
             val message = e.message ?: "Image analysis failed."
             storage.saveImageAnalysisError(projectId, message)
@@ -93,6 +92,8 @@ class DesignWorkbenchService(
             storage.saveImageAnalysisError(projectId, message)
             throw InvalidDesignWorkbenchException(message)
         }
+
+        return storage.saveImageAnalysis(projectId, result.analysis)
     }
 
     fun generate(projectId: String): DesignWorkbench {
