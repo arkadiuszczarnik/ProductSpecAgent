@@ -1,21 +1,19 @@
 "use client";
 
-import { Monitor, RefreshCw } from "lucide-react";
+import { Loader2, Monitor, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { DesignScreen, DesignVariant } from "@/lib/api";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { designPreviewUrl, type DesignWorkbench } from "@/lib/api";
 
 interface DesignCanvasPreviewProps {
   projectId: string;
-  screen: DesignScreen | null;
-  variant: DesignVariant | null;
+  workbench: DesignWorkbench | null;
   working: boolean;
 }
 
-export function DesignCanvasPreview({ projectId, screen, variant, working }: DesignCanvasPreviewProps) {
-  const previewSrc = variant
-    ? `${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/design/preview/${encodeURIComponent(variant.id)}`
+export function DesignCanvasPreview({ projectId, workbench, working }: DesignCanvasPreviewProps) {
+  const currentDesign = workbench?.currentDesign ?? null;
+  const previewSrc = currentDesign
+    ? `${designPreviewUrl(projectId)}?v=${encodeURIComponent(currentDesign.id)}`
     : null;
 
   return (
@@ -26,9 +24,11 @@ export function DesignCanvasPreview({ projectId, screen, variant, working }: Des
             <Monitor size={15} />
           </div>
           <div className="min-w-0">
-            <div className="truncate text-xs font-semibold text-foreground">{screen?.name ?? "Canvas"}</div>
+            <div className="truncate text-xs font-semibold text-foreground">
+              {currentDesign?.title ?? "Canvas Preview"}
+            </div>
             <div className="truncate text-[11px] text-muted-foreground">
-              {variant ? `${variant.title} - v${variant.version}` : "Keine Variante"}
+              {currentDesign ? "Generiertes Design" : "Noch kein Design"}
             </div>
           </div>
         </div>
@@ -36,7 +36,7 @@ export function DesignCanvasPreview({ projectId, screen, variant, working }: Des
           type="button"
           variant="ghost"
           size="icon-sm"
-          disabled={!variant || working}
+          disabled={!previewSrc || working}
           onClick={() => {
             const frame = document.getElementById("design-preview-frame") as HTMLIFrameElement | null;
             if (frame && previewSrc) frame.src = previewSrc;
@@ -51,17 +51,24 @@ export function DesignCanvasPreview({ projectId, screen, variant, working }: Des
       <div className="flex flex-1 overflow-auto bg-muted/35 p-4">
         <div className="mx-auto flex h-full min-h-[360px] w-full max-w-5xl items-stretch justify-center">
           {previewSrc ? (
-            <iframe
-              id="design-preview-frame"
-              key={variant?.id}
-              src={previewSrc}
-              sandbox="allow-scripts"
-              title={`Design Vorschau ${variant?.title ?? ""}`}
-              className="h-full min-h-[360px] w-full rounded-md border border-border bg-white shadow-sm"
-            />
+            <div className="relative h-full min-h-[360px] w-full">
+              <iframe
+                id="design-preview-frame"
+                key={currentDesign?.id}
+                src={previewSrc}
+                sandbox="allow-scripts"
+                title={`Design Vorschau ${currentDesign?.title ?? ""}`}
+                className="h-full min-h-[360px] w-full rounded-md border border-border bg-white shadow-sm"
+              />
+              {working && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-md bg-background/70">
+                  <Loader2 size={18} className="animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </div>
           ) : (
             <div className="flex h-full min-h-[360px] w-full items-center justify-center rounded-md border border-dashed border-border bg-background text-xs text-muted-foreground">
-              Variante generieren, um die Vorschau zu laden.
+              Beschreibung oder Bild eingeben und Design generieren.
             </div>
           )}
         </div>
