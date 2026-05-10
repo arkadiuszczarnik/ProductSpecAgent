@@ -1,173 +1,222 @@
 # Feature 47 - Agentic Design Workbench
 
 **Phase:** Wizard / Design
-**Abhaengig von:** Feature 11 (Guided Wizard Forms), Feature 12 (Dynamische Wizard-Steps), Feature 13 (Wizard-Chat Integration), Feature 40 (Design-Bundle-Step), Feature 46 (Wizard-Options-Admin)
-**Aufwand:** XL
-**Status:** Spec erstellt, Implementierung ausstehend
-**Design-Spec:** [`docs/superpowers/specs/2026-05-09-agentic-design-workbench-design.md`](../superpowers/specs/2026-05-09-agentic-design-workbench-design.md)
+**Abhaengig von:** Feature 11 (Guided Wizard Forms), Feature 12 (Dynamische Wizard-Steps), Feature 13 (Wizard-Chat Integration), Feature 38 (Per-Agent Model Selection), Feature 40 (Design-Bundle-Step), Feature 46 (Wizard-Options-Admin)
+**Aufwand:** M
+**Status:** Umgesetzt als Simple Design Generator V1
+**Aktuelle Spec:** [`docs/superpowers/specs/2026-05-10-simple-design-generator-v1-design.md`](../superpowers/specs/2026-05-10-simple-design-generator-v1-design.md)
+**Umsetzungsplan:** [`docs/superpowers/plans/2026-05-10-simple-design-generator-v1.md`](../superpowers/plans/2026-05-10-simple-design-generator-v1.md)
+
+## Kurzfassung
+
+Der DESIGN-Step ist kein ZIP-Import und keine grosse Multi-Screen-Workbench mehr. Der aktuelle Stand ist ein vereinfachter agentischer Generator:
+
+- Nutzer geben eine Designbeschreibung, ein Bild oder beides ein.
+- Ein Design-Agent analysiert die Eingabe und erzeugt genau eine self-contained HTML-Vorlage.
+- Die Vorlage wird als Canvas/Preview im iframe gerendert.
+- `Neu generieren` ersetzt das aktive Design.
+- `Design uebernehmen` schliesst den DESIGN-Step erst ab, wenn ein gueltiges generiertes Design existiert.
+- Export und Handoff enthalten nur die aktive generierte Design-Datei unter `design/screens/design/index.html`.
+
+Es gibt keine Workbench-Kompatibilitaet fuer alte Inputs, Screens, Varianten, Suggestions oder Klassifikationen mehr.
 
 ## Problem
 
-Der heutige DESIGN-Step ist auf den Import eines Claude-Design-ZIP-Bundles ausgelegt. Das ist nuetzlich, wenn der Product Owner bereits ein fertiges externes Design-Artefakt hat. Fuer den eigentlichen Produktfluss ist es aber der falsche Einstieg: Der Wizard soll aus Produktbeschreibung, vorhandenen Referenzen, Bildern und kuratierten Vorschlaegen selbst zu belastbaren HTML-Designvorlagen fuehren.
+Der urspruengliche DESIGN-Step war auf Claude-Design-ZIP-Bundles ausgelegt. Danach wurde ein zu grosser agentischer Workbench-Entwurf geplant: Inputs, Snippets, Klassifikation, Screen-Vorschlaege, Variantenlisten und Suggestions. Fuer die erste produktive Version war das zu breit und schwer zu stabilisieren.
 
-Der ZIP-Upload macht den DESIGN-Step zu einem Importformular. Gewuenscht ist stattdessen eine agentische Design-Workbench, die aehnlich wie Claude Artifacts/Design ueber Beschreibung, Iteration, Varianten und Live-Vorschau arbeitet.
+Der aktuelle Produktbedarf ist enger: Der User soll schnell aus Beschreibung und/oder Bild eine pruefbare HTML-Designvorlage bekommen, diese im Canvas sehen und den Wizard damit fortsetzen.
 
-## Ziel
+## Zielbild V1
 
-Der DESIGN-Step fuer Kategorien mit Frontend wird vollstaendig ersetzt:
+Der DESIGN-Step fuer frontend-faehige Kategorien zeigt einen fokussierten Generator:
 
-- kein ZIP-Upload mehr in der normalen UI,
-- ein Preview-first Canvas rendert echte self-contained HTML/CSS-Vorlagen,
-- Nutzer geben Textbeschreibungen, Bilder/Screenshots und HTML/CSS-Referenzen ein,
-- Agenten analysieren Referenzen, schlagen Screen-Typen vor und erzeugen Varianten,
-- Nutzer kuratieren Screens und setzen pro Screen eine aktive Variante,
-- Abschluss schreibt `spec/design.md` plus aktive HTML/CSS-Screen-Dateien ins Projekt.
+1. Beschreibung eintragen.
+2. Optional ein Bild hochladen.
+3. `Design generieren` ausfuehren.
+4. Generiertes HTML im Canvas pruefen.
+5. Optional `Neu generieren`.
+6. `Design uebernehmen`, wenn das Ergebnis passt.
 
-DESIGN wird fuer `SaaS`, `Mobile App` und `Desktop App` verpflichtend. `CLI Tool`, `Library` und `API` zeigen den Step weiterhin nicht.
+DESIGN bleibt fuer frontend-relevante Kategorien sichtbar und wird fuer Kategorien ohne Frontend weiterhin nicht als Pflichtschritt genutzt.
 
-## Scope
+## In Scope
 
-### In Scope
+- Vereinfachtes `DesignWorkbench`-Modell mit einer Eingabe und einem aktiven Ergebnis.
+- Multipart-Upload fuer eine optionale Bildreferenz.
+- Beschreibung-only, Bild-only und kombinierte Eingaben.
+- Ein `DesignVariantAgent`, der ueber Koog und den editierbaren Prompt `design-variant-system` ein JSON-Ergebnis erzeugt.
+- Deterministischer Fallback fuer lokale Entwicklung und Tests.
+- Serverseitige Preview-Validierung vor dem Speichern.
+- Sandboxed iframe-Preview ueber `/design/preview`.
+- Completion-Gating: Ohne `currentDesign` kein Abschluss.
+- Export/Handoff ueber die aktive Datei `design/screens/design/index.html`.
+- Keine Legacy-Kompatibilitaet fuer alte Workbench-Felder oder alte Service-/Storage-Methoden.
 
-- Neue Domain-Begriffe und Modelle: `DesignWorkbench`, `DesignInput`, `DesignScreen`, `DesignVariant`.
-- Bestehende `DesignBundle*`-UI wird aus dem normalen DESIGN-Step entfernt.
-- Neue dreigeteilte Workbench-UI:
-  - links Inputs, Referenzanalyse und Screen-Vorschlaege,
-  - Mitte HTML-Canvas/Preview,
-  - rechts Controls, Agent-Vorschlaege und Varianten.
-- Inputs:
-  - Textbeschreibung,
-  - Bilder/Screenshots,
-  - HTML/CSS-Referenz-Snippets.
-- Reference-Analysis-Schritt:
-  - Agent klassifiziert Bilder/Snippets als Referenz, Asset, HTML/CSS-Referenz oder unklar,
-  - Nutzer kann Klassifikation, Namen und Nutzung korrigieren.
-- Screen-Proposal-Schritt:
-  - Agent schlaegt passende Screen-Typen aus Wizard-Kontext und Referenzen vor,
-  - Nutzer kann Screens hinzufuegen, entfernen und umbenennen.
-- Variant-Generation-Schritt:
-  - Agent erzeugt self-contained HTML/CSS pro Screen,
-  - kleines Inline-JS ist erlaubt fuer UI-Demos wie Tabs oder Accordions,
-  - externe URLs, Netzwerk-Requests, Fremd-Scripts und Projekt-API-Zugriffe sind verboten.
-- Varianten:
-  - einfache Variantenliste pro Screen,
-  - eine aktive Variante pro Screen,
-  - Agent-Vorschlaege erzeugen direkt neue Varianten, die der Nutzer vergleichen und aktiv setzen kann.
-- Abschlusskriterium:
-  - mindestens ein aktiver Screen mit gueltiger HTML/CSS-Vorlage.
-- Abschluss-Output:
-  - `spec/design.md`,
-  - `design/screens/{screen}/index.html`,
-  - `design/assets/...` nur fuer freigegebene Assetbilder.
+## Out of Scope
 
-### Out of Scope
-
-- Freier Figma-artiger Element-Canvas mit Drag, Resize und Properties pro DOM-Element.
-- React/TSX-/Framework-Komponentenexport aus dem DESIGN-Step.
-- Vollstaendiges Design-System mit Tokens und Komponentenbibliothek als Pflicht-Output.
-- Vollstaendige Prompt-/Diff-Historie aller Varianten.
-- Alte/verworfene Varianten im Export/Handoff.
-- Direkte Ausfuehrung vom Nutzer eingefuegter HTML/CSS-Snippets ohne Agent-Neuschreibung und Validierung.
-- Externe Asset-URLs oder Runtime-Netzwerkzugriffe aus generierten Vorlagen.
-
-## Architektur
-
-V1 nutzt einen Hybrid-Pipeline-Ansatz:
-
-1. `ReferenceAnalysisAgent`
-   - analysiert Bilder/Screenshots und HTML/CSS-Snippets,
-   - erstellt sichtbare, korrigierbare Analyse-Karten.
-2. `ScreenProposalAgent`
-   - schlaegt Screen-Typen anhand Wizard-Kontext, Analyse und Nutzerbeschreibung vor.
-3. `DesignVariantAgent`
-   - erzeugt initiale HTML/CSS-Varianten,
-   - wendet Agent-Vorschlaege an, indem neue Varianten erzeugt werden.
-4. Completion-Logik
-   - validiert mindestens einen aktiven Screen,
-   - schreibt `spec/design.md` und aktive Screen-Dateien,
-   - advanced den Wizard zum naechsten Step.
-
-Die bestehende `DesignBundle*`-Implementierung kann intern vorerst bestehen bleiben, ist aber nicht mehr die fachliche Hauptdomain fuer den DESIGN-Step. Neue API, Storage und UI sollen die Workbench-Begriffe verwenden.
+- ZIP-Upload im normalen DESIGN-Step.
+- HTML/CSS-Snippet-Upload in V1.
+- Mehrere Screens.
+- Variantenhistorie oder Varianten-Picker.
+- Reference-Classification-UI.
+- Agent-Suggestion-Liste mit Apply-Workflow.
+- Figma-artiger Element-Canvas mit Drag, Resize oder DOM-Properties.
+- Framework-Komponentenexport aus dem DESIGN-Step.
+- Export alter oder inaktiver Varianten.
 
 ## Datenmodell
+
+Das produktive Workbench-Modell ist bewusst klein:
 
 ```kotlin
 @Serializable
 data class DesignWorkbench(
     val projectId: String,
-    val inputs: List<DesignInput>,
-    val screens: List<DesignScreen>,
+    val description: String? = null,
+    val imageInput: DesignImageInput? = null,
+    val analysis: DesignAnalysis? = null,
+    val currentDesign: GeneratedDesign? = null,
     val updatedAt: String,
 )
 
 @Serializable
-data class DesignInput(
-    val id: String,
-    val kind: DesignInputKind,
-    val originalName: String?,
-    val userLabel: String?,
-    val classification: DesignInputClassification?,
+data class DesignImageInput(
+    val originalName: String,
     val contentRef: String,
-    val createdAt: String,
+    val contentType: String,
+    val sizeBytes: Long,
+    val uploadedAt: String,
 )
 
 @Serializable
-data class DesignScreen(
-    val id: String,
-    val name: String,
-    val purpose: String,
-    val variants: List<DesignVariant>,
-    val activeVariantId: String?,
+data class DesignAnalysis(
+    val summary: String,
+    val visualDirection: String,
+    val rationale: String,
 )
 
 @Serializable
-data class DesignVariant(
+data class GeneratedDesign(
     val id: String,
-    val screenId: String,
-    val version: Int,
     val title: String,
     val htmlPath: String,
-    val status: DesignVariantStatus,
     val rationale: String,
     val createdAt: String,
 )
 ```
 
-## API-Skizze
+Entfernt wurden die alten Workbench-Typen `DesignInput`, `DesignScreen`, `DesignVariant`, `DesignSuggestion` sowie die dazugehoerigen Kompatibilitaetsmethoden.
+
+## Backend
+
+### API
+
+Alle aktuellen Endpunkte liegen unter `/api/v1/projects/{projectId}/design`.
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| `GET` | `/api/v1/projects/{id}/design/workbench` | Workbench-Zustand laden |
-| `POST` | `/api/v1/projects/{id}/design/inputs` | Text, Bild oder Snippet hinzufuegen |
-| `POST` | `/api/v1/projects/{id}/design/analyze` | Inputs analysieren und klassifizieren |
-| `PATCH` | `/api/v1/projects/{id}/design/inputs/{inputId}` | Klassifikation/Label korrigieren |
-| `POST` | `/api/v1/projects/{id}/design/screens/propose` | Screen-Vorschlaege erzeugen |
-| `POST` | `/api/v1/projects/{id}/design/screens` | Screen manuell anlegen |
-| `PATCH` | `/api/v1/projects/{id}/design/screens/{screenId}` | Screen umbenennen/aktivieren/deaktivieren |
-| `POST` | `/api/v1/projects/{id}/design/screens/{screenId}/variants` | Variante erzeugen |
-| `POST` | `/api/v1/projects/{id}/design/screens/{screenId}/suggestions/{suggestionId}/apply` | Vorschlag als neue Variante anwenden |
-| `PATCH` | `/api/v1/projects/{id}/design/screens/{screenId}/active-variant` | Aktive Variante setzen |
-| `GET` | `/api/v1/projects/{id}/design/preview/{variantId}` | HTML-Preview-Datei ausliefern |
-| `POST` | `/api/v1/projects/{id}/design/complete` | DESIGN abschliessen |
+| `GET` | `/workbench` | Aktuellen V1-Workbench-Zustand laden |
+| `PUT` | `/input` | Beschreibung und/oder Bild als Multipart-Input speichern |
+| `POST` | `/generate` | Agent aus bestehender Eingabe ausfuehren und aktives Design ersetzen |
+| `GET` | `/preview` | Aktives HTML-Design mit sicheren Preview-Headern ausliefern |
+| `POST` | `/complete` | DESIGN abschliessen und Wizard fortsetzen |
+
+`PUT /input` lehnt leere Eingaben ab. Wenn eine Eingabe gespeichert wird, werden `analysis` und `currentDesign` zurueckgesetzt, weil das bisherige Ergebnis nicht mehr zur neuen Eingabe passt.
+
+`POST /generate` verlangt mindestens Beschreibung oder Bild. Das generierte HTML wird validiert, bevor es als `currentDesign` gespeichert wird.
+
+`POST /complete` verlangt ein `currentDesign`, schreibt die Design-Zusammenfassung nach `design.md`, speichert die Wizard-Step-Daten und advanced den Wizard.
+
+### Storage
+
+`DesignWorkbenchStorage` speichert:
+
+- `projects/{projectId}/design/workbench.json`
+- `projects/{projectId}/design/input/reference-image`
+- `projects/{projectId}/design/current/index.html`
+- `projects/{projectId}/design/screens/design/index.html` als aktive Export-/Handoff-Ausgabe nach Completion
+
+Es gibt keine Storage-API mehr fuer alte Inputs, Screens, Varianten oder aktive Varianten.
+
+### Agent
+
+`DesignVariantAgent` nutzt:
+
+- `DesignGenerationInput(projectId, description, image)`
+- `DesignGenerationResult(analysis, title, html, rationale)`
+- Agent-ID `design-variant`
+- Prompt `backend/src/main/resources/prompts/design-variant-system.md`
+- Modell-Tier `MEDIUM`
+
+Der produktive Pfad ruft `KoogAgentRunner` mit dem editierbaren Systemprompt auf. Die Antwort muss ein JSON-Objekt mit `analysis`, `title`, `html` und `rationale` sein. Wenn kein Runner verfuegbar ist oder Parsing fehlschlaegt, erzeugt der Agent ein deterministisches Fallback-HTML.
+
+### Sicherheit
+
+Generated HTML ist untrusted. Vor dem Speichern prueft `DesignPreviewValidator` unter anderem:
+
+- keine externen URLs,
+- keine protocol-relative URLs,
+- keine Netzwerk-APIs,
+- kein Browser-Storage,
+- keine Cookies,
+- kein Parent-/Opener-Zugriff,
+- keine unsicheren Form-Actions.
+
+Die Preview wird mit `text/html`, `nosniff`, `no-store` und restriktiver CSP ausgeliefert. Das Frontend rendert sie in einem sandboxed iframe.
+
+## Frontend
+
+Die sichtbare UI besteht aus zwei Zonen:
+
+- links `DesignInputPanel`
+  - Beschreibung
+  - Bildreferenz
+  - `Design generieren` / `Neu generieren`
+  - `Design uebernehmen`
+  - kompakte Analyse nach erfolgreicher Generierung
+- rechts `DesignCanvasPreview`
+  - Empty State vor der Generierung
+  - Loading Overlay waehrend Arbeit laeuft
+  - iframe aus `/design/preview?v={currentDesign.id}`
+
+Der Zustand liegt in `frontend/src/lib/stores/design-workbench-store.ts` und bietet nur noch:
+
+- `load`
+- `saveInput`
+- `generate`
+- `complete`
+- `reset`
+
+Die frueheren Controls fuer Screens, Varianten, Suggestions, Snippets und Klassifikationen sind nicht Teil von V1.
+
+## Export Und Handoff
+
+Nach erfolgreichem Abschluss kopiert `complete` das aktuelle HTML in den aktiven Screen-Pfad. Export und Handoff lesen anschliessend nur diese aktive Ausgabe:
+
+```text
+design/screens/design/index.html
+```
+
+Stale oder alte Screen-Dateien werden nicht exportiert. Das Handoff nutzt weiterhin `backend/src/main/resources/templates/handoff/agent-template.md.mustache`.
 
 ## Akzeptanzkriterien
 
-1. In `SaaS`, `Mobile App` und `Desktop App` zeigt DESIGN keine ZIP-Dropzone mehr, sondern die Workbench.
-2. In `CLI Tool`, `Library` und `API` bleibt DESIGN unsichtbar.
-3. Der Step kann ohne aktiven Screen nicht abgeschlossen werden.
-4. Nutzer koennen Text, Bilder/Screenshots und HTML/CSS-Snippets als Inputs hinzufuegen.
-5. `ReferenceAnalysisAgent` klassifiziert Inputs sichtbar; Nutzer koennen Klassifikationen korrigieren.
-6. `ScreenProposalAgent` schlaegt Screen-Typen vor; Nutzer koennen Screens kuratieren.
-7. `DesignVariantAgent` erzeugt pro Screen self-contained HTML/CSS-Varianten.
-8. Die Preview rendert Varianten in einem sandboxed Iframe mit strenger CSP.
-9. Validierung blockiert externe URLs, Netzwerk-Requests, Fremd-Scripts und Projekt-API-Zugriffe.
-10. Kleines Inline-JS fuer rein lokale UI-Demos ist erlaubt.
-11. Agent-Vorschlaege erzeugen neue Varianten; Nutzer koennen Varianten vergleichen und aktiv setzen.
-12. Abschluss schreibt `spec/design.md` und aktive HTML/CSS-Dateien unter `design/screens/...`.
-13. Nur aktive Varianten und freigegebene Assetbilder landen im Export/Handoff.
-14. Bestehende Projekt-Exporte bleiben lesbar; alte `DesignBundle*`-Daten fuehren nicht zu Crashs.
-15. Backend-Tests decken Storage, Input-Validierung, Agent-Fallbacks, Preview-Security und Complete-Gating ab.
-16. Frontend prueft Empty-, Loading-, Error-, Analyze-, Generate-, Variant- und Complete-Zustaende.
+1. Der normale DESIGN-Step zeigt keine ZIP-Dropzone.
+2. Nutzer koennen Beschreibung-only speichern und daraus ein Design generieren.
+3. Nutzer koennen Bild-only speichern und daraus ein Design generieren.
+4. Nutzer koennen Beschreibung plus Bild speichern und daraus ein Design generieren.
+5. Leere Eingaben werden blockiert.
+6. Nicht-Bilder und Bilder ueber 5 MB werden blockiert.
+7. `POST /generate` erzeugt `analysis` und `currentDesign`.
+8. Regeneration ersetzt das aktive Design.
+9. Unsicheres HTML wird nicht gespeichert.
+10. Die Preview rendert nur das aktuelle `currentDesign`.
+11. `Design uebernehmen` ist ohne `currentDesign` nicht moeglich.
+12. Completion schreibt `design.md` und aktive HTML-Ausgabe.
+13. Export/Handoff enthalten nur `design/screens/design/index.html`.
+14. Alte Workbench-Kompatibilitaet existiert nicht mehr im produktiven Domain-/Service-/Storage-Code.
+15. Backend-Tests decken Storage, Service, API, Agent, Preview-Security, Export und Handoff ab.
+16. Frontend-Build und relevante Lint-Pruefungen laufen fuer die V1-UI.
 
 ## Verifikation
 
@@ -175,9 +224,6 @@ Backend:
 
 ```bash
 cd backend
-./gradlew test --tests "*.DesignWorkbench*"
-./gradlew test --tests "*.DesignInput*"
-./gradlew test --tests "*.DesignVariant*"
 ./gradlew test
 ```
 
@@ -189,22 +235,18 @@ npm run lint
 npm run build
 ```
 
-Manuell:
+Gezielte Legacy-Pruefung:
 
-1. Neues SaaS-Projekt erstellen und bis DESIGN gehen.
-2. Sicherstellen, dass keine ZIP-Dropzone mehr sichtbar ist.
-3. Textbeschreibung eingeben, Screenshot und HTML/CSS-Referenz hinzufuegen.
-4. Analyse ausfuehren, Klassifikation korrigieren.
-5. Screen-Vorschlaege erzeugen, mindestens einen Screen auswaehlen.
-6. Variante generieren, im Canvas ansehen.
-7. Agent-Vorschlag anwenden, neue Variante aktiv setzen.
-8. DESIGN abschliessen.
-9. Pruefen, dass `spec/design.md` und `design/screens/.../index.html` existieren.
-10. ARCHITECTURE/FRONTEND bekommen den Design-Kontext.
+```bash
+rg -n "LEGACY_DESIGN_COMPAT_MESSAGE|GeneratedDesignVariant|DesignInput\\b|DesignScreen\\b|DesignSuggestion\\b|ReferenceAnalysisAgent" backend/src/main backend/src/test
+```
 
-## Offene Punkte fuer Implementierungsplanung
+Die Suche darf keine produktiven Legacy-Treffer liefern.
 
-- Ob alte `DesignBundle*`-Endpoints direkt deprecated oder nur aus der UI entfernt werden.
-- Ob Snippet-Inputs als Rohtext gespeichert oder vorab normalisiert werden.
-- Ob Preview-HTML serverseitig bei jedem Speichern validiert oder zusaetzlich beim Ausliefern geprueft wird.
-- Welche maximale Groesse fuer Bilder, Snippets und generierte HTML-Dateien gilt.
+## Bekannte Folgearbeit
+
+- Bessere Auswertung echter Bildinhalte statt nur Bild-Metadaten.
+- Stabilerer strukturierter Parser fuer Agentenantworten mit klarer Fehlerdiagnose.
+- Preview-UX fuer verschiedene Viewport-Groessen.
+- Optional spaeter: Variantenhistorie als bewusst neues Feature, nicht als Legacy-Kompatibilitaet.
+- Optional spaeter: Design-System-Ableitung aus dem generierten HTML.
