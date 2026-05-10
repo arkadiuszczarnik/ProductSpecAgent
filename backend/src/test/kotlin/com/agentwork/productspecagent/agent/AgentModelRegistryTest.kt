@@ -19,6 +19,7 @@ class AgentModelRegistryTest {
             "feature-proposal" to AgentModelTier.MEDIUM,
             "plan-generator" to AgentModelTier.LARGE,
             "design-summary" to AgentModelTier.MEDIUM,
+            "design-variant" to AgentModelTier.MEDIUM,
         ),
     )
 
@@ -26,7 +27,12 @@ class AgentModelRegistryTest {
     fun `valid properties produce working registry`() {
         val reg = AgentModelRegistry(validProps)
         assertThat(reg.agentIds()).containsExactlyInAnyOrder(
-            "idea-to-spec", "decision", "feature-proposal", "plan-generator", "design-summary"
+            "idea-to-spec",
+            "decision",
+            "feature-proposal",
+            "plan-generator",
+            "design-summary",
+            "design-variant",
         )
         assertThat(reg.defaultTier("idea-to-spec")).isEqualTo(AgentModelTier.LARGE)
         assertThat(reg.modelFor(AgentModelTier.SMALL)).isEqualTo(OpenAIModels.Chat.GPT5Nano)
