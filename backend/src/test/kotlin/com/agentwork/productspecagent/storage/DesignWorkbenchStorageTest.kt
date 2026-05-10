@@ -5,6 +5,7 @@ import com.agentwork.productspecagent.domain.GeneratedDesign
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 class DesignWorkbenchStorageTest {
@@ -71,5 +72,39 @@ class DesignWorkbenchStorageTest {
             "<!doctype html><html><body>Pricing</body></html>".toByteArray(),
             storage.readCurrentDesign("p1"),
         )
+    }
+
+    @Test
+    fun `new input and generated design do not expose stale active output`() {
+        storage.saveInput("p1", "Design A", null)
+        storage.saveGeneratedDesign(
+            projectId = "p1",
+            analysis = DesignAnalysis("A", "Direction A", "Rationale A"),
+            generated = GeneratedDesign(
+                id = "design-a",
+                title = "A",
+                htmlPath = storage.currentDesignKey("p1"),
+                rationale = "Rationale A",
+                createdAt = "now",
+            ),
+            html = "<!doctype html><html><body>Current A</body></html>".toByteArray(),
+        )
+        storage.writeActiveScreen("p1", "<!doctype html><html><body>Completed A</body></html>".toByteArray())
+        storage.saveInput("p1", "Design B", null)
+
+        storage.saveGeneratedDesign(
+            projectId = "p1",
+            analysis = DesignAnalysis("B", "Direction B", "Rationale B"),
+            generated = GeneratedDesign(
+                id = "design-b",
+                title = "B",
+                htmlPath = storage.currentDesignKey("p1"),
+                rationale = "Rationale B",
+                createdAt = "now",
+            ),
+            html = "<!doctype html><html><body>Current B</body></html>".toByteArray(),
+        )
+
+        assertTrue(storage.listActiveOutputFiles("p1").isEmpty())
     }
 }

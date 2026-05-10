@@ -47,6 +47,7 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
     fun saveInput(projectId: String, description: String?, imageInput: DesignImageInput?): DesignWorkbench {
         val trimmed = description?.trim()?.takeIf { it.isNotBlank() }
         val existing = load(projectId)
+        objectStore.delete(activeScreenKey(projectId, "design"))
         return save(
             existing.copy(
                 description = trimmed,
@@ -77,6 +78,7 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         html: ByteArray,
     ): DesignWorkbench {
         val normalized = generated.copy(htmlPath = currentDesignKey(projectId))
+        objectStore.delete(activeScreenKey(projectId, "design"))
         objectStore.put(normalized.htmlPath, html, "text/html")
         return save(load(projectId).copy(analysis = analysis, currentDesign = normalized))
     }
