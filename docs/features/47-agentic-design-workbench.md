@@ -3,9 +3,9 @@
 **Phase:** Wizard / Design
 **Abhaengig von:** Feature 11 (Guided Wizard Forms), Feature 12 (Dynamische Wizard-Steps), Feature 13 (Wizard-Chat Integration), Feature 38 (Per-Agent Model Selection), Feature 40 (Design-Bundle-Step), Feature 46 (Wizard-Options-Admin)
 **Aufwand:** M
-**Status:** Umgesetzt als Simple Design Generator V1
+**Status:** Umgesetzt als Simple Design Generator V1 mit Bildanalyse-Agent
 **Aktuelle Spec:** [`docs/superpowers/specs/2026-05-10-simple-design-generator-v1-design.md`](../superpowers/specs/2026-05-10-simple-design-generator-v1-design.md)
-**Naechste Spec:** [`docs/superpowers/specs/2026-05-10-design-image-analysis-agent-design.md`](../superpowers/specs/2026-05-10-design-image-analysis-agent-design.md)
+**Bildanalyse-Spec:** [`docs/superpowers/specs/2026-05-10-design-image-analysis-agent-design.md`](../superpowers/specs/2026-05-10-design-image-analysis-agent-design.md)
 **Umsetzungsplan:** [`docs/superpowers/plans/2026-05-10-simple-design-generator-v1.md`](../superpowers/plans/2026-05-10-simple-design-generator-v1.md)
 
 ## Kurzfassung
@@ -13,7 +13,8 @@
 Der DESIGN-Step ist kein ZIP-Import und keine grosse Multi-Screen-Workbench mehr. Der aktuelle Stand ist ein vereinfachter agentischer Generator:
 
 - Nutzer geben eine Designbeschreibung, ein Bild oder beides ein.
-- Ein Design-Agent analysiert die Eingabe und erzeugt genau eine self-contained HTML-Vorlage.
+- `DesignImageAnalysisAgent` analysiert hochgeladene Bilder und erzeugt strukturierte Designsignale.
+- `DesignVariantAgent` nutzt Beschreibung und Bildanalyse, um genau eine self-contained HTML-Vorlage zu erzeugen.
 - Die Vorlage wird als Canvas/Preview im iframe gerendert.
 - `Neu generieren` ersetzt das aktive Design.
 - `Design uebernehmen` schliesst den DESIGN-Step erst ab, wenn ein gueltiges generiertes Design existiert.
@@ -45,6 +46,8 @@ DESIGN bleibt fuer frontend-relevante Kategorien sichtbar und wird fuer Kategori
 - Vereinfachtes `DesignWorkbench`-Modell mit einer Eingabe und einem aktiven Ergebnis.
 - Multipart-Upload fuer eine optionale Bildreferenz.
 - Beschreibung-only, Bild-only und kombinierte Eingaben.
+- Strukturierte Bildanalyse ueber `POST /design/image/analyze`.
+- Automatische Bildanalyse bei `POST /design/generate`, wenn sie fuer ein gespeichertes Bild noch fehlt.
 - Ein `DesignVariantAgent`, der ueber Koog und den editierbaren Prompt `design-variant-system` ein JSON-Ergebnis erzeugt.
 - Deterministischer Fallback fuer lokale Entwicklung und Tests.
 - Serverseitige Preview-Validierung vor dem Speichern.
@@ -118,13 +121,16 @@ Alle aktuellen Endpunkte liegen unter `/api/v1/projects/{projectId}/design`.
 |---|---|---|
 | `GET` | `/workbench` | Aktuellen V1-Workbench-Zustand laden |
 | `PUT` | `/input` | Beschreibung und/oder Bild als Multipart-Input speichern |
+| `POST` | `/image/analyze` | Gespeichertes Bild strukturiert analysieren |
 | `POST` | `/generate` | Agent aus bestehender Eingabe ausfuehren und aktives Design ersetzen |
 | `GET` | `/preview` | Aktives HTML-Design mit sicheren Preview-Headern ausliefern |
 | `POST` | `/complete` | DESIGN abschliessen und Wizard fortsetzen |
 
 `PUT /input` lehnt leere Eingaben ab. Wenn eine Eingabe gespeichert wird, werden `analysis` und `currentDesign` zurueckgesetzt, weil das bisherige Ergebnis nicht mehr zur neuen Eingabe passt.
 
-`POST /generate` verlangt mindestens Beschreibung oder Bild. Das generierte HTML wird validiert, bevor es als `currentDesign` gespeichert wird.
+`POST /design/image/analyze` verlangt ein gespeichertes Bild und schreibt strukturierte Analysefelder wie Palette, Typografie, Layout-Hierarchie, Komponenten, Mood-Tags, Brand-Signale und `designBrief` in die Workbench.
+
+`POST /design/generate` verlangt mindestens Beschreibung oder Bild. Wenn ein Bild vorhanden ist und noch keine Bildanalyse existiert, wird sie automatisch erstellt. Das generierte HTML wird validiert, bevor es als `currentDesign` gespeichert wird.
 
 `POST /complete` verlangt ein `currentDesign`, schreibt die Design-Zusammenfassung nach `design.md`, speichert die Wizard-Step-Daten und advanced den Wizard.
 
@@ -141,15 +147,22 @@ Es gibt keine Storage-API mehr fuer alte Inputs, Screens, Varianten oder aktive 
 
 ### Agent
 
+`DesignImageAnalysisAgent` nutzt:
+
+- gespeicherte Bildbytes aus `DesignImageInput`
+- Agent-ID `design-image-analysis`
+- Prompt `backend/src/main/resources/prompts/design-image-analysis-system.md`
+- strukturierte Ausgabe als `DesignImageAnalysis`
+
 `DesignVariantAgent` nutzt:
 
-- `DesignGenerationInput(projectId, description, image)`
+- `DesignGenerationInput(projectId, description, image, imageAnalysis)`
 - `DesignGenerationResult(analysis, title, html, rationale)`
 - Agent-ID `design-variant`
 - Prompt `backend/src/main/resources/prompts/design-variant-system.md`
 - Modell-Tier `MEDIUM`
 
-Der produktive Pfad ruft `KoogAgentRunner` mit dem editierbaren Systemprompt auf. Die Antwort muss ein JSON-Objekt mit `analysis`, `title`, `html` und `rationale` sein. Wenn kein Runner verfuegbar ist oder Parsing fehlschlaegt, erzeugt der Agent ein deterministisches Fallback-HTML.
+Der produktive Pfad ruft `KoogAgentRunner` mit dem editierbaren Systemprompt auf. Die Antwort muss ein JSON-Objekt mit `analysis`, `title`, `html` und `rationale` sein. Wenn kein Runner verfuegbar ist oder Parsing fehlschlaegt, erzeugt der Agent ein deterministisches Fallback-HTML. Vorhandene Bildanalyse wird in den Prompt aufgenommen und fuer die HTML-Generierung genutzt.
 
 ### Sicherheit
 
@@ -174,6 +187,8 @@ Die sichtbare UI besteht aus zwei Zonen:
   - Bildreferenz
   - `Design generieren` / `Neu generieren`
   - `Design uebernehmen`
+  - kompakte Bildanalyse-Karten nach erfolgreicher Analyse
+  - Retry-Aktion bei fehlgeschlagener Bildanalyse
   - kompakte Analyse nach erfolgreicher Generierung
 - rechts `DesignCanvasPreview`
   - Empty State vor der Generierung
@@ -184,6 +199,7 @@ Der Zustand liegt in `frontend/src/lib/stores/design-workbench-store.ts` und bie
 
 - `load`
 - `saveInput`
+- `analyzeImage`
 - `generate`
 - `complete`
 - `reset`
@@ -208,16 +224,18 @@ Stale oder alte Screen-Dateien werden nicht exportiert. Das Handoff nutzt weiter
 4. Nutzer koennen Beschreibung plus Bild speichern und daraus ein Design generieren.
 5. Leere Eingaben werden blockiert.
 6. Nicht-Bilder und Bilder ueber 5 MB werden blockiert.
-7. `POST /generate` erzeugt `analysis` und `currentDesign`.
-8. Regeneration ersetzt das aktive Design.
-9. Unsicheres HTML wird nicht gespeichert.
-10. Die Preview rendert nur das aktuelle `currentDesign`.
-11. `Design uebernehmen` ist ohne `currentDesign` nicht moeglich.
-12. Completion schreibt `design.md` und aktive HTML-Ausgabe.
-13. Export/Handoff enthalten nur `design/screens/design/index.html`.
-14. Alte Workbench-Kompatibilitaet existiert nicht mehr im produktiven Domain-/Service-/Storage-Code.
-15. Backend-Tests decken Storage, Service, API, Agent, Preview-Security, Export und Handoff ab.
-16. Frontend-Build und relevante Lint-Pruefungen laufen fuer die V1-UI.
+7. `POST /design/image/analyze` erzeugt strukturierte Bildanalyse fuer gespeicherte Bilder.
+8. `POST /design/generate` ergaenzt fehlende Bildanalyse automatisch.
+9. `POST /design/generate` erzeugt `analysis` und `currentDesign`.
+10. Regeneration ersetzt das aktive Design.
+11. Unsicheres HTML wird nicht gespeichert.
+12. Die Preview rendert nur das aktuelle `currentDesign`.
+13. `Design uebernehmen` ist ohne `currentDesign` nicht moeglich.
+14. Completion schreibt `design.md` und aktive HTML-Ausgabe.
+15. Export/Handoff enthalten nur `design/screens/design/index.html`.
+16. Alte Workbench-Kompatibilitaet existiert nicht mehr im produktiven Domain-/Service-/Storage-Code.
+17. Backend-Tests decken Storage, Service, API, Agent, Preview-Security, Export und Handoff ab.
+18. Frontend-Build und relevante Lint-Pruefungen laufen fuer die V1-UI.
 
 ## Verifikation
 
@@ -246,19 +264,7 @@ Die Suche darf keine produktiven Legacy-Treffer liefern.
 
 ## Bekannte Folgearbeit
 
-- Bessere Auswertung echter Bildinhalte statt nur Bild-Metadaten: geplant als `DesignImageAnalysisAgent`.
 - Stabilerer strukturierter Parser fuer Agentenantworten mit klarer Fehlerdiagnose.
 - Preview-UX fuer verschiedene Viewport-Groessen.
 - Optional spaeter: Variantenhistorie als bewusst neues Feature, nicht als Legacy-Kompatibilitaet.
 - Optional spaeter: Design-System-Ableitung aus dem generierten HTML.
-
-## Naechste Iteration: Bildanalyse-Agent
-
-Die naechste Iteration erweitert V1 um einen dedizierten `DesignImageAnalysisAgent`.
-
-- Ein gespeichertes Bild wird ueber `POST /design/image/analyze` analysiert.
-- Die Analyse erzeugt ein detailliertes JSON-Modell: Palette, Typografie, Layout-Hierarchie, Komponenten, Mood-Tags, Brand-Signale und `designBrief`.
-- Die UI zeigt nur eine kompakte Zusammenfassung, kein rohes Debug-JSON in V1.
-- Bei Fehlern erscheint ein Retry-Button.
-- `POST /design/generate` holt eine fehlende Bildanalyse automatisch nach.
-- `DesignVariantAgent` nutzt die gespeicherte Bildanalyse als strukturierten Kontext fuer das HTML.
