@@ -1,12 +1,14 @@
 package com.agentwork.productspecagent.storage
 
+import com.agentwork.productspecagent.domain.DesignAnalysis
 import com.agentwork.productspecagent.domain.DesignInput
 import com.agentwork.productspecagent.domain.DesignInputClassification
 import com.agentwork.productspecagent.domain.DesignInputKind
+import com.agentwork.productspecagent.domain.DesignImageInput
 import com.agentwork.productspecagent.domain.DesignScreen
 import com.agentwork.productspecagent.domain.DesignVariant
-import com.agentwork.productspecagent.domain.DesignVariantStatus
 import com.agentwork.productspecagent.domain.DesignWorkbench
+import com.agentwork.productspecagent.domain.GeneratedDesign
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
@@ -19,18 +21,17 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
 
     private fun prefix(projectId: String) = "projects/$projectId/design/"
     private fun workbenchKey(projectId: String) = "${prefix(projectId)}workbench.json"
+    private fun imageInputKey(projectId: String) = "${prefix(projectId)}input/reference-image"
     private fun inputKey(projectId: String, inputId: String) = "${prefix(projectId)}inputs/$inputId/content"
-
+    fun currentDesignKey(projectId: String) = "${prefix(projectId)}current/index.html"
+    fun activeScreenKey(projectId: String, screenSlug: String) = "${prefix(projectId)}screens/$screenSlug/index.html"
     fun variantKey(projectId: String, screenId: String, variantId: String) =
         "${prefix(projectId)}variants/$screenId/$variantId.html"
-
-    fun activeScreenKey(projectId: String, screenSlug: String) =
-        "${prefix(projectId)}screens/$screenSlug/index.html"
 
     fun load(projectId: String): DesignWorkbench {
         val existing = objectStore.get(workbenchKey(projectId))
             ?.toString(Charsets.UTF_8)
-            ?.let { json.decodeFromString<DesignWorkbench>(it) }
+            ?.let { runCatching { json.decodeFromString<DesignWorkbench>(it) }.getOrNull() }
         return existing ?: DesignWorkbench(projectId = projectId, updatedAt = Instant.now().toString())
     }
 
@@ -38,6 +39,50 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         val updated = workbench.copy(updatedAt = Instant.now().toString())
         objectStore.put(workbenchKey(updated.projectId), json.encodeToString(updated).toByteArray(), "application/json")
         return updated
+    }
+
+    fun saveInput(projectId: String, description: String?, imageInput: DesignImageInput?): DesignWorkbench {
+        val trimmed = description?.trim()?.takeIf { it.isNotBlank() }
+        val existing = load(projectId)
+        return save(
+            existing.copy(
+                description = trimmed,
+                imageInput = imageInput ?: existing.imageInput,
+                analysis = null,
+                currentDesign = null,
+            ),
+        )
+    }
+
+    fun saveImageInput(projectId: String, originalName: String, bytes: ByteArray, contentType: String): DesignWorkbench {
+        val key = imageInputKey(projectId)
+        objectStore.put(key, bytes, contentType)
+        val image = DesignImageInput(
+            originalName = originalName,
+            contentRef = key,
+            contentType = contentType,
+            sizeBytes = bytes.size.toLong(),
+            uploadedAt = Instant.now().toString(),
+        )
+        return saveInput(projectId = projectId, description = load(projectId).description, imageInput = image)
+    }
+
+    fun saveGeneratedDesign(
+        projectId: String,
+        analysis: DesignAnalysis,
+        generated: GeneratedDesign,
+        html: ByteArray,
+    ): DesignWorkbench {
+        val normalized = generated.copy(htmlPath = currentDesignKey(projectId))
+        objectStore.put(normalized.htmlPath, html, "text/html")
+        return save(load(projectId).copy(analysis = analysis, currentDesign = normalized))
+    }
+
+    fun readCurrentDesign(projectId: String): ByteArray =
+        objectStore.get(currentDesignKey(projectId)) ?: throw NoSuchElementException("current design not found: $projectId")
+
+    fun writeActiveScreen(projectId: String, html: ByteArray) {
+        objectStore.put(activeScreenKey(projectId, "design"), html, "text/html")
     }
 
     fun addTextInput(projectId: String, text: String): DesignInput {
@@ -147,19 +192,9 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
     }
 
     fun listActiveOutputFiles(projectId: String): List<Pair<String, ByteArray>> {
-        return load(projectId).screens.mapNotNull { screen ->
-            val activeVariantId = screen.activeVariantId ?: return@mapNotNull null
-            val hasActiveValidVariant = screen.variants.any {
-                it.id == activeVariantId && it.status == DesignVariantStatus.VALID
-            }
-            if (!hasActiveValidVariant) return@mapNotNull null
-
-            val key = activeScreenKey(projectId, screen.name.toSlug())
-            val content = objectStore.get(key) ?: return@mapNotNull null
-            key.removePrefix("projects/$projectId/") to content
-        }
+        val workbench = load(projectId)
+        if (workbench.currentDesign == null) return emptyList()
+        val content = objectStore.get(activeScreenKey(projectId, "design")) ?: return emptyList()
+        return listOf("design/screens/design/index.html" to content)
     }
-
-    private fun String.toSlug(): String =
-        lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
 }
