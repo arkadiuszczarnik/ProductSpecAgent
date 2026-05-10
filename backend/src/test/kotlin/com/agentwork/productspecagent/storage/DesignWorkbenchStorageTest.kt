@@ -1,16 +1,42 @@
 package com.agentwork.productspecagent.storage
 
 import com.agentwork.productspecagent.domain.DesignAnalysis
+import com.agentwork.productspecagent.domain.DesignColor
+import com.agentwork.productspecagent.domain.DesignComponentSignal
+import com.agentwork.productspecagent.domain.DesignImageAnalysis
+import com.agentwork.productspecagent.domain.DesignLayoutRegion
+import com.agentwork.productspecagent.domain.DesignTypographySignal
 import com.agentwork.productspecagent.domain.GeneratedDesign
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class DesignWorkbenchStorageTest {
     private val objectStore = InMemoryObjectStore()
     private val storage = DesignWorkbenchStorage(objectStore)
+
+    private fun sampleImageAnalysis() = DesignImageAnalysis(
+        summary = "Dense SaaS dashboard with a calm operational layout.",
+        palette = listOf(
+            DesignColor("#111827", "background", "dominant", "Dark shell"),
+            DesignColor("#2F80ED", "primary-action", "accent", "Blue buttons"),
+        ),
+        typography = listOf(
+            DesignTypographySignal("ui-sans", "body", "regular", "Clean interface text"),
+        ),
+        layoutHierarchy = listOf(
+            DesignLayoutRegion("Sidebar", 1, 1, "Primary navigation"),
+            DesignLayoutRegion("KPI row", 2, 2, "Top metrics"),
+        ),
+        components = listOf(
+            DesignComponentSignal("Card", "summary", "Metric cards"),
+        ),
+        moodTags = listOf("enterprise", "calm"),
+        brandSignals = listOf("rounded cards", "blue action color"),
+        designBrief = "Create a calm enterprise dashboard with dark navigation and blue actions.",
+    )
 
     @Test
     fun `save input replaces description and clears current design`() {
@@ -44,7 +70,7 @@ class DesignWorkbenchStorageTest {
     }
 
     @Test
-    fun `save input clears existing image when no replacement image is supplied`() {
+    fun `save input preserves existing image when no replacement image is supplied`() {
         storage.saveImageInput(
             projectId = "p1",
             originalName = "reference.png",
@@ -54,7 +80,7 @@ class DesignWorkbenchStorageTest {
 
         val updated = storage.saveInput("p1", "Use the same reference", null)
 
-        assertNull(updated.imageInput)
+        assertEquals("reference.png", updated.imageInput?.originalName)
     }
 
     @Test
@@ -164,5 +190,58 @@ class DesignWorkbenchStorageTest {
         )
 
         assertTrue(storage.listActiveOutputFiles("p1").isEmpty())
+    }
+
+    @Test
+    fun `save image analysis persists detailed JSON`() {
+        storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+
+        val updated = storage.saveImageAnalysis("p1", sampleImageAnalysis())
+
+        assertEquals("Dense SaaS dashboard with a calm operational layout.", updated.imageAnalysis?.summary)
+        assertEquals("#111827", updated.imageAnalysis?.palette?.first()?.hex)
+        assertNull(updated.imageAnalysisError)
+        assertEquals(updated.imageAnalysis, storage.load("p1").imageAnalysis)
+    }
+
+    @Test
+    fun `save image analysis error stores retryable message`() {
+        storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+
+        val updated = storage.saveImageAnalysisError("p1", "Vision provider unavailable")
+
+        assertEquals("Vision provider unavailable", updated.imageAnalysisError)
+        assertNull(updated.imageAnalysis)
+    }
+
+    @Test
+    fun `new image upload clears image analysis and error`() {
+        storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+        storage.saveImageAnalysis("p1", sampleImageAnalysis())
+        storage.saveImageAnalysisError("p1", "Old error")
+
+        val updated = storage.saveImageInput("p1", "new.png", byteArrayOf(4, 5, 6), "image/png")
+
+        assertNull(updated.imageAnalysis)
+        assertNull(updated.imageAnalysisError)
+    }
+
+    @Test
+    fun `description update preserves existing image analysis`() {
+        storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+        storage.saveImageAnalysis("p1", sampleImageAnalysis())
+
+        val updated = storage.saveInput("p1", "Use this dashboard style", null)
+
+        assertEquals("Use this dashboard style", updated.description)
+        assertEquals("dashboard.png", updated.imageInput?.originalName)
+        assertEquals("Dense SaaS dashboard with a calm operational layout.", updated.imageAnalysis?.summary)
+    }
+
+    @Test
+    fun `read image input returns stored bytes`() {
+        storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+
+        assertContentEquals(byteArrayOf(1, 2, 3), storage.readImageInput("p1"))
     }
 }

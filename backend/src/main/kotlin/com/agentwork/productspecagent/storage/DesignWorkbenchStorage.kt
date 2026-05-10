@@ -1,6 +1,7 @@
 package com.agentwork.productspecagent.storage
 
 import com.agentwork.productspecagent.domain.DesignAnalysis
+import com.agentwork.productspecagent.domain.DesignImageAnalysis
 import com.agentwork.productspecagent.domain.DesignImageInput
 import com.agentwork.productspecagent.domain.DesignWorkbench
 import com.agentwork.productspecagent.domain.GeneratedDesign
@@ -39,7 +40,7 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         return save(
             existing.copy(
                 description = trimmed,
-                imageInput = imageInput,
+                imageInput = imageInput ?: existing.imageInput,
                 analysis = null,
                 currentDesign = null,
             ),
@@ -61,11 +62,30 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         return save(
             existing.copy(
                 imageInput = image,
+                imageAnalysis = null,
+                imageAnalysisError = null,
                 analysis = null,
                 currentDesign = null,
             ),
         )
     }
+
+    fun readImageInput(projectId: String): ByteArray {
+        val image = load(projectId).imageInput ?: throw NoSuchElementException("design image input not found: $projectId")
+        return objectStore.get(image.contentRef)
+            ?: throw NoSuchElementException("design image object not found: ${image.contentRef}")
+    }
+
+    fun saveImageAnalysis(projectId: String, analysis: DesignImageAnalysis): DesignWorkbench =
+        save(load(projectId).copy(imageAnalysis = analysis, imageAnalysisError = null))
+
+    fun saveImageAnalysisError(projectId: String, message: String): DesignWorkbench =
+        save(
+            load(projectId).copy(
+                imageAnalysis = null,
+                imageAnalysisError = message.trim().ifBlank { "Image analysis failed." },
+            ),
+        )
 
     fun saveGeneratedDesign(
         projectId: String,
