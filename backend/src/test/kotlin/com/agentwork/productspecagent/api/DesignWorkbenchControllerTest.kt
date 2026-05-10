@@ -341,7 +341,8 @@ class DesignWorkbenchControllerTest {
             .andExpect(jsonPath("$.message").value("Design workbench completed. Spec updated."))
             .andExpect(jsonPath("$.nextStep").value("ARCHITECTURE"))
 
-        assertThat(projectService.readSpecFile(projectId, "design.md"))
+        assertThat(projectService.readSpecFile(projectId, "design.md")).isNull()
+        assertThat(designWorkbenchStorage.readDesignSummary(projectId))
             .contains("Controller Test Design", "Generated in controller test.")
         assertThat(wizardService.getWizardData(projectId).steps["DESIGN"]?.fields?.get("summary")).isNotNull()
     }

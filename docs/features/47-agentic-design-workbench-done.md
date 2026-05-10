@@ -12,7 +12,7 @@
 - Text-, Bild- und HTML/CSS-Snippet-Inputs koennen erfasst und sichtbar korrigiert werden.
 - Screens koennen vorgeschlagen, manuell angelegt, umbenannt und entfernt werden.
 - Mindestens ein aktiver gueltiger Screen ist fuer Completion erforderlich.
-- Completion schreibt `spec/design.md` und aktive HTML/CSS-Screen-Dateien.
+- Completion schreibt `design/design.md` und aktive HTML/CSS-Screen-Dateien; die finale Spec verweist auf das Design-Artefakt.
 - Export und Handoff enthalten aktive Workbench-Ausgaben unter `design/screens/...`.
 - Preview-HTML wird serverseitig gegen externe, lokale und Projekt-API-Subresource-Zugriffe validiert.
 

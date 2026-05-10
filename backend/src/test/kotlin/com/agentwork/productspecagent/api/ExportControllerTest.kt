@@ -264,6 +264,7 @@ class ExportControllerTest {
         val pid = createProject()
         saveActiveDesignScreen(pid)
         designWorkbenchStorage.writeActiveScreen(pid, "<html><body>Landing design</body></html>".toByteArray())
+        designWorkbenchStorage.writeDesignSummary(pid, "# Design\n\nLanding design summary.")
 
         val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))
             .andExpect(status().isOk())
@@ -273,6 +274,8 @@ class ExportControllerTest {
 
         val designScreen = assertNotNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/design/index.html") })
         assertTrue(designScreen.contains("Landing design"))
+        val designSummary = assertNotNull(readZipEntry(zipBytes) { it.endsWith("/design/design.md") })
+        assertTrue(designSummary.contains("Landing design summary."))
         assertNotNull(readZipEntry(zipBytes) { it.endsWith("/docs/spec.md") })
     }
 

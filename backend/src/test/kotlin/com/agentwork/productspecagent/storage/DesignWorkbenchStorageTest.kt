@@ -137,7 +137,7 @@ class DesignWorkbenchStorageTest {
     }
 
     @Test
-    fun `list active output files returns design screen after active output is written`() {
+    fun `list active output files returns design screen and summary after active output is written`() {
         val activeHtml = "<!doctype html><html><body>Completed</body></html>".toByteArray()
         storage.saveGeneratedDesign(
             projectId = "p1",
@@ -152,11 +152,14 @@ class DesignWorkbenchStorageTest {
             html = "<!doctype html><html><body>Current</body></html>".toByteArray(),
         )
         storage.writeActiveScreen("p1", activeHtml)
+        storage.writeDesignSummary("p1", "# Design\n\nCompleted design summary.")
 
         val files = storage.listActiveOutputFiles("p1")
+        val byPath = files.toMap()
 
-        assertEquals("design/screens/design/index.html", files.single().first)
-        assertContentEquals(activeHtml, files.single().second)
+        assertContentEquals(activeHtml, byPath["design/screens/design/index.html"])
+        assertEquals("# Design\n\nCompleted design summary.", byPath["design/design.md"]?.toString(Charsets.UTF_8))
+        assertEquals("# Design\n\nCompleted design summary.", storage.readDesignSummary("p1"))
     }
 
     @Test

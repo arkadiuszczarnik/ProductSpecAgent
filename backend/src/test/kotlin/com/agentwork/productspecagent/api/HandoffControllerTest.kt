@@ -245,6 +245,7 @@ class HandoffControllerTest {
         val pid = createProject()
         saveActiveDesignScreen(pid)
         designWorkbenchStorage.writeActiveScreen(pid, "<html><body>Landing design</body></html>".toByteArray())
+        designWorkbenchStorage.writeDesignSummary(pid, "# Design\n\nLanding design summary.")
 
         val result = mockMvc.perform(get("/api/v1/projects/$pid/handoff/handoff.zip"))
             .andExpect(status().isOk())
@@ -254,6 +255,8 @@ class HandoffControllerTest {
 
         val designScreen = assertNotNull(readZipEntry(zipBytes) { it == "design/screens/design/index.html" })
         assertTrue(designScreen.contains("Landing design"))
+        val designSummary = assertNotNull(readZipEntry(zipBytes) { it == "design/design.md" })
+        assertTrue(designSummary.contains("Landing design summary."))
         assertNotNull(readZipEntry(zipBytes) { it == "docs/spec.md" })
     }
 

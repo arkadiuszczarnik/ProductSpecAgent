@@ -11,6 +11,7 @@ import com.agentwork.productspecagent.domain.TaskType
 import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.storage.ClarificationStorage
 import com.agentwork.productspecagent.storage.DecisionStorage
+import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import com.agentwork.productspecagent.storage.ProjectStorage
 import com.agentwork.productspecagent.storage.TaskStorage
@@ -30,6 +31,7 @@ class WizardStepCompletionServiceTest {
     private lateinit var clarificationService: ClarificationService
     private lateinit var wizardService: WizardService
     private lateinit var taskService: TaskService
+    private lateinit var designWorkbenchStorage: DesignWorkbenchStorage
 
     @BeforeEach
     fun setup() {
@@ -69,6 +71,7 @@ class WizardStepCompletionServiceTest {
             }
         }
         taskService = TaskService(TaskStorage(InMemoryObjectStore()), planAgent)
+        designWorkbenchStorage = DesignWorkbenchStorage(InMemoryObjectStore())
     }
 
     @Test
@@ -201,6 +204,51 @@ class WizardStepCompletionServiceTest {
             assertThat(call.userPrompt).doesNotContain("MANDATORY OUTPUT REQUIREMENT")
             assertThat(call.userPrompt).doesNotContain("Err on the side of including a marker")
         }
+        Unit
+    }
+
+    @Test
+    fun `complete final step instructs spec agent to reference design artifact when present`() = runBlocking {
+        val project = projectService.createProject("Test")
+        setFlowProgress(
+            project.project.id,
+            FlowStepType.FRONTEND,
+            setOf(
+                FlowStepType.IDEA,
+                FlowStepType.PROBLEM,
+                FlowStepType.FEATURES,
+                FlowStepType.MVP,
+                FlowStepType.DESIGN,
+                FlowStepType.ARCHITECTURE,
+                FlowStepType.BACKEND,
+            ),
+        )
+        designWorkbenchStorage.writeDesignSummary(project.project.id, "# Design\n\nGenerated dashboard design.")
+        val agent = SequenceWizardAgent(
+            listOf(
+                "Final step complete.",
+                "# Product Specification\n\nReady.",
+            )
+        )
+        val completion = createCompletion(agent)
+
+        completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.FRONTEND,
+                fields = mapOf("framework" to "Next.js+React"),
+            )
+        )
+
+        assertThat(agent.calls).hasSize(2)
+        assertThat(agent.calls[1].userPrompt)
+            .contains("A design artifact exists for this project.")
+            .contains("design/design.md")
+            .contains("design/screens/design/index.html")
+            .contains("Do not duplicate the full design summary")
+        assertThat(projectService.readSpecFile(project.project.id, "spec.md"))
+            .contains("[design/design.md](../design/design.md)")
+            .contains("[design/screens/design/index.html](../design/screens/design/index.html)")
         Unit
     }
 
@@ -376,6 +424,7 @@ class WizardStepCompletionServiceTest {
             wizardService = wizardService,
             completionAgent = agent,
             taskService = taskService,
+            designWorkbenchStorage = designWorkbenchStorage,
         )
 
     private fun setFlowProgress(

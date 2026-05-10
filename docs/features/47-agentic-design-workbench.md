@@ -231,7 +231,7 @@ Stale oder alte Screen-Dateien werden nicht exportiert. Das Handoff nutzt weiter
 11. Unsicheres HTML wird nicht gespeichert.
 12. Die Preview rendert nur das aktuelle `currentDesign`.
 13. `Design uebernehmen` ist ohne `currentDesign` nicht moeglich.
-14. Completion schreibt `design.md` und aktive HTML-Ausgabe.
+14. Completion schreibt `design/design.md` und aktive HTML-Ausgabe; die finale `spec/spec.md` verweist auf das Design-Artefakt.
 15. Export/Handoff enthalten nur `design/screens/design/index.html`.
 16. Alte Workbench-Kompatibilitaet existiert nicht mehr im produktiven Domain-/Service-/Storage-Code.
 17. Backend-Tests decken Storage, Service, API, Agent, Preview-Security, Export und Handoff ab.

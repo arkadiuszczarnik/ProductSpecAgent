@@ -12,6 +12,7 @@ import com.agentwork.productspecagent.domain.WizardProgressionView
 import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.domain.WizardStepView
 import com.agentwork.productspecagent.domain.emptyWizardProgressionView
+import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
@@ -74,6 +75,7 @@ class WizardStepCompletionService(
     private val clarificationService: ClarificationService,
     private val wizardService: WizardService,
     private val completionAgent: WizardCompletionAgent,
+    private val designWorkbenchStorage: DesignWorkbenchStorage,
     private val taskService: TaskService? = null,
     private val progressionPolicy: WizardProgressionPolicy = WizardProgressionPolicy(),
 ) : WizardStepCompletion, WizardProgression {
@@ -164,15 +166,20 @@ class WizardStepCompletionService(
 
         if (isLastStep) {
             val fullContext = contextBuilder.buildContext(command.projectId)
+            val designInstruction = buildDesignArtifactInstruction(command.projectId)
             val summaryPrompt = buildString {
                 appendLine("Based on all the information gathered in the wizard steps below, generate a complete product specification summary in markdown format.")
                 appendLine("Include sections for: Product Overview, Problem, Target Audience, Scope, MVP, and any technical decisions made.")
                 appendLine()
                 appendLine(fullContext)
+                if (designInstruction != null) {
+                    appendLine()
+                    appendLine(designInstruction)
+                }
             }
             val summarySystemPrompt = "$baseSystemPrompt\n\n$localeInstruction"
             val specContent = completionAgent.respond(summarySystemPrompt, summaryPrompt)
-            projectService.saveSpecFile(command.projectId, "spec.md", specContent)
+            projectService.saveSpecFile(command.projectId, "spec.md", ensureDesignReference(specContent, designInstruction))
         } else {
             projectService.regenerateDocsScaffold(command.projectId)
         }
@@ -197,6 +204,32 @@ class WizardStepCompletionService(
                 clarificationIds = listOfNotNull(createdClarificationId),
             ),
         )
+    }
+
+    private fun buildDesignArtifactInstruction(projectId: String): String? =
+        designWorkbenchStorage.readDesignSummary(projectId)?.takeIf { it.isNotBlank() }?.let {
+            """
+            A design artifact exists for this project.
+            Include a concise Design section in the final product specification.
+            Link to [design/design.md](../design/design.md).
+            If an HTML preview is relevant, link to [design/screens/design/index.html](../design/screens/design/index.html).
+            Do not duplicate the full design summary; use the links as the source of detailed design truth.
+            """.trimIndent()
+        }
+
+    private fun ensureDesignReference(specContent: String, designInstruction: String?): String {
+        if (designInstruction == null || specContent.contains("design/design.md")) return specContent
+        return buildString {
+            append(specContent.trimEnd())
+            appendLine()
+            appendLine()
+            appendLine("## Design")
+            appendLine()
+            appendLine("The UI design was created in the Design Workbench.")
+            appendLine()
+            appendLine("- [design/design.md](../design/design.md)")
+            appendLine("- [design/screens/design/index.html](../design/screens/design/index.html)")
+        }
     }
 
     override fun snapshot(projectId: String): WizardProgressionView =

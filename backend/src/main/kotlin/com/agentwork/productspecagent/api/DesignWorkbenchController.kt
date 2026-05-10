@@ -12,6 +12,7 @@ import com.agentwork.productspecagent.service.WizardProgression
 import com.agentwork.productspecagent.service.WizardService
 import com.agentwork.productspecagent.service.WizardStepNotCurrentException
 import com.agentwork.productspecagent.service.WizardStepNotVisibleException
+import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.beans.factory.annotation.Value
@@ -37,6 +38,7 @@ class DesignWorkbenchController(
     private val wizardService: WizardService,
     private val projectService: ProjectService,
     private val wizardProgression: WizardProgression,
+    private val designWorkbenchStorage: DesignWorkbenchStorage,
     @Value("\${app.frontend-origin:http://localhost:3001}") private val frontendOrigin: String,
 ) {
 
@@ -108,7 +110,7 @@ class DesignWorkbenchController(
             FlowStepType.DESIGN.name,
             WizardStepData(fields = fields, completedAt = Instant.now().toString()),
         )
-        projectService.saveSpecFile(projectId, "design.md", summary)
+        designWorkbenchStorage.writeDesignSummary(projectId, summary)
 
         val nextStep = projectService.advanceStep(projectId, FlowStepType.DESIGN)
         return CompleteResponse(

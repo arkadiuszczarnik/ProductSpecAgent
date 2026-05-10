@@ -19,6 +19,7 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
     private fun prefix(projectId: String) = "projects/$projectId/design/"
     private fun workbenchKey(projectId: String) = "${prefix(projectId)}workbench.json"
     private fun imageInputKey(projectId: String) = "${prefix(projectId)}input/reference-image"
+    private fun designSummaryKey(projectId: String) = "${prefix(projectId)}design.md"
     fun currentDesignKey(projectId: String) = "${prefix(projectId)}current/index.html"
     fun activeScreenKey(projectId: String, screenSlug: String) = "${prefix(projectId)}screens/$screenSlug/index.html"
 
@@ -118,10 +119,22 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         objectStore.put(activeScreenKey(projectId, "design"), html, "text/html")
     }
 
+    fun writeDesignSummary(projectId: String, markdown: String) {
+        objectStore.put(designSummaryKey(projectId), markdown.toByteArray(), "text/markdown")
+    }
+
+    fun readDesignSummary(projectId: String): String? =
+        objectStore.get(designSummaryKey(projectId))?.toString(Charsets.UTF_8)
+
     fun listActiveOutputFiles(projectId: String): List<Pair<String, ByteArray>> {
         val workbench = load(projectId)
         if (workbench.currentDesign == null) return emptyList()
         val content = objectStore.get(activeScreenKey(projectId, "design")) ?: return emptyList()
-        return listOf("design/screens/design/index.html" to content)
+        return buildList {
+            add("design/screens/design/index.html" to content)
+            objectStore.get(designSummaryKey(projectId))?.let { summary ->
+                add("design/design.md" to summary)
+            }
+        }
     }
 }
