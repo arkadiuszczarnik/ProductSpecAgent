@@ -82,7 +82,6 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
     fun saveImageAnalysisError(projectId: String, message: String): DesignWorkbench =
         save(
             load(projectId).copy(
-                imageAnalysis = null,
                 imageAnalysisError = message.trim().ifBlank { "Image analysis failed." },
             ),
         )

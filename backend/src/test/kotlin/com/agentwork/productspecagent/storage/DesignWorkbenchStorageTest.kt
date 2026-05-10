@@ -207,22 +207,31 @@ class DesignWorkbenchStorageTest {
     @Test
     fun `save image analysis error stores retryable message`() {
         storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+        storage.saveImageAnalysis("p1", sampleImageAnalysis())
 
         val updated = storage.saveImageAnalysisError("p1", "Vision provider unavailable")
 
         assertEquals("Vision provider unavailable", updated.imageAnalysisError)
-        assertNull(updated.imageAnalysis)
+        assertEquals("Dense SaaS dashboard with a calm operational layout.", updated.imageAnalysis?.summary)
     }
 
     @Test
-    fun `new image upload clears image analysis and error`() {
+    fun `new image upload clears image analysis`() {
         storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
         storage.saveImageAnalysis("p1", sampleImageAnalysis())
-        storage.saveImageAnalysisError("p1", "Old error")
 
         val updated = storage.saveImageInput("p1", "new.png", byteArrayOf(4, 5, 6), "image/png")
 
         assertNull(updated.imageAnalysis)
+    }
+
+    @Test
+    fun `new image upload clears image analysis error`() {
+        storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+        storage.saveImageAnalysisError("p1", "Old error")
+
+        val updated = storage.saveImageInput("p1", "new.png", byteArrayOf(4, 5, 6), "image/png")
+
         assertNull(updated.imageAnalysisError)
     }
 
