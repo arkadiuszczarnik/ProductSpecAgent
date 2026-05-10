@@ -5,6 +5,7 @@ import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.model.PromptExecutor
+import ai.koog.prompt.message.AttachmentContent
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
@@ -61,7 +62,34 @@ class KoogAgentRunnerTest {
         }.isInstanceOf(IllegalArgumentException::class.java)
     }
 
+    @Test
+    fun `runWithImage attaches one image to user message`(): Unit = runBlocking {
+        val registry = AgentModelRegistry(validProps)
+        val service = AgentModelService(registry, InMemoryObjectStore())
+        val capturing = CapturingExecutor()
+        val runner = KoogAgentRunner(capturing, service, registry)
+
+        val response = runner.runWithImage(
+            agentId = "decision",
+            systemPrompt = "Analyze visual design.",
+            userMessage = "Extract design signals.",
+            imageBytes = byteArrayOf(1, 2, 3),
+            contentType = "image/png",
+            fileName = "dashboard.png",
+        )
+
+        assertThat(response).isEqualTo("ok")
+        val user = capturing.lastPrompt?.messages?.filterIsInstance<Message.User>()?.single()
+        val images = user?.parts?.filterIsInstance<ai.koog.prompt.message.ContentPart.Image>()
+        assertThat(images).hasSize(1)
+        val image = images?.single()
+        assertThat(image?.mimeType).isEqualTo("image/png")
+        assertThat(image?.fileName).isEqualTo("dashboard.png")
+        assertThat((image?.content as AttachmentContent.Binary.Bytes).asBytes()).containsExactly(1, 2, 3)
+    }
+
     private class CapturingExecutor : PromptExecutor() {
+        var lastPrompt: Prompt? = null
         var lastModel: LLModel? = null
 
         override suspend fun execute(
@@ -69,6 +97,7 @@ class KoogAgentRunnerTest {
             model: LLModel,
             tools: List<ToolDescriptor>,
         ): List<Message.Response> {
+            lastPrompt = prompt
             lastModel = model
             return listOf(Message.Assistant(content = "ok", metaInfo = ResponseMetaInfo.Empty))
         }
