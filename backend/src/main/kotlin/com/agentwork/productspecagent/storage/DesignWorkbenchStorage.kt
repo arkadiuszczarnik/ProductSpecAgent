@@ -10,6 +10,8 @@ import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
 import java.time.Instant
 
+class StaleDesignImageAnalysisException(message: String) : RuntimeException(message)
+
 @Service
 class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
@@ -76,15 +78,26 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
             ?: throw NoSuchElementException("design image object not found: ${image.contentRef}")
     }
 
-    fun saveImageAnalysis(projectId: String, analysis: DesignImageAnalysis): DesignWorkbench =
-        save(load(projectId).copy(imageAnalysis = analysis, imageAnalysisError = null))
+    fun saveImageAnalysis(projectId: String, image: DesignImageInput, analysis: DesignImageAnalysis): DesignWorkbench =
+        save(currentWorkbenchForImage(projectId, image).copy(imageAnalysis = analysis, imageAnalysisError = null))
 
-    fun saveImageAnalysisError(projectId: String, message: String): DesignWorkbench =
+    fun saveImageAnalysisError(projectId: String, image: DesignImageInput, message: String): DesignWorkbench =
         save(
-            load(projectId).copy(
+            currentWorkbenchForImage(projectId, image).copy(
                 imageAnalysisError = message.trim().ifBlank { "Image analysis failed." },
             ),
         )
+
+    private fun currentWorkbenchForImage(projectId: String, expected: DesignImageInput): DesignWorkbench {
+        val current = load(projectId)
+        val actual = current.imageInput ?: throw StaleDesignImageAnalysisException(
+            "design image input changed during analysis: $projectId",
+        )
+        if (actual.contentRef != expected.contentRef || actual.uploadedAt != expected.uploadedAt) {
+            throw StaleDesignImageAnalysisException("design image input changed during analysis: $projectId")
+        }
+        return current
+    }
 
     fun saveGeneratedDesign(
         projectId: String,

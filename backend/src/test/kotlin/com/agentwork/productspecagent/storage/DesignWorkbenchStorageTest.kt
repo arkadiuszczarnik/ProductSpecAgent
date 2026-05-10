@@ -10,6 +10,7 @@ import com.agentwork.productspecagent.domain.GeneratedDesign
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -194,9 +195,10 @@ class DesignWorkbenchStorageTest {
 
     @Test
     fun `save image analysis persists detailed JSON`() {
-        storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+        val image = storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+            .imageInput!!
 
-        val updated = storage.saveImageAnalysis("p1", sampleImageAnalysis())
+        val updated = storage.saveImageAnalysis("p1", image, sampleImageAnalysis())
 
         assertEquals("Dense SaaS dashboard with a calm operational layout.", updated.imageAnalysis?.summary)
         assertEquals("#111827", updated.imageAnalysis?.palette?.first()?.hex)
@@ -206,10 +208,11 @@ class DesignWorkbenchStorageTest {
 
     @Test
     fun `save image analysis error stores retryable message`() {
-        storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
-        storage.saveImageAnalysis("p1", sampleImageAnalysis())
+        val image = storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+            .imageInput!!
+        storage.saveImageAnalysis("p1", image, sampleImageAnalysis())
 
-        val updated = storage.saveImageAnalysisError("p1", "Vision provider unavailable")
+        val updated = storage.saveImageAnalysisError("p1", image, "Vision provider unavailable")
 
         assertEquals("Vision provider unavailable", updated.imageAnalysisError)
         assertEquals("Dense SaaS dashboard with a calm operational layout.", updated.imageAnalysis?.summary)
@@ -217,8 +220,9 @@ class DesignWorkbenchStorageTest {
 
     @Test
     fun `new image upload clears image analysis`() {
-        storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
-        storage.saveImageAnalysis("p1", sampleImageAnalysis())
+        val image = storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+            .imageInput!!
+        storage.saveImageAnalysis("p1", image, sampleImageAnalysis())
 
         val updated = storage.saveImageInput("p1", "new.png", byteArrayOf(4, 5, 6), "image/png")
 
@@ -227,8 +231,9 @@ class DesignWorkbenchStorageTest {
 
     @Test
     fun `new image upload clears image analysis error`() {
-        storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
-        storage.saveImageAnalysisError("p1", "Old error")
+        val image = storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+            .imageInput!!
+        storage.saveImageAnalysisError("p1", image, "Old error")
 
         val updated = storage.saveImageInput("p1", "new.png", byteArrayOf(4, 5, 6), "image/png")
 
@@ -237,14 +242,43 @@ class DesignWorkbenchStorageTest {
 
     @Test
     fun `description update preserves existing image analysis`() {
-        storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
-        storage.saveImageAnalysis("p1", sampleImageAnalysis())
+        val image = storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+            .imageInput!!
+        storage.saveImageAnalysis("p1", image, sampleImageAnalysis())
 
         val updated = storage.saveInput("p1", "Use this dashboard style", null)
 
         assertEquals("Use this dashboard style", updated.description)
         assertEquals("dashboard.png", updated.imageInput?.originalName)
         assertEquals("Dense SaaS dashboard with a calm operational layout.", updated.imageAnalysis?.summary)
+    }
+
+    @Test
+    fun `stale image analysis does not overwrite newer image input`() {
+        val staleImage = storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+            .imageInput!!
+        storage.saveImageInput("p1", "new.png", byteArrayOf(4, 5, 6), "image/png")
+
+        assertFailsWith<StaleDesignImageAnalysisException> {
+            storage.saveImageAnalysis("p1", staleImage, sampleImageAnalysis())
+        }
+
+        assertEquals("new.png", storage.load("p1").imageInput?.originalName)
+        assertNull(storage.load("p1").imageAnalysis)
+    }
+
+    @Test
+    fun `stale image analysis error does not overwrite newer image input`() {
+        val staleImage = storage.saveImageInput("p1", "dashboard.png", byteArrayOf(1, 2, 3), "image/png")
+            .imageInput!!
+        storage.saveImageInput("p1", "new.png", byteArrayOf(4, 5, 6), "image/png")
+
+        assertFailsWith<StaleDesignImageAnalysisException> {
+            storage.saveImageAnalysisError("p1", staleImage, "Old error")
+        }
+
+        assertEquals("new.png", storage.load("p1").imageInput?.originalName)
+        assertNull(storage.load("p1").imageAnalysisError)
     }
 
     @Test

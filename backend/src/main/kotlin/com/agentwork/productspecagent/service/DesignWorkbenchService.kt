@@ -5,9 +5,11 @@ import com.agentwork.productspecagent.agent.DesignImageAnalysisInput
 import com.agentwork.productspecagent.agent.DesignGenerationInput
 import com.agentwork.productspecagent.agent.DesignVariantAgent
 import com.agentwork.productspecagent.agent.InvalidDesignImageAnalysisException
+import com.agentwork.productspecagent.domain.DesignImageInput
 import com.agentwork.productspecagent.domain.DesignWorkbench
 import com.agentwork.productspecagent.domain.GeneratedDesign
 import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
+import com.agentwork.productspecagent.storage.StaleDesignImageAnalysisException
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
@@ -71,7 +73,7 @@ class DesignWorkbenchService(
             storage.readImageInput(projectId)
         } catch (e: NoSuchElementException) {
             val message = e.message ?: "Design image input is missing."
-            storage.saveImageAnalysisError(projectId, message)
+            saveImageAnalysisErrorOrReturnCurrent(projectId, image, message)?.let { return it }
             throw InvalidDesignWorkbenchException(message)
         }
 
@@ -85,16 +87,32 @@ class DesignWorkbenchService(
             )
         } catch (e: InvalidDesignImageAnalysisException) {
             val message = e.message ?: "Image analysis failed."
-            storage.saveImageAnalysisError(projectId, message)
+            saveImageAnalysisErrorOrReturnCurrent(projectId, image, message)?.let { return it }
             throw InvalidDesignWorkbenchException(message)
         } catch (e: RuntimeException) {
             val message = e.message ?: "Image analysis failed."
-            storage.saveImageAnalysisError(projectId, message)
+            saveImageAnalysisErrorOrReturnCurrent(projectId, image, message)?.let { return it }
             throw InvalidDesignWorkbenchException(message)
         }
 
-        return storage.saveImageAnalysis(projectId, result.analysis)
+        return try {
+            storage.saveImageAnalysis(projectId, image, result.analysis)
+        } catch (e: StaleDesignImageAnalysisException) {
+            storage.load(projectId)
+        }
     }
+
+    private fun saveImageAnalysisErrorOrReturnCurrent(
+        projectId: String,
+        image: DesignImageInput,
+        message: String,
+    ): DesignWorkbench? =
+        try {
+            storage.saveImageAnalysisError(projectId, image, message)
+            null
+        } catch (e: StaleDesignImageAnalysisException) {
+            storage.load(projectId)
+        }
 
     fun generate(projectId: String): DesignWorkbench {
         val workbench = storage.load(projectId)

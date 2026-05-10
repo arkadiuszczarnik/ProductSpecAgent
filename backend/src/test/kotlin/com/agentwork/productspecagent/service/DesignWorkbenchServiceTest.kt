@@ -55,9 +55,11 @@ class DesignWorkbenchServiceTest {
 
     @Test
     fun `description only input preserves previous image and image analysis`() {
-        service.saveInput("p1", null, "dash.png", byteArrayOf(1, 2), "image/png")
+        val image = service.saveInput("p1", null, "dash.png", byteArrayOf(1, 2), "image/png")
+            .imageInput!!
         storage.saveImageAnalysis(
             "p1",
+            image,
             imageAnalysis(summary = "Dashboard reference", designBrief = "Use the uploaded dashboard reference."),
         )
 
@@ -90,6 +92,25 @@ class DesignWorkbenchServiceTest {
         val workbench = service.analyzeImage("p1")
 
         assertEquals("Dashboard image", workbench.imageAnalysis?.summary)
+        assertNull(workbench.imageAnalysisError)
+    }
+
+    @Test
+    fun `analyze image ignores stale result when image changes during analysis`() {
+        val service = service(
+            imageAnalysisAgent = object : DesignImageAnalysisAgent(null, null) {
+                override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult {
+                    storage.saveImageInput("p1", "new.png", byteArrayOf(9, 8, 7), "image/png")
+                    return DesignImageAnalysisResult(imageAnalysis(summary = "Old image analysis"))
+                }
+            },
+        )
+        service.saveInput("p1", null, "dash.png", byteArrayOf(1, 2, 3), "image/png")
+
+        val workbench = service.analyzeImage("p1")
+
+        assertEquals("new.png", workbench.imageInput?.originalName)
+        assertNull(workbench.imageAnalysis)
         assertNull(workbench.imageAnalysisError)
     }
 
