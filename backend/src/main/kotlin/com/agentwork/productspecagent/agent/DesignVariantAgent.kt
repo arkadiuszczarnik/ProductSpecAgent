@@ -24,14 +24,6 @@ data class DesignGenerationResult(
     val rationale: String,
 )
 
-@Deprecated("Temporary compatibility for legacy design workbench tests until Simple Design Generator V1 controller migration removes callers.")
-@Serializable
-data class GeneratedDesignVariant(
-    val title: String,
-    val html: String,
-    val rationale: String,
-)
-
 @Component
 open class DesignVariantAgent(
     private val koogRunner: KoogAgentRunner? = null,
@@ -134,22 +126,6 @@ open class DesignVariantAgent(
     private fun defaultSystemPrompt(): String =
         "You generate one secure standalone HTML layout preview from a product design description and optional image metadata. " +
             "Return only valid JSON with analysis, title, html, and rationale. Do not include external URLs."
-
-    @Deprecated("Temporary compatibility for legacy design workbench tests until Simple Design Generator V1 controller migration removes callers.")
-    open fun generate(projectId: String, screenId: String, prompt: String?): GeneratedDesignVariant {
-        val result = generate(
-            DesignGenerationInput(
-                projectId = projectId,
-                description = prompt ?: screenId,
-                image = null,
-            ),
-        )
-        return GeneratedDesignVariant(
-            title = result.title,
-            html = result.html,
-            rationale = result.rationale,
-        )
-    }
 
     private fun escapeHtml(value: String): String =
         value

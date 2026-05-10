@@ -28,6 +28,7 @@ class ExportControllerTest {
     @Autowired lateinit var projectService: com.agentwork.productspecagent.service.ProjectService
     @Autowired lateinit var projectStorage: com.agentwork.productspecagent.storage.ProjectStorage
     @Autowired lateinit var designWorkbenchStorage: com.agentwork.productspecagent.storage.DesignWorkbenchStorage
+    @Autowired lateinit var objectStore: com.agentwork.productspecagent.storage.ObjectStore
 
     private val createdProjectIds = mutableListOf<String>()
 
@@ -295,10 +296,10 @@ class ExportControllerTest {
         val pid = createProject()
         saveActiveDesignScreen(pid)
         designWorkbenchStorage.writeActiveScreen(pid, "<html><body>Landing design</body></html>".toByteArray())
-        designWorkbenchStorage.writeActiveScreen(
-            pid,
-            "stale",
+        objectStore.put(
+            designWorkbenchStorage.activeScreenKey(pid, "stale"),
             "<html><body>Stale design</body></html>".toByteArray(),
+            "text/html",
         )
 
         val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))

@@ -2,16 +2,12 @@ package com.agentwork.productspecagent.service
 
 import com.agentwork.productspecagent.agent.DesignGenerationInput
 import com.agentwork.productspecagent.agent.DesignVariantAgent
-import com.agentwork.productspecagent.domain.DesignInputCategory
 import com.agentwork.productspecagent.domain.DesignWorkbench
 import com.agentwork.productspecagent.domain.GeneratedDesign
 import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
-
-private const val LEGACY_DESIGN_COMPAT_MESSAGE =
-    "Temporary compatibility for legacy design workbench flow until Simple Design Generator V1 controller migration removes callers."
 
 class InvalidDesignWorkbenchException(message: String) : RuntimeException(message)
 
@@ -116,64 +112,4 @@ class DesignWorkbenchService(
         storage.writeActiveScreen(projectId, html)
         return workbench
     }
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun addTextInput(projectId: String, text: String): DesignWorkbench =
-        saveInput(projectId, text, null, null, null)
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun addImageInput(projectId: String, originalName: String?, bytes: ByteArray, contentType: String?): DesignWorkbench =
-        saveInput(projectId, null, originalName, bytes, contentType)
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun addSnippetInput(projectId: String, snippet: String, name: String?): DesignWorkbench =
-        throw InvalidDesignWorkbenchException("Legacy design snippet inputs are not supported by the V1 generator.")
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun updateInput(
-        projectId: String,
-        inputId: String,
-        userLabel: String?,
-        category: DesignInputCategory?,
-        summary: String?,
-        suggestedUse: String?,
-        confidence: Double?,
-    ): DesignWorkbench =
-        throw InvalidDesignWorkbenchException("Legacy design input updates are not supported by the V1 generator.")
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun analyzeInputs(projectId: String): DesignWorkbench =
-        throw InvalidDesignWorkbenchException("Legacy design analysis is not supported by the V1 generator.")
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun proposeScreens(projectId: String): DesignWorkbench =
-        throw InvalidDesignWorkbenchException("Legacy design screen proposals are not supported by the V1 generator.")
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun addScreen(projectId: String, name: String, purpose: String?): DesignWorkbench =
-        throw InvalidDesignWorkbenchException("Legacy design screens are not supported by the V1 generator.")
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun updateScreen(projectId: String, screenId: String, name: String?, purpose: String?): DesignWorkbench =
-        throw InvalidDesignWorkbenchException("Legacy design screens are not supported by the V1 generator.")
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun removeScreen(projectId: String, screenId: String): DesignWorkbench =
-        throw InvalidDesignWorkbenchException("Legacy design screens are not supported by the V1 generator.")
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun generateVariant(projectId: String, screenId: String, prompt: String?): DesignWorkbench =
-        throw InvalidDesignWorkbenchException("Legacy design variants are not supported by the V1 generator.")
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun applySuggestion(projectId: String, screenId: String, suggestionId: String): DesignWorkbench =
-        throw InvalidDesignWorkbenchException("Legacy design suggestions are not supported by the V1 generator.")
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun setActiveVariant(projectId: String, screenId: String, variantId: String): DesignWorkbench =
-        throw InvalidDesignWorkbenchException("Legacy design variants are not supported by the V1 generator.")
-
-    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
-    fun readVariant(projectId: String, htmlPath: String): ByteArray =
-        throw InvalidDesignWorkbenchException("Legacy design variant previews are not supported by the V1 generator.")
 }
