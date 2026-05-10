@@ -3,6 +3,9 @@ package com.agentwork.productspecagent.domain
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
+private const val LEGACY_DESIGN_COMPAT_MESSAGE =
+    "Temporary compatibility for legacy design workbench flow until Simple Design Generator V1 service/controller migration removes callers."
+
 @Serializable
 data class DesignWorkbench(
     val projectId: String,
@@ -11,8 +14,12 @@ data class DesignWorkbench(
     val analysis: DesignAnalysis? = null,
     val currentDesign: GeneratedDesign? = null,
     val updatedAt: String,
+    // Transitional compile compatibility for the legacy screen/input flow. Do not persist or extend.
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     @Transient val inputs: List<DesignInput> = emptyList(),
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     @Transient val screens: List<DesignScreen> = emptyList(),
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     @Transient val suggestions: List<DesignSuggestion> = emptyList(),
 )
 

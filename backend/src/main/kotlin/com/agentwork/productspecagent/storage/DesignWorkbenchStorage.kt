@@ -15,6 +15,9 @@ import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
 
+private const val LEGACY_DESIGN_COMPAT_MESSAGE =
+    "Temporary compatibility for legacy design workbench flow until Simple Design Generator V1 service/controller migration removes callers."
+
 @Service
 class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
@@ -85,6 +88,8 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         objectStore.put(activeScreenKey(projectId, "design"), html, "text/html")
     }
 
+    // Transitional compile compatibility for the legacy screen/input flow. Task 2/3 remove these callers.
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     fun addTextInput(projectId: String, text: String): DesignInput {
         val id = UUID.randomUUID().toString()
         val key = inputKey(projectId, id)
@@ -100,6 +105,7 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         return input
     }
 
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     fun addBinaryInput(
         projectId: String,
         kind: DesignInputKind,
@@ -122,6 +128,7 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         return input
     }
 
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     fun updateInputClassification(
         projectId: String,
         inputId: String,
@@ -142,9 +149,11 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         )
     }
 
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     fun saveScreens(projectId: String, screens: List<DesignScreen>): DesignWorkbench =
         save(load(projectId).copy(screens = screens))
 
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     fun saveVariant(projectId: String, screenId: String, variant: DesignVariant, html: ByteArray): DesignWorkbench {
         val workbench = load(projectId)
         if (workbench.screens.none { it.id == screenId }) {
@@ -168,6 +177,7 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         )
     }
 
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     fun setActiveVariant(projectId: String, screenId: String, variantId: String): DesignWorkbench {
         val workbench = load(projectId)
         val screen = workbench.screens.firstOrNull { it.id == screenId }
@@ -184,9 +194,11 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
         )
     }
 
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     fun readByKey(key: String): ByteArray =
         objectStore.get(key) ?: throw NoSuchElementException("design object not found: $key")
 
+    @Deprecated(LEGACY_DESIGN_COMPAT_MESSAGE)
     fun writeActiveScreen(projectId: String, screenSlug: String, html: ByteArray) {
         objectStore.put(activeScreenKey(projectId, screenSlug), html, "text/html")
     }
