@@ -110,6 +110,31 @@ class DesignWorkbenchServiceTest {
     }
 
     @Test
+    fun `analyze image failure preserves existing image analysis`() {
+        val successfulService = service(
+            imageAnalysisAgent = object : DesignImageAnalysisAgent(null, null) {
+                override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult =
+                    DesignImageAnalysisResult(imageAnalysis(summary = "Stored dashboard analysis"))
+            },
+        )
+        successfulService.saveInput("p1", null, "dash.png", byteArrayOf(1, 2, 3), "image/png")
+        successfulService.analyzeImage("p1")
+        val failingService = service(
+            imageAnalysisAgent = object : DesignImageAnalysisAgent(null, null) {
+                override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult =
+                    throw InvalidDesignImageAnalysisException("Image analysis returned invalid JSON.")
+            },
+        )
+
+        assertFailsWith<InvalidDesignWorkbenchException> {
+            failingService.analyzeImage("p1")
+        }
+
+        assertEquals("Stored dashboard analysis", failingService.get("p1").imageAnalysis?.summary)
+        assertEquals("Image analysis returned invalid JSON.", failingService.get("p1").imageAnalysisError)
+    }
+
+    @Test
     fun `generate analyzes image when analysis is missing`() {
         var analyzeCalled = false
         val service = service(
