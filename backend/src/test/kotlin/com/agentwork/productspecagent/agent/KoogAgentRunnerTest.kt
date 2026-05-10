@@ -34,6 +34,7 @@ class KoogAgentRunnerTest {
             "plan-generator" to AgentModelTier.LARGE,
             "design-summary" to AgentModelTier.MEDIUM,
             "design-variant" to AgentModelTier.MEDIUM,
+            "design-image-analysis" to AgentModelTier.MEDIUM,
         ),
     )
 

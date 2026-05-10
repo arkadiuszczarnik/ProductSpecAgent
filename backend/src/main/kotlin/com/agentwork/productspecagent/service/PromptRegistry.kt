@@ -94,6 +94,14 @@ class PromptRegistry {
             resourcePath = "/prompts/design-variant-system.md",
             validators = listOf(PromptValidator.NotBlank, PromptValidator.MaxLength(50_000)),
         ),
+        PromptDefinition(
+            id = "design-image-analysis-system",
+            title = "Design-Image-Analysis — System-Prompt",
+            description = "Rolle des Vision-Agents (strukturierte Designsignale aus einem Referenzbild als JSON).",
+            agent = "DesignImageAnalysis",
+            resourcePath = "/prompts/design-image-analysis-system.md",
+            validators = listOf(PromptValidator.NotBlank, PromptValidator.MaxLength(50_000)),
+        ),
     )
 
     fun byId(id: String): PromptDefinition =

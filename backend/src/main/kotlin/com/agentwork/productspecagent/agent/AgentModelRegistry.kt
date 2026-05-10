@@ -14,6 +14,7 @@ class AgentModelRegistry(private val properties: AgentModelsProperties) {
             "plan-generator",
             "design-summary",
             "design-variant",
+            "design-image-analysis",
         )
     }
 

@@ -20,6 +20,7 @@ class AgentModelRegistryTest {
             "plan-generator" to AgentModelTier.LARGE,
             "design-summary" to AgentModelTier.MEDIUM,
             "design-variant" to AgentModelTier.MEDIUM,
+            "design-image-analysis" to AgentModelTier.MEDIUM,
         ),
     )
 
@@ -33,6 +34,7 @@ class AgentModelRegistryTest {
             "plan-generator",
             "design-summary",
             "design-variant",
+            "design-image-analysis",
         )
         assertThat(reg.defaultTier("idea-to-spec")).isEqualTo(AgentModelTier.LARGE)
         assertThat(reg.modelFor(AgentModelTier.SMALL)).isEqualTo(OpenAIModels.Chat.GPT5Nano)

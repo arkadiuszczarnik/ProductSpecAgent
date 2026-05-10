@@ -12,7 +12,8 @@ class PromptRegistryTest {
         assertEquals(
             setOf("idea-base", "idea-marker-reminder", "idea-step-IDEA",
                   "decision-system", "plan-system", "feature-proposal-system",
-                  "acceptance-criteria-proposal-system", "design-variant-system"),
+                  "acceptance-criteria-proposal-system", "design-variant-system",
+                  "design-image-analysis-system"),
             ids,
         )
     }

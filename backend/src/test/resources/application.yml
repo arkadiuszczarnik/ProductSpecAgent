@@ -32,6 +32,7 @@ agent:
       plan-generator: LARGE
       design-summary: MEDIUM
       design-variant: MEDIUM
+      design-image-analysis: MEDIUM
 
 app:
   storage:
