@@ -32,3 +32,12 @@
 
 - Alte `DesignBundle*`-Klassen koennen in einem Folge-Refactor entfernt werden, sobald keine Migration mehr benoetigt wird.
 - Produktive Agent-Prompts, strukturierte LLM-Antwortparser und bessere Nutzung von Wizard-/Referenzkontext sollten in einer Folgeiteration ausgebaut werden.
+
+## 2026-05-10 Simplified V1 Pivot
+
+The DESIGN step was reduced to the Simple Design Generator V1:
+
+- Description, image, or both as the only visible inputs.
+- One active generated HTML canvas design.
+- Regenerate replaces the active design.
+- Screens, variants, snippets, classifications, and suggestions are no longer visible in the V1 UI.

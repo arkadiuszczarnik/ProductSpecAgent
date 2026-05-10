@@ -176,24 +176,14 @@ export const useWizardStore = create<WizardState>((set, get) => ({
       const { useDesignWorkbenchStore } = await import("@/lib/stores/design-workbench-store");
       const { completeDesignWorkbench } = await import("@/lib/api");
       const workbench = useDesignWorkbenchStore.getState().workbench;
-      const activeScreens = workbench?.screens
-        .flatMap((screen) => {
-          const variant = screen.variants.find((item) => item.id === screen.activeVariantId);
-          return variant ? [{ screen, variant }] : [];
-        }) ?? [];
-      const variantCount = workbench?.screens.reduce((sum, screen) => sum + screen.variants.length, 0) ?? 0;
-      const activeSummary = activeScreens.length
-        ? activeScreens.map(({ screen, variant }) => `- ${screen.name}: ${variant.title}`).join("\n")
-        : "- Keine aktive Variante";
       const chatMessage = [
         "**Design**",
         "",
-        `Inputs: ${workbench?.inputs.length ?? 0}`,
-        `Screens: ${workbench?.screens.length ?? 0}`,
-        `Varianten: ${variantCount}`,
+        `Beschreibung: ${workbench?.description ? "vorhanden" : "nicht vorhanden"}`,
+        `Bild: ${workbench?.imageInput?.originalName ?? "nicht vorhanden"}`,
+        `Aktives Design: ${workbench?.currentDesign?.title ?? "nicht vorhanden"}`,
         "",
-        "Aktive Varianten:",
-        activeSummary,
+        workbench?.analysis?.summary ? `Analyse: ${workbench.analysis.summary}` : "Analyse: nicht vorhanden",
       ].join("\n");
 
       const userMsg = {

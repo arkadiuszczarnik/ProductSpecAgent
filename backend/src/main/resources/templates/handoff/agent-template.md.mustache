@@ -1,34 +1,34 @@
 # AGENTS.md
 
-Anweisungen fuer Agenten, die an diesem exportierten Projekt arbeiten.
+Anweisungen für Agenten, die an diesem exportierten Projekt arbeiten.
 
 ## Zweck
 
-Nutze die vorhandenen Spezifikationen, Plaene, Tasks und Asset-Bundles als Arbeitsgrundlage. Arbeite nicht aus Vermutungen heraus, sondern suche zuerst die relevante Projektinformation im Repository.
-Wenn eine Anforderung unklar ist, formuliere die offene Frage konkret. Wenn mehrere Interpretationen moeglich sind, nenne die Optionen und waehle nur dann selbst, wenn die Entscheidung risikoarm und reversibel ist.
+Nutze die vorhandenen Spezifikationen, Pläne, Tasks und Asset-Bundles als Arbeitsgrundlage. Arbeite nicht aus Vermutungen heraus, sondern suche zuerst die relevante Projektinformation im Repository.
+Wenn eine Anforderung unklar ist, formuliere die offene Frage konkret. Wenn mehrere Interpretationen möglich sind, nenne die Optionen und wähle nur dann selbst, wenn die Entscheidung risikoarm und reversibel ist.
 
 ## Kontextquellen
 
 Priorisiere diese Dateien und Ordner:
 
 - `docs/spec.md`: fachliche Zielbeschreibung.
-- `docs/features/`: Feature-Dokumente, Done-Dateien und Feature-Uebersicht.
+- `docs/features/`: Feature-Dokumente, Done-Dateien und Feature-Übersicht.
 - `docs/plan.md`: Umsetzungsplan, falls vorhanden.
 - `tasks/` oder Task-Dateien im Export: konkrete Arbeitspakete.
-- `.asset-bundles/`: Skills, Commands und Agenten fuer dieses Projekt.
+- `.asset-bundles/`: Skills, Commands und Agenten für dieses Projekt.
 
-Lies nur so viel Kontext wie noetig.
+Lies nur so viel Kontext wie nötig.
 Wenn ein spezialisiertes Dokument vorhanden ist, nutze es vor allgemeinen Annahmen.
 
 ## Arbeitsweise
 
-- Verstehe den bestehenden Code vor Aenderungen.
-- Halte Aenderungen klein, nachvollziehbar und direkt auf die Aufgabe bezogen.
-- Refaktoriere keinen fremden Code, wenn es fuer die Aufgabe nicht notwendig ist.
-- Loesche keine bestehenden Dateien oder Inhalte, nur weil sie ungenutzt wirken.
+- Verstehe den bestehenden Code vor Änderungen.
+- Halte Änderungen klein, nachvollziehbar und direkt auf die Aufgabe bezogen.
+- Refaktoriere keinen fremden Code, wenn es für die Aufgabe nicht notwendig ist.
+- Lösche keine bestehenden Dateien oder Inhalte, nur weil sie ungenutzt wirken.
 - Bewahre vorhandenen Stil, Projektstruktur und Namenskonventionen.
-- Schreibe Tests fuer neues oder geaendertes Verhalten, wenn das Risiko nicht trivial ist.
-- Committe keine Secrets, keine lokalen Runtime-Daten und keine unrelated Aenderungen.
+- Schreibe Tests für neues oder geändertes Verhalten, wenn das Risiko nicht trivial ist.
+- Committe keine Secrets, keine lokalen Runtime-Daten und keine unrelated Änderungen.
 
 ## Asset Bundles
 
@@ -39,11 +39,11 @@ Verwende diese globalen Bundles, wenn sie vorhanden sind:
 
 - `feature-implementieren`
   Pfad: `.asset-bundles/skills/feature-implementieren/SKILL.md`
-  Verwenden fuer Anfragen wie `$feature-implementieren` oder fuer die Implementierung eines Features aus `docs/features/00-feature-set-overview.md`.
+  Verwenden für Anfragen wie `$feature-implementieren` oder für die Implementierung eines Features aus `docs/features/00-feature-set-overview.md`.
 
 - `global.living-sync-reporter`
   Pfad: `.asset-bundles/skills/global.living-sync-reporter/living-sync-reporter/SKILL.md`
-  Verwenden fuer Living-Sync-Berichte zu Fortschritt, Tests, Code-Aenderungen, Blockern, Notizen und Abschluss. Nutze bevorzugt das gebundelte Reporter-Binary statt handgeschriebener `curl`-Aufrufe.
+  Verwenden für Living-Sync-Berichte zu Fortschritt, Tests, Code-Änderungen, Blockern, Notizen und Abschluss. Nutze bevorzugt das gebundelte Reporter-Binary statt handgeschriebener `curl`-Aufrufe.
 
 Wenn ein Bundle fehlt, arbeite mit dem besten lokalen Ersatz und benenne den fehlenden Pfad in der Antwort.
 
@@ -53,28 +53,28 @@ Vor dem Coden:
 
 1. Ziel und Akzeptanzkriterien aus Spec, Plan oder Task ableiten.
 2. Betroffene Dateien suchen.
-3. Bestehende Muster pruefen.
+3. Bestehende Muster prüfen.
 4. Einen kurzen Umsetzungs- und Verifikationsplan bilden.
 
 Beim Coden:
 
 - Nutze strukturierte APIs oder vorhandene Helper statt ad-hoc String-Manipulation.
-- Fuege Abstraktionen nur hinzu, wenn sie reale Duplikation oder Komplexitaet reduzieren.
+- Füge Abstraktionen nur hinzu, wenn sie reale Duplikation oder Komplexität reduzieren.
 - Halte Fehlerbehandlung proportional zum Risiko.
-- Passe Dokumentation nur an, wenn sich Verhalten oder Bedienung aendert.
+- Passe Dokumentation nur an, wenn sich Verhalten oder Bedienung ändert.
 
 ## Verifikation
 
-Fuehre zuerst den kleinsten relevanten Check aus. Erweitere die Verifikation, wenn gemeinsames Verhalten, Exportlogik, Build-Konfiguration oder zentrale APIs betroffen sind.
+Führe zuerst den kleinsten relevanten Check aus. Erweitere die Verifikation, wenn gemeinsames Verhalten, Exportlogik, Build-Konfiguration oder zentrale APIs betroffen sind.
 
 Typische Checks:
 
 - Backend: `cd backend && ./gradlew test`
 - Frontend: `cd frontend && npx tsc --noEmit`
-- Frontend Lint fuer geaenderte Dateien: `cd frontend && npx eslint <dateien>`
+- Frontend Lint für geänderte Dateien: `cd frontend && npx eslint <dateien>`
 - Frontend Build: `cd frontend && npm run build`
 
-Wenn ein voller Check wegen unrelated bestehenden Fehlern scheitert, nenne die betroffenen Dateien und verifiziere trotzdem alle geaenderten Dateien.
+Wenn ein voller Check wegen unrelated bestehenden Fehlern scheitert, nenne die betroffenen Dateien und verifiziere trotzdem alle geänderten Dateien.
 
 ## Living Sync
 
@@ -82,11 +82,11 @@ Wenn Living Sync eingerichtet ist, melde relevante Ereignisse:
 
 - Start oder Fortschritt eines Features.
 - Test- oder Build-Ergebnisse.
-- Code-Aenderungen mit kurzer Zusammenfassung.
+- Code-Änderungen mit kurzer Zusammenfassung.
 - Blocker oder offene Risiken.
 - Abschluss der Arbeit.
 
-Nutze dafuer den `global.living-sync-reporter`, falls vorhanden.
+Nutze dafür den `global.living-sync-reporter`, falls vorhanden.
 
 ## Fertig bedeutet
 
@@ -95,15 +95,15 @@ Eine Aufgabe gilt erst als fertig, wenn:
 - die angeforderte Funktion oder Korrektur umgesetzt ist,
 - relevante Tests oder Checks gelaufen sind,
 - keine bekannten Blocker verschwiegen werden,
-- unrelated Worktree-Aenderungen nicht mitvermischt wurden,
-- die Abschlussantwort kurz zusammenfasst, was geaendert wurde und welche Verifikation gelaufen ist.
+- unrelated Worktree-Änderungen nicht mitvermischt wurden,
+- die Abschlussantwort kurz zusammenfasst, was geändert wurde und welche Verifikation gelaufen ist.
 
 ## Antwortformat
 
 Antworte knapp und konkret:
 
-- Was wurde geaendert?
-- Welche Checks wurden ausgefuehrt?
-- Gibt es offene Risiken, Blocker oder unrelated lokale Aenderungen?
+- Was wurde geändert?
+- Welche Checks wurden ausgeführt?
+- Gibt es offene Risiken, Blocker oder unrelated lokale Änderungen?
 
 Bei Reviews: zuerst Befunde mit Datei- und Zeilenreferenz nennen, danach erst eine kurze Zusammenfassung.

@@ -262,11 +262,7 @@ class ExportControllerTest {
     fun `POST export includes active design screens and docs spec`() {
         val pid = createProject()
         saveActiveDesignScreen(pid)
-        designWorkbenchStorage.writeActiveScreen(
-            pid,
-            "landing",
-            "<html><body>Landing design</body></html>".toByteArray(),
-        )
+        designWorkbenchStorage.writeActiveScreen(pid, "<html><body>Landing design</body></html>".toByteArray())
 
         val result = mockMvc.perform(post("/api/v1/projects/$pid/export"))
             .andExpect(status().isOk())
@@ -274,7 +270,7 @@ class ExportControllerTest {
 
         val zipBytes = result.response.contentAsByteArray
 
-        val designScreen = assertNotNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/landing/index.html") })
+        val designScreen = assertNotNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/design/index.html") })
         assertTrue(designScreen.contains("Landing design"))
         assertNotNull(readZipEntry(zipBytes) { it.endsWith("/docs/spec.md") })
     }
@@ -290,7 +286,7 @@ class ExportControllerTest {
 
         val zipBytes = result.response.contentAsByteArray
 
-        kotlin.test.assertNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/landing/index.html") })
+        kotlin.test.assertNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/design/index.html") })
         assertNotNull(readZipEntry(zipBytes) { it.endsWith("/docs/spec.md") })
     }
 
@@ -298,11 +294,7 @@ class ExportControllerTest {
     fun `POST export excludes stale design screens`() {
         val pid = createProject()
         saveActiveDesignScreen(pid)
-        designWorkbenchStorage.writeActiveScreen(
-            pid,
-            "landing",
-            "<html><body>Landing design</body></html>".toByteArray(),
-        )
+        designWorkbenchStorage.writeActiveScreen(pid, "<html><body>Landing design</body></html>".toByteArray())
         designWorkbenchStorage.writeActiveScreen(
             pid,
             "stale",
@@ -315,7 +307,7 @@ class ExportControllerTest {
 
         val zipBytes = result.response.contentAsByteArray
 
-        assertNotNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/landing/index.html") })
+        assertNotNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/design/index.html") })
         kotlin.test.assertNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/stale/index.html") })
     }
 
@@ -445,32 +437,22 @@ class ExportControllerTest {
     }
 
     private fun saveActiveDesignScreen(projectId: String) {
-        designWorkbenchStorage.saveScreens(
-            projectId,
-            listOf(
-                com.agentwork.productspecagent.domain.DesignScreen(
-                    id = "landing",
-                    name = "Landing",
-                    purpose = "Explain value",
-                )
+        designWorkbenchStorage.saveGeneratedDesign(
+            projectId = projectId,
+            analysis = com.agentwork.productspecagent.domain.DesignAnalysis(
+                summary = "Landing design",
+                visualDirection = "Focused",
+                rationale = "Ready",
             ),
-        )
-        designWorkbenchStorage.saveVariant(
-            projectId,
-            "landing",
-            com.agentwork.productspecagent.domain.DesignVariant(
-                id = "variant-1",
-                screenId = "landing",
-                version = 1,
+            generated = com.agentwork.productspecagent.domain.GeneratedDesign(
+                id = "design-1",
                 title = "Landing",
-                htmlPath = designWorkbenchStorage.variantKey(projectId, "landing", "variant-1"),
-                status = com.agentwork.productspecagent.domain.DesignVariantStatus.VALID,
+                htmlPath = designWorkbenchStorage.currentDesignKey(projectId),
                 rationale = "Ready",
                 createdAt = "2026-05-10T00:00:00Z",
             ),
-            "<html><body>Variant design</body></html>".toByteArray(),
+            html = "<html><body>Variant design</body></html>".toByteArray(),
         )
-        designWorkbenchStorage.setActiveVariant(projectId, "landing", "variant-1")
     }
 
 }
