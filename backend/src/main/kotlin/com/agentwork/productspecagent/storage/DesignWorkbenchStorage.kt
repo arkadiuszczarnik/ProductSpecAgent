@@ -59,6 +59,7 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
     }
 
     fun saveImageInput(projectId: String, originalName: String, bytes: ByteArray, contentType: String): DesignWorkbench {
+        val existing = load(projectId)
         val key = imageInputKey(projectId)
         objectStore.put(key, bytes, contentType)
         val image = DesignImageInput(
@@ -68,7 +69,14 @@ class DesignWorkbenchStorage(private val objectStore: ObjectStore) {
             sizeBytes = bytes.size.toLong(),
             uploadedAt = Instant.now().toString(),
         )
-        return saveInput(projectId = projectId, description = load(projectId).description, imageInput = image)
+        objectStore.delete(activeScreenKey(projectId, "design"))
+        return save(
+            existing.copy(
+                imageInput = image,
+                analysis = null,
+                currentDesign = null,
+            ),
+        )
     }
 
     fun saveGeneratedDesign(

@@ -37,6 +37,27 @@ class DesignWorkbenchStorageTest {
     }
 
     @Test
+    fun `save input trims blank descriptions to null`() {
+        val updated = storage.saveInput("p1", "   ", null)
+
+        assertNull(updated.description)
+    }
+
+    @Test
+    fun `save input preserves existing image when no replacement image is supplied`() {
+        val withImage = storage.saveImageInput(
+            projectId = "p1",
+            originalName = "reference.png",
+            bytes = byteArrayOf(1, 2, 3),
+            contentType = "image/png",
+        )
+
+        val updated = storage.saveInput("p1", "Use the same reference", null)
+
+        assertEquals(withImage.imageInput, updated.imageInput)
+    }
+
+    @Test
     fun `save image input records metadata`() {
         val image = storage.saveImageInput(
             projectId = "p1",
@@ -48,6 +69,20 @@ class DesignWorkbenchStorageTest {
         assertEquals("reference.png", image.imageInput?.originalName)
         assertEquals("image/png", image.imageInput?.contentType)
         assertEquals(3, image.imageInput?.sizeBytes)
+    }
+
+    @Test
+    fun `save image input preserves existing description`() {
+        storage.saveInput("p1", "Keep this direction", null)
+
+        val image = storage.saveImageInput(
+            projectId = "p1",
+            originalName = "reference.png",
+            bytes = byteArrayOf(1, 2, 3),
+            contentType = "image/png",
+        )
+
+        assertEquals("Keep this direction", image.description)
     }
 
     @Test
@@ -72,6 +107,29 @@ class DesignWorkbenchStorageTest {
             "<!doctype html><html><body>Pricing</body></html>".toByteArray(),
             storage.readCurrentDesign("p1"),
         )
+    }
+
+    @Test
+    fun `list active output files returns design screen after active output is written`() {
+        val activeHtml = "<!doctype html><html><body>Completed</body></html>".toByteArray()
+        storage.saveGeneratedDesign(
+            projectId = "p1",
+            analysis = DesignAnalysis("Completed", "Focused", "Ready"),
+            generated = GeneratedDesign(
+                id = "design-1",
+                title = "Completed",
+                htmlPath = storage.currentDesignKey("p1"),
+                rationale = "Ready",
+                createdAt = "now",
+            ),
+            html = "<!doctype html><html><body>Current</body></html>".toByteArray(),
+        )
+        storage.writeActiveScreen("p1", activeHtml)
+
+        val files = storage.listActiveOutputFiles("p1")
+
+        assertEquals("design/screens/design/index.html", files.single().first)
+        assertContentEquals(activeHtml, files.single().second)
     }
 
     @Test
