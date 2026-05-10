@@ -19,6 +19,18 @@ export class ApiError extends Error {
   }
 }
 
+function apiErrorMessage(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const fields = ["message", "detail", "error"] as const;
+  for (const field of fields) {
+    const value = (body as Record<string, unknown>)[field];
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+  }
+  return null;
+}
+
 export async function apiFetch<T>(
   path: string,
   options?: RequestInit
@@ -38,10 +50,7 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    const bodyMessage =
-      body && typeof body === "object" && "message" in body && typeof (body as { message?: unknown }).message === "string"
-        ? (body as { message: string }).message
-        : null;
+    const bodyMessage = apiErrorMessage(body);
     throw new ApiError(res.status, body, bodyMessage || `API error: ${res.status}`);
   }
 
@@ -1021,14 +1030,6 @@ export async function deleteDesignBundle(projectId: string): Promise<void> {
   }
 }
 
-export async function completeDesignStep(projectId: string, locale: string): Promise<DesignCompleteResponse> {
-  const res = await apiFetch<DesignCompleteResponse>(
-    `/api/v1/projects/${encodeURIComponent(projectId)}/design/complete`,
-    { method: "POST", body: JSON.stringify({ locale }) },
-  );
-  return res;
-}
-
 // ─── Design Workbench API ────────────────────────────────────────────────────
 
 export async function getDesignWorkbench(projectId: string): Promise<DesignWorkbench> {
@@ -1057,10 +1058,7 @@ export async function saveDesignInput(
   if (res.status === 401) onUnauthorized?.();
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    const bodyMessage =
-      body && typeof body === "object" && "message" in body && typeof (body as { message?: unknown }).message === "string"
-        ? (body as { message: string }).message
-        : null;
+    const bodyMessage = apiErrorMessage(body);
     throw new ApiError(res.status, body, bodyMessage || `API error: ${res.status}`);
   }
   return (await res.json()) as DesignWorkbench;
