@@ -5,6 +5,7 @@
 **Aufwand:** M
 **Status:** Umgesetzt als Simple Design Generator V1
 **Aktuelle Spec:** [`docs/superpowers/specs/2026-05-10-simple-design-generator-v1-design.md`](../superpowers/specs/2026-05-10-simple-design-generator-v1-design.md)
+**Naechste Spec:** [`docs/superpowers/specs/2026-05-10-design-image-analysis-agent-design.md`](../superpowers/specs/2026-05-10-design-image-analysis-agent-design.md)
 **Umsetzungsplan:** [`docs/superpowers/plans/2026-05-10-simple-design-generator-v1.md`](../superpowers/plans/2026-05-10-simple-design-generator-v1.md)
 
 ## Kurzfassung
@@ -245,8 +246,19 @@ Die Suche darf keine produktiven Legacy-Treffer liefern.
 
 ## Bekannte Folgearbeit
 
-- Bessere Auswertung echter Bildinhalte statt nur Bild-Metadaten.
+- Bessere Auswertung echter Bildinhalte statt nur Bild-Metadaten: geplant als `DesignImageAnalysisAgent`.
 - Stabilerer strukturierter Parser fuer Agentenantworten mit klarer Fehlerdiagnose.
 - Preview-UX fuer verschiedene Viewport-Groessen.
 - Optional spaeter: Variantenhistorie als bewusst neues Feature, nicht als Legacy-Kompatibilitaet.
 - Optional spaeter: Design-System-Ableitung aus dem generierten HTML.
+
+## Naechste Iteration: Bildanalyse-Agent
+
+Die naechste Iteration erweitert V1 um einen dedizierten `DesignImageAnalysisAgent`.
+
+- Ein gespeichertes Bild wird ueber `POST /design/image/analyze` analysiert.
+- Die Analyse erzeugt ein detailliertes JSON-Modell: Palette, Typografie, Layout-Hierarchie, Komponenten, Mood-Tags, Brand-Signale und `designBrief`.
+- Die UI zeigt nur eine kompakte Zusammenfassung, kein rohes Debug-JSON in V1.
+- Bei Fehlern erscheint ein Retry-Button.
+- `POST /design/generate` holt eine fehlende Bildanalyse automatisch nach.
+- `DesignVariantAgent` nutzt die gespeicherte Bildanalyse als strukturierten Kontext fuer das HTML.
