@@ -1,10 +1,18 @@
 package com.agentwork.productspecagent.service
 
+import com.agentwork.productspecagent.agent.DesignImageAnalysisAgent
+import com.agentwork.productspecagent.agent.DesignImageAnalysisInput
+import com.agentwork.productspecagent.agent.DesignImageAnalysisResult
 import com.agentwork.productspecagent.agent.DesignGenerationInput
 import com.agentwork.productspecagent.agent.DesignGenerationResult
 import com.agentwork.productspecagent.agent.DesignVariantAgent
+import com.agentwork.productspecagent.agent.InvalidDesignImageAnalysisException
 import com.agentwork.productspecagent.domain.DesignAnalysis
+import com.agentwork.productspecagent.domain.DesignColor
+import com.agentwork.productspecagent.domain.DesignComponentSignal
 import com.agentwork.productspecagent.domain.DesignImageAnalysis
+import com.agentwork.productspecagent.domain.DesignLayoutRegion
+import com.agentwork.productspecagent.domain.DesignTypographySignal
 import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
 import com.agentwork.productspecagent.storage.InMemoryObjectStore
 import kotlin.test.Test
@@ -49,16 +57,7 @@ class DesignWorkbenchServiceTest {
         service.saveInput("p1", null, "dash.png", byteArrayOf(1, 2), "image/png")
         storage.saveImageAnalysis(
             "p1",
-            DesignImageAnalysis(
-                summary = "Dashboard reference",
-                palette = emptyList(),
-                typography = emptyList(),
-                layoutHierarchy = emptyList(),
-                components = emptyList(),
-                moodTags = emptyList(),
-                brandSignals = emptyList(),
-                designBrief = "Use the uploaded dashboard reference.",
-            ),
+            imageAnalysis(summary = "Dashboard reference", designBrief = "Use the uploaded dashboard reference."),
         )
 
         val workbench = service.saveInput("p1", "Use text only", null, null, null)
@@ -66,6 +65,101 @@ class DesignWorkbenchServiceTest {
         assertEquals("Use text only", workbench.description)
         assertEquals("dash.png", workbench.imageInput?.originalName)
         assertEquals("Dashboard reference", workbench.imageAnalysis?.summary)
+    }
+
+    @Test
+    fun `analyze image rejects missing image`() {
+        service.saveInput("p1", "Text only", null, null, null)
+
+        assertFailsWith<InvalidDesignWorkbenchException> {
+            service.analyzeImage("p1")
+        }
+    }
+
+    @Test
+    fun `analyze image stores analysis`() {
+        val service = service(
+            imageAnalysisAgent = object : DesignImageAnalysisAgent(null, null) {
+                override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult =
+                    DesignImageAnalysisResult(imageAnalysis())
+            },
+        )
+        service.saveInput("p1", null, "dash.png", byteArrayOf(1, 2, 3), "image/png")
+
+        val workbench = service.analyzeImage("p1")
+
+        assertEquals("Dashboard image", workbench.imageAnalysis?.summary)
+        assertNull(workbench.imageAnalysisError)
+    }
+
+    @Test
+    fun `analyze image stores error on failure`() {
+        val service = service(
+            imageAnalysisAgent = object : DesignImageAnalysisAgent(null, null) {
+                override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult =
+                    throw InvalidDesignImageAnalysisException("Image analysis returned invalid JSON.")
+            },
+        )
+        service.saveInput("p1", null, "dash.png", byteArrayOf(1, 2, 3), "image/png")
+
+        assertFailsWith<InvalidDesignWorkbenchException> {
+            service.analyzeImage("p1")
+        }
+
+        assertEquals("Image analysis returned invalid JSON.", service.get("p1").imageAnalysisError)
+    }
+
+    @Test
+    fun `generate analyzes image when analysis is missing`() {
+        var analyzeCalled = false
+        val service = service(
+            imageAnalysisAgent = object : DesignImageAnalysisAgent(null, null) {
+                override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult {
+                    analyzeCalled = true
+                    return DesignImageAnalysisResult(imageAnalysis())
+                }
+            },
+            designVariantAgent = object : DesignVariantAgent(null) {
+                override fun generate(input: DesignGenerationInput): DesignGenerationResult =
+                    DesignGenerationResult(
+                        analysis = DesignAnalysis("Generated", "Direction", "Because"),
+                        title = "Generated",
+                        html = validHtml("Generated"),
+                        rationale = "Used analysis",
+                    )
+            },
+        )
+        service.saveInput("p1", "Build dashboard", "dash.png", byteArrayOf(1, 2, 3), "image/png")
+
+        val workbench = service.generate("p1")
+
+        assertTrue(analyzeCalled)
+        assertEquals("Dashboard image", workbench.imageAnalysis?.summary)
+        assertEquals("Generated", workbench.currentDesign?.title)
+    }
+
+    @Test
+    fun `generate preserves existing current design when image analysis fails`() {
+        var failAnalysis = false
+        val service = service(
+            imageAnalysisAgent = object : DesignImageAnalysisAgent(null, null) {
+                override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult {
+                    if (failAnalysis) throw RuntimeException("Vision provider unavailable")
+                    return DesignImageAnalysisResult(imageAnalysis())
+                }
+            },
+        )
+        service.saveInput("p1", "Build dashboard", "dash.png", byteArrayOf(1, 2, 3), "image/png")
+        val previous = service.generate("p1").currentDesign
+        storage.save(service.get("p1").copy(imageAnalysis = null, imageAnalysisError = null))
+        failAnalysis = true
+
+        assertFailsWith<InvalidDesignWorkbenchException> {
+            service.generate("p1")
+        }
+
+        assertEquals(previous, service.get("p1").currentDesign)
+        assertEquals("Vision provider unavailable", service.get("p1").imageAnalysisError)
     }
 
     @Test
@@ -186,6 +280,10 @@ class DesignWorkbenchServiceTest {
     }
 
     private fun service(
+        imageAnalysisAgent: DesignImageAnalysisAgent = object : DesignImageAnalysisAgent(null, null) {
+            override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult =
+                DesignImageAnalysisResult(imageAnalysis())
+        },
         designVariantAgent: DesignVariantAgent = object : DesignVariantAgent(null) {
             override fun generate(input: DesignGenerationInput): DesignGenerationResult =
                 DesignGenerationResult(
@@ -198,7 +296,22 @@ class DesignWorkbenchServiceTest {
     ) = DesignWorkbenchService(
         storage = storage,
         previewValidator = DesignPreviewValidator(),
+        imageAnalysisAgent = imageAnalysisAgent,
         designVariantAgent = designVariantAgent,
+    )
+
+    private fun imageAnalysis(
+        summary: String = "Dashboard image",
+        designBrief: String = "Use dark navigation and compact KPI cards.",
+    ) = DesignImageAnalysis(
+        summary = summary,
+        palette = listOf(DesignColor("#111827", "background", "dominant", "Dark shell")),
+        typography = listOf(DesignTypographySignal("ui-sans", "body", "regular", "Clean labels")),
+        layoutHierarchy = listOf(DesignLayoutRegion("Sidebar", 1, 1, "Left navigation")),
+        components = listOf(DesignComponentSignal("Metric card", "summary", "KPI cards")),
+        moodTags = listOf("enterprise"),
+        brandSignals = listOf("blue actions"),
+        designBrief = designBrief,
     )
 
     private fun validHtml(title: String) =

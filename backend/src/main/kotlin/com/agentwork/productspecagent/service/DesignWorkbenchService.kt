@@ -1,7 +1,10 @@
 package com.agentwork.productspecagent.service
 
+import com.agentwork.productspecagent.agent.DesignImageAnalysisAgent
+import com.agentwork.productspecagent.agent.DesignImageAnalysisInput
 import com.agentwork.productspecagent.agent.DesignGenerationInput
 import com.agentwork.productspecagent.agent.DesignVariantAgent
+import com.agentwork.productspecagent.agent.InvalidDesignImageAnalysisException
 import com.agentwork.productspecagent.domain.DesignWorkbench
 import com.agentwork.productspecagent.domain.GeneratedDesign
 import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
@@ -15,6 +18,7 @@ class InvalidDesignWorkbenchException(message: String) : RuntimeException(messag
 class DesignWorkbenchService(
     private val storage: DesignWorkbenchStorage,
     private val previewValidator: DesignPreviewValidator,
+    private val imageAnalysisAgent: DesignImageAnalysisAgent,
     private val designVariantAgent: DesignVariantAgent,
 ) {
     private val maxImageInputBytes = 5 * 1024 * 1024
@@ -59,17 +63,54 @@ class DesignWorkbenchService(
         )
     }
 
+    fun analyzeImage(projectId: String): DesignWorkbench {
+        val workbench = storage.load(projectId)
+        val image = workbench.imageInput
+            ?: throw InvalidDesignWorkbenchException("Design image input is required for analysis.")
+        val bytes = try {
+            storage.readImageInput(projectId)
+        } catch (e: NoSuchElementException) {
+            val message = e.message ?: "Design image input is missing."
+            storage.saveImageAnalysisError(projectId, message)
+            throw InvalidDesignWorkbenchException(message)
+        }
+
+        return try {
+            val result = imageAnalysisAgent.analyze(
+                DesignImageAnalysisInput(
+                    projectId = projectId,
+                    image = image,
+                    imageBytes = bytes,
+                ),
+            )
+            storage.saveImageAnalysis(projectId, result.analysis)
+        } catch (e: InvalidDesignImageAnalysisException) {
+            val message = e.message ?: "Image analysis failed."
+            storage.saveImageAnalysisError(projectId, message)
+            throw InvalidDesignWorkbenchException(message)
+        } catch (e: RuntimeException) {
+            val message = e.message ?: "Image analysis failed."
+            storage.saveImageAnalysisError(projectId, message)
+            throw InvalidDesignWorkbenchException(message)
+        }
+    }
+
     fun generate(projectId: String): DesignWorkbench {
         val workbench = storage.load(projectId)
         if (workbench.description.isNullOrBlank() && workbench.imageInput == null) {
             throw InvalidDesignWorkbenchException("Design generation requires a description or image.")
         }
+        val readyWorkbench = if (workbench.imageInput != null && workbench.imageAnalysis == null) {
+            analyzeImage(projectId)
+        } else {
+            workbench
+        }
 
         val result = designVariantAgent.generate(
             DesignGenerationInput(
                 projectId = projectId,
-                description = workbench.description,
-                image = workbench.imageInput,
+                description = readyWorkbench.description,
+                image = readyWorkbench.imageInput,
             ),
         )
         previewValidator.validate(result.html)

@@ -64,6 +64,12 @@ class DesignWorkbenchController(
         return mapInvalidWorkbench { service.generate(projectId) }
     }
 
+    @PostMapping("/image/analyze")
+    fun analyzeImage(@PathVariable projectId: String): DesignWorkbench {
+        validateDesignAccess(projectId)
+        return mapInvalidWorkbench { service.analyzeImage(projectId) }
+    }
+
     @GetMapping("/preview")
     fun preview(
         @PathVariable projectId: String,

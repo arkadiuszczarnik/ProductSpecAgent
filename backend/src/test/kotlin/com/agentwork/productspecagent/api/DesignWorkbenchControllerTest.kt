@@ -1,9 +1,17 @@
 package com.agentwork.productspecagent.api
 
+import com.agentwork.productspecagent.agent.DesignImageAnalysisAgent
+import com.agentwork.productspecagent.agent.DesignImageAnalysisInput
+import com.agentwork.productspecagent.agent.DesignImageAnalysisResult
 import com.agentwork.productspecagent.agent.DesignGenerationInput
 import com.agentwork.productspecagent.agent.DesignGenerationResult
 import com.agentwork.productspecagent.agent.DesignVariantAgent
 import com.agentwork.productspecagent.domain.DesignAnalysis
+import com.agentwork.productspecagent.domain.DesignColor
+import com.agentwork.productspecagent.domain.DesignComponentSignal
+import com.agentwork.productspecagent.domain.DesignImageAnalysis
+import com.agentwork.productspecagent.domain.DesignLayoutRegion
+import com.agentwork.productspecagent.domain.DesignTypographySignal
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.service.ProjectService
@@ -58,6 +66,25 @@ class DesignWorkbenchControllerTest {
                             </html>
                         """.trimIndent(),
                         rationale = "Generated in controller test.",
+                    )
+            }
+
+        @Bean
+        @Primary
+        fun testDesignImageAnalysisAgent(): DesignImageAnalysisAgent =
+            object : DesignImageAnalysisAgent(null, null) {
+                override fun analyze(input: DesignImageAnalysisInput): DesignImageAnalysisResult =
+                    DesignImageAnalysisResult(
+                        DesignImageAnalysis(
+                            summary = "Controller image analysis",
+                            palette = listOf(DesignColor("#111827", "background", "dominant", "Dark shell")),
+                            typography = listOf(DesignTypographySignal("ui-sans", "body", "regular", "Clean labels")),
+                            layoutHierarchy = listOf(DesignLayoutRegion("Sidebar", 1, 1, "Left navigation")),
+                            components = listOf(DesignComponentSignal("Metric card", "summary", "KPI cards")),
+                            moodTags = listOf("enterprise"),
+                            brandSignals = listOf("blue actions"),
+                            designBrief = "Use dark navigation and compact KPI cards.",
+                        ),
                     )
             }
     }
@@ -174,6 +201,30 @@ class DesignWorkbenchControllerTest {
             .andExpect(jsonPath("$.currentDesign.title").value("Controller Test Design"))
             .andExpect(jsonPath("$.currentDesign.rationale").value("Generated in controller test."))
             .andExpect(jsonPath("$.analysis.summary").value("Generated layout from test input."))
+    }
+
+    @Test
+    fun `POST image analyze stores image analysis`() {
+        advanceToDesign(projectId)
+        val image = MockMultipartFile("file", "dashboard.png", "image/png", byteArrayOf(1, 2, 3))
+        mockMvc.perform(putInput(file = image))
+            .andExpect(status().isOk())
+
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/image/analyze"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.imageAnalysis.summary").value("Controller image analysis"))
+            .andExpect(jsonPath("$.imageAnalysis.palette[0].hex").value("#111827"))
+            .andExpect(jsonPath("$.imageAnalysisError").doesNotExist())
+    }
+
+    @Test
+    fun `POST image analyze rejects missing image`() {
+        advanceToDesign(projectId)
+        mockMvc.perform(putInput(description = "Text only"))
+            .andExpect(status().isOk())
+
+        mockMvc.perform(post("/api/v1/projects/$projectId/design/image/analyze"))
+            .andExpect(status().isBadRequest())
     }
 
     @Test
