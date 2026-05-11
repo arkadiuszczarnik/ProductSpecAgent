@@ -56,6 +56,7 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 | 45 | Living-Sync via MCP | [45-living-sync-mcp-done.md](45-living-sync-mcp-done.md) | Feature 8, 30, 31, 44 | L |
 | 46 | Wizard-Options-Admin | [46-wizard-options-admin.md](46-wizard-options-admin.md) | Feature 11, 12, 34, 41 | M |
 | 47 | Agentic Design Workbench | [47-agentic-design-workbench.md](47-agentic-design-workbench.md) | Feature 11, 12, 13, 40, 46 | XL |
+| 48 | Final Review Step | [48-final-review-step.md](48-final-review-step.md) | Feature 11, 12, 13, 46 | M |
 
 ## Architecture Docs
 
