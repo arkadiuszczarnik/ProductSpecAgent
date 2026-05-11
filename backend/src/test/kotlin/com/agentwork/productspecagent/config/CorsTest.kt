@@ -29,6 +29,22 @@ class CorsTest {
     }
 
     @Test
+    fun `OPTIONS preflight from production frontend to protected endpoint returns Access-Control-Allow-Origin`() {
+        mockMvc.perform(
+            options("/api/v1/auth/me")
+                .header(HttpHeaders.ORIGIN, "https://productspecagent-frontend.hackathon.netrtl.com")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+        )
+            .andExpect(status().isOk())
+            .andExpect(
+                header().string(
+                    HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,
+                    "https://productspecagent-frontend.hackathon.netrtl.com"
+                )
+            )
+    }
+
+    @Test
     fun `OPTIONS preflight from disallowed origin does NOT return Access-Control-Allow-Origin`() {
         mockMvc.perform(
             options("/api/health")

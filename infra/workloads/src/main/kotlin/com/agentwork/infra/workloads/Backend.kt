@@ -62,6 +62,8 @@ class Backend(val deployment: Deployment, val service: Service) {
                                                         EnvVarArgs.builder().name("S3_BUCKET").value(base.bucketName).build(),
                                                         EnvVarArgs.builder().name("S3_REGION").value(base.region).build(),
                                                         EnvVarArgs.builder().name("S3_PATH_STYLE").value("false").build(),
+                                                        EnvVarArgs.builder().name("CORS_ALLOWED_ORIGINS").value("https://productspecagent-frontend.hackathon.netrtl.com").build(),
+                                                        EnvVarArgs.builder().name("APP_FRONTEND_ORIGIN").value("https://productspecagent-frontend.hackathon.netrtl.com").build(),
                                                         // Solange der ALB nur HTTP serviert (kein TLS-Cert/Domain), darf der
                                                         // Session-Cookie nicht "Secure" sein – sonst sendet der Browser ihn
                                                         // nie zurück und Login schlägt fehl. Auf prod mit HTTPS auf "true" setzen.
