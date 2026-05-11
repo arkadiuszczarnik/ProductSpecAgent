@@ -164,7 +164,7 @@ Es gibt keine Storage-API mehr fuer alte Inputs, Screens, Varianten oder aktive 
 
 Der produktive Pfad ruft `KoogAgentRunner` mit dem editierbaren Systemprompt auf. Die Antwort muss ein JSON-Objekt mit `analysis`, `title`, `html` und `rationale` sein. Wenn kein Runner verfuegbar ist oder Parsing fehlschlaegt, erzeugt der Agent ein deterministisches Fallback-HTML. Vorhandene Bildanalyse wird in den Prompt aufgenommen und fuer die HTML-Generierung genutzt.
 
-### Sicherheit
+### Sicherheit.
 
 Generated HTML ist untrusted. Vor dem Speichern prueft `DesignPreviewValidator` unter anderem:
 
