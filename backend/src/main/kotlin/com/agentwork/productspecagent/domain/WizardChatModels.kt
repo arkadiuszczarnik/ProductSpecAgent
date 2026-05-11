@@ -15,4 +15,7 @@ data class WizardStepCompleteResponse(
     val progression: WizardProgressionView = emptyWizardProgressionView(),
     val action: WizardClientActionDto = WizardClientActionDto(type = "STAY"),
     val artifacts: WizardCreatedArtifacts = WizardCreatedArtifacts(),
+    val appliedDecisionIds: List<String> = emptyList(),
+    val appliedClarificationIds: List<String> = emptyList(),
+    val wizardDataChanged: Boolean = false,
 )

@@ -407,6 +407,13 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         useClarificationStore.getState().addClarification(clarification);
       }
 
+      if (response.wizardDataChanged) {
+        const refreshedData = await getWizardData(projectId).catch(() => null);
+        if (refreshedData) {
+          set({ data: refreshedData });
+        }
+      }
+
       const action = response.action;
       if (action?.type === "SHOW_STEP" && action.step) {
         const steps = get().visibleSteps();

@@ -41,9 +41,17 @@ class WizardChatControllerTest {
                         throw WizardStepNotVisibleException(command.step, ProductCategory.LIBRARY)
                     }
                     return WizardStepCompletionResult(
-                        message = "Great idea! Let's move on to define the problem.",
-                        nextStep = if (command.step == FlowStepType.FRONTEND) FlowStepType.REVIEW else FlowStepType.PROBLEM,
+                        message = if (command.step == FlowStepType.IDEA) "Applied." else "Great idea! Let's move on to define the problem.",
+                        nextStep = if (command.step == FlowStepType.IDEA) {
+                            FlowStepType.FEATURES
+                        } else if (command.step == FlowStepType.FRONTEND) {
+                            FlowStepType.REVIEW
+                        } else {
+                            FlowStepType.PROBLEM
+                        },
                         exportTriggered = false,
+                        appliedClarificationIds = if (command.step == FlowStepType.IDEA) listOf("clar-1") else emptyList(),
+                        wizardDataChanged = command.step == FlowStepType.IDEA,
                         progression = progressionFor(command.step),
                         action = actionFor(command.step),
                         artifacts = WizardCreatedArtifacts(),
@@ -114,9 +122,11 @@ class WizardChatControllerTest {
                 .content("""{"step": "IDEA", "fields": {"productName": "MeinTool", "vision": "SaaS tool", "category": "SaaS"}}""")
         )
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.message").value("Great idea! Let's move on to define the problem."))
-            .andExpect(jsonPath("$.nextStep").value("PROBLEM"))
+            .andExpect(jsonPath("$.message").value("Applied."))
+            .andExpect(jsonPath("$.nextStep").value("FEATURES"))
             .andExpect(jsonPath("$.exportTriggered").value(false))
+            .andExpect(jsonPath("$.appliedClarificationIds[0]").value("clar-1"))
+            .andExpect(jsonPath("$.wizardDataChanged").value(true))
             .andExpect(jsonPath("$.progression.steps").isArray())
             .andExpect(jsonPath("$.progression.currentStep").value("PROBLEM"))
             .andExpect(jsonPath("$.progression.primaryAction.type").value("COMPLETE_STEP"))

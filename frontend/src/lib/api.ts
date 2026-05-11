@@ -688,6 +688,9 @@ export interface WizardStepCompleteResponse {
   progression?: WizardProgressionView;
   action?: WizardClientAction;
   artifacts?: WizardCreatedArtifacts;
+  appliedDecisionIds?: string[];
+  appliedClarificationIds?: string[];
+  wizardDataChanged?: boolean;
 }
 
 export async function completeWizardStep(
