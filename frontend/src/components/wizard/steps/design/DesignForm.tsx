@@ -10,13 +10,11 @@ import { DesignBundleHeader } from "./DesignBundleHeader";
 import { DesignPagesList } from "./DesignPagesList";
 import { DesignIframePreview } from "./DesignIframePreview";
 import { DesignReplaceConfirmDialog } from "./DesignReplaceConfirmDialog";
-import type { DesignPage } from "@/lib/api";
+import { API_BASE, type DesignPage } from "@/lib/api";
 
 interface Props {
   projectId: string;
 }
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export function DesignForm({ projectId }: Props) {
   const { bundle, loading, uploading, error, loadBundle, uploadBundle, deleteBundle } = useDesignBundleStore();

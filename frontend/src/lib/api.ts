@@ -1,6 +1,9 @@
 import type { Category } from "@/lib/category-step-config";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const PRODUCTION_API_BASE = "https://productspecagent-backend.hackathon.netrtl.com";
+
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  || (process.env.NODE_ENV === "production" ? PRODUCTION_API_BASE : "http://localhost:8080");
 
 let onUnauthorized: (() => void) | null = null;
 
