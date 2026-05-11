@@ -33,7 +33,8 @@ class ProjectServiceTest {
         assertEquals(ProjectStatus.DRAFT, response.project.status)
         assertEquals("anonymous", response.project.ownerId)
         assertEquals(FlowStepType.IDEA, response.flowState.currentStep)
-        assertEquals(8, response.flowState.steps.size)
+        assertEquals(9, response.flowState.steps.size)
+        assertTrue(response.flowState.steps.any { it.stepType == FlowStepType.REVIEW })
 
         // Verify persisted
         assertNotNull(storage.loadProject(response.project.id))

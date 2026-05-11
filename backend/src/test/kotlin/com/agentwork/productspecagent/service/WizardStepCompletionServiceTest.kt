@@ -149,7 +149,7 @@ class WizardStepCompletionServiceTest {
     }
 
     @Test
-    fun `complete FRONTEND suppresses blocker markers and generates final spec`() = runBlocking {
+    fun `complete FRONTEND advances to review without generating final spec`() = runBlocking {
         val project = projectService.createProject("Test")
         setFlowProgress(
             project.project.id,
@@ -164,12 +164,7 @@ class WizardStepCompletionServiceTest {
                 FlowStepType.BACKEND,
             ),
         )
-        val agent = SequenceWizardAgent(
-            listOf(
-                "Alles sieht gut aus!\n[DECISION_NEEDED]: Light vs. dark?\n[CLARIFICATION_NEEDED]: Welches Theme? | Theme ist unklar",
-                "# Product Specification\n\nDone.",
-            )
-        )
+        val agent = CapturingWizardAgent("Frontend looks good.")
         val completion = createCompletion(agent)
 
         val result = completion.complete(
@@ -180,25 +175,66 @@ class WizardStepCompletionServiceTest {
             )
         )
 
-        assertThat(result.message).isEqualTo("Alles sieht gut aus!")
+        assertThat(result.message).isEqualTo("Frontend looks good.")
+        assertThat(result.nextStep).isEqualTo(FlowStepType.REVIEW)
+        assertThat(result.exportTriggered).isFalse()
+        assertThat(result.progression.status).isEqualTo("IN_PROGRESS")
+        assertThat(result.progression.currentStep).isEqualTo(FlowStepType.REVIEW.name)
+        assertThat(result.progression.primaryAction.type).isEqualTo("COMPLETE_STEP")
+        assertThat(result.progression.primaryAction.step).isEqualTo(FlowStepType.REVIEW.name)
+        assertThat(result.action.type).isEqualTo("SHOW_STEP")
+        assertThat(result.action.step).isEqualTo(FlowStepType.REVIEW.name)
+        assertThat(projectService.readSpecFile(project.project.id, "spec.md")).isNull()
+        Unit
+    }
+
+    @Test
+    fun `complete REVIEW suppresses blocker markers and generates final spec`() = runBlocking {
+        val project = projectService.createProject("Test")
+        setFlowProgress(
+            project.project.id,
+            FlowStepType.REVIEW,
+            setOf(
+                FlowStepType.IDEA,
+                FlowStepType.PROBLEM,
+                FlowStepType.FEATURES,
+                FlowStepType.MVP,
+                FlowStepType.DESIGN,
+                FlowStepType.ARCHITECTURE,
+                FlowStepType.BACKEND,
+                FlowStepType.FRONTEND,
+            ),
+        )
+        val agent = SequenceWizardAgent(
+            listOf(
+                "Review confirmed.\n[DECISION_NEEDED]: Ignore this marker\n[CLARIFICATION_NEEDED]: Ignore? | final step",
+                "# Product Specification\n\nDone.",
+            )
+        )
+        val completion = createCompletion(agent)
+
+        val result = completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.REVIEW,
+                fields = mapOf("confirmed" to true),
+            )
+        )
+
+        assertThat(result.message).isEqualTo("Review confirmed.")
         assertThat(result.nextStep).isNull()
         assertThat(result.exportTriggered).isTrue()
         assertThat(result.decisionId).isNull()
         assertThat(result.clarificationId).isNull()
         assertThat(result.progression.status).isEqualTo("READY_FOR_EXPORT")
-        assertThat(result.progression.currentStep).isEqualTo(FlowStepType.FRONTEND.name)
+        assertThat(result.progression.currentStep).isEqualTo(FlowStepType.REVIEW.name)
         assertThat(result.progression.primaryAction.type).isEqualTo("OPEN_EXPORT")
-        assertThat(result.progression.steps.first { it.step == FlowStepType.FRONTEND.name }.finalVisibleStep)
-            .isTrue()
+        assertThat(result.progression.steps.first { it.step == FlowStepType.REVIEW.name }.finalVisibleStep).isTrue()
         assertThat(result.action.type).isEqualTo("OPEN_EXPORT")
-        assertThat(result.artifacts.decisionIds).isEmpty()
-        assertThat(result.artifacts.clarificationIds).isEmpty()
         assertThat(decisionService.listDecisions(project.project.id)).isEmpty()
         assertThat(clarificationService.listClarifications(project.project.id)).isEmpty()
         assertThat(projectService.readSpecFile(project.project.id, "spec.md"))
             .isEqualTo("# Product Specification\n\nDone.")
-        assertThat(projectService.listSpecFiles(project.project.id).map { it.first })
-            .containsExactly("spec/spec.md")
         assertThat(agent.calls).hasSize(2)
         for (call in agent.calls) {
             assertThat(call.userPrompt).doesNotContain("MANDATORY OUTPUT REQUIREMENT")
@@ -212,7 +248,7 @@ class WizardStepCompletionServiceTest {
         val project = projectService.createProject("Test")
         setFlowProgress(
             project.project.id,
-            FlowStepType.FRONTEND,
+            FlowStepType.REVIEW,
             setOf(
                 FlowStepType.IDEA,
                 FlowStepType.PROBLEM,
@@ -221,6 +257,7 @@ class WizardStepCompletionServiceTest {
                 FlowStepType.DESIGN,
                 FlowStepType.ARCHITECTURE,
                 FlowStepType.BACKEND,
+                FlowStepType.FRONTEND,
             ),
         )
         designWorkbenchStorage.writeDesignSummary(project.project.id, "# Design\n\nGenerated dashboard design.")
@@ -235,8 +272,8 @@ class WizardStepCompletionServiceTest {
         completion.complete(
             CompleteWizardStep(
                 projectId = project.project.id,
-                step = FlowStepType.FRONTEND,
-                fields = mapOf("framework" to "Next.js+React"),
+                step = FlowStepType.REVIEW,
+                fields = mapOf("confirmed" to true),
             )
         )
 
@@ -253,7 +290,7 @@ class WizardStepCompletionServiceTest {
     }
 
     @Test
-    fun `library completion opens export at MVP`() = runBlocking {
+    fun `library completion advances from MVP to review`() = runBlocking {
         val project = projectService.createProject("Test")
         wizardService.saveStepData(
             project.project.id,
@@ -265,7 +302,7 @@ class WizardStepCompletionServiceTest {
             FlowStepType.MVP,
             setOf(FlowStepType.IDEA, FlowStepType.PROBLEM, FlowStepType.FEATURES),
         )
-        val agent = SequenceWizardAgent(listOf("Done.", "# Library Spec\n\nReady."))
+        val agent = CapturingWizardAgent("Done.")
         val completion = createCompletion(agent)
 
         val result = completion.complete(
@@ -276,20 +313,21 @@ class WizardStepCompletionServiceTest {
             )
         )
 
-        assertThat(result.nextStep).isNull()
-        assertThat(result.exportTriggered).isTrue()
+        assertThat(result.nextStep).isEqualTo(FlowStepType.REVIEW)
+        assertThat(result.exportTriggered).isFalse()
 
         val flowState = projectService.getFlowState(project.project.id)
-        assertThat(flowState.currentStep).isEqualTo(FlowStepType.MVP)
+        assertThat(flowState.currentStep).isEqualTo(FlowStepType.REVIEW)
         assertThat(flowState.steps.first { it.stepType == FlowStepType.MVP }.status)
             .isEqualTo(FlowStepStatus.COMPLETED)
-        assertThat(projectService.readSpecFile(project.project.id, "spec.md"))
-            .contains("Library Spec")
+        assertThat(flowState.steps.first { it.stepType == FlowStepType.REVIEW }.status)
+            .isEqualTo(FlowStepStatus.IN_PROGRESS)
+        assertThat(projectService.readSpecFile(project.project.id, "spec.md")).isNull()
         Unit
     }
 
     @Test
-    fun `api completion opens export at BACKEND`() = runBlocking {
+    fun `api completion advances from BACKEND to review`() = runBlocking {
         val project = projectService.createProject("Test")
         wizardService.saveStepData(
             project.project.id,
@@ -307,7 +345,7 @@ class WizardStepCompletionServiceTest {
                 FlowStepType.ARCHITECTURE,
             ),
         )
-        val agent = SequenceWizardAgent(listOf("Done.", "# API Spec\n\nReady."))
+        val agent = CapturingWizardAgent("Done.")
         val completion = createCompletion(agent)
 
         val result = completion.complete(
@@ -318,13 +356,16 @@ class WizardStepCompletionServiceTest {
             )
         )
 
-        assertThat(result.nextStep).isNull()
-        assertThat(result.exportTriggered).isTrue()
+        assertThat(result.nextStep).isEqualTo(FlowStepType.REVIEW)
+        assertThat(result.exportTriggered).isFalse()
 
         val flowState = projectService.getFlowState(project.project.id)
-        assertThat(flowState.currentStep).isEqualTo(FlowStepType.BACKEND)
+        assertThat(flowState.currentStep).isEqualTo(FlowStepType.REVIEW)
         assertThat(flowState.steps.first { it.stepType == FlowStepType.BACKEND }.status)
             .isEqualTo(FlowStepStatus.COMPLETED)
+        assertThat(flowState.steps.first { it.stepType == FlowStepType.REVIEW }.status)
+            .isEqualTo(FlowStepStatus.IN_PROGRESS)
+        assertThat(projectService.readSpecFile(project.project.id, "spec.md")).isNull()
         Unit
     }
 

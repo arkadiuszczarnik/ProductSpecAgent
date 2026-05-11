@@ -28,10 +28,11 @@ class WizardProgressionPolicyTest {
         FlowStepType.ARCHITECTURE,
         FlowStepType.BACKEND,
         FlowStepType.FRONTEND,
+        FlowStepType.REVIEW,
     )
 
     @Test
-    fun `library ends at MVP`() {
+    fun `library ends at review`() {
         val plan = policy.planFor(wizardData("Library"))
 
         assertThat(plan.visibleSteps).containsExactly(
@@ -39,13 +40,14 @@ class WizardProgressionPolicyTest {
             FlowStepType.PROBLEM,
             FlowStepType.FEATURES,
             FlowStepType.MVP,
+            FlowStepType.REVIEW,
         )
-        assertThat(plan.isTerminal(FlowStepType.MVP)).isTrue()
-        assertThat(plan.nextAfter(FlowStepType.MVP)).isNull()
+        assertThat(plan.isTerminal(FlowStepType.REVIEW)).isTrue()
+        assertThat(plan.nextAfter(FlowStepType.MVP)).isEqualTo(FlowStepType.REVIEW)
     }
 
     @Test
-    fun `cli tool ends at architecture`() {
+    fun `cli tool ends at review`() {
         val plan = policy.planFor(wizardData("CLI Tool"))
 
         assertThat(plan.visibleSteps).containsExactly(
@@ -54,13 +56,15 @@ class WizardProgressionPolicyTest {
             FlowStepType.FEATURES,
             FlowStepType.MVP,
             FlowStepType.ARCHITECTURE,
+            FlowStepType.REVIEW,
         )
-        assertThat(plan.isTerminal(FlowStepType.ARCHITECTURE)).isTrue()
+        assertThat(plan.isTerminal(FlowStepType.REVIEW)).isTrue()
         assertThat(plan.nextAfter(FlowStepType.MVP)).isEqualTo(FlowStepType.ARCHITECTURE)
+        assertThat(plan.nextAfter(FlowStepType.ARCHITECTURE)).isEqualTo(FlowStepType.REVIEW)
     }
 
     @Test
-    fun `api ends at backend`() {
+    fun `api ends at review`() {
         val plan = policy.planFor(wizardData("API"))
 
         assertThat(plan.visibleSteps).containsExactly(
@@ -70,17 +74,19 @@ class WizardProgressionPolicyTest {
             FlowStepType.MVP,
             FlowStepType.ARCHITECTURE,
             FlowStepType.BACKEND,
+            FlowStepType.REVIEW,
         )
-        assertThat(plan.isTerminal(FlowStepType.BACKEND)).isTrue()
+        assertThat(plan.isTerminal(FlowStepType.REVIEW)).isTrue()
         assertThat(plan.nextAfter(FlowStepType.ARCHITECTURE)).isEqualTo(FlowStepType.BACKEND)
+        assertThat(plan.nextAfter(FlowStepType.BACKEND)).isEqualTo(FlowStepType.REVIEW)
     }
 
     @Test
-    fun `saas uses all visible steps and ends at frontend`() {
+    fun `saas uses all visible steps and ends at review`() {
         val plan = policy.planFor(wizardData("SaaS"))
 
         assertThat(plan.visibleSteps).containsExactlyElementsOf(fullFlowSteps)
-        assertThat(plan.isTerminal(FlowStepType.FRONTEND)).isTrue()
+        assertThat(plan.isTerminal(FlowStepType.REVIEW)).isTrue()
     }
 
     @Test
@@ -114,24 +120,25 @@ class WizardProgressionPolicyTest {
             FlowStepType.FEATURES,
             FlowStepType.MVP,
             FlowStepType.BACKEND,
+            FlowStepType.REVIEW,
         )
-        assertThat(plan.isTerminal(FlowStepType.BACKEND)).isTrue()
+        assertThat(plan.isTerminal(FlowStepType.REVIEW)).isTrue()
     }
 
     @Test
-    fun `mobile app uses all visible steps and ends at frontend`() {
+    fun `mobile app uses all visible steps and ends at review`() {
         val plan = policy.planFor(wizardData("Mobile App"))
 
         assertThat(plan.visibleSteps).containsExactlyElementsOf(fullFlowSteps)
-        assertThat(plan.isTerminal(FlowStepType.FRONTEND)).isTrue()
+        assertThat(plan.isTerminal(FlowStepType.REVIEW)).isTrue()
     }
 
     @Test
-    fun `desktop app uses all visible steps and ends at frontend`() {
+    fun `desktop app uses all visible steps and ends at review`() {
         val plan = policy.planFor(wizardData("Desktop App"))
 
         assertThat(plan.visibleSteps).containsExactlyElementsOf(fullFlowSteps)
-        assertThat(plan.isTerminal(FlowStepType.FRONTEND)).isTrue()
+        assertThat(plan.isTerminal(FlowStepType.REVIEW)).isTrue()
     }
 
     @Test
@@ -139,7 +146,7 @@ class WizardProgressionPolicyTest {
         val plan = policy.planFor(WizardData(projectId = "p1"))
 
         assertThat(plan.visibleSteps).containsExactlyElementsOf(fullFlowSteps)
-        assertThat(plan.isTerminal(FlowStepType.FRONTEND)).isTrue()
+        assertThat(plan.isTerminal(FlowStepType.REVIEW)).isTrue()
     }
 
     @Test
@@ -147,7 +154,7 @@ class WizardProgressionPolicyTest {
         val plan = policy.planFor(wizardData("Marketplace"))
 
         assertThat(plan.visibleSteps).containsExactlyElementsOf(fullFlowSteps)
-        assertThat(plan.isTerminal(FlowStepType.FRONTEND)).isTrue()
+        assertThat(plan.isTerminal(FlowStepType.REVIEW)).isTrue()
     }
 
     private fun wizardData(category: String): WizardData =

@@ -288,7 +288,7 @@ class WizardStepCompletionService(
                 appendLine(fieldsDescription)
                 appendLine()
                 appendLine("This is the last step of the wizard. The specification is now complete.")
-                appendLine("Provide a short, positive closing message (2-3 sentences) acknowledging the user's input.")
+                appendLine("Provide a short closing message (2-3 sentences) acknowledging the final confirmation.")
                 appendLine("Do NOT ask for clarifications. Do NOT propose decisions. Do NOT emit any markers.")
             }
         }

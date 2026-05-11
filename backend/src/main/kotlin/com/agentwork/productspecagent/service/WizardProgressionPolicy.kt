@@ -20,6 +20,7 @@ class WizardProgressionPolicy(
         FlowStepType.ARCHITECTURE,
         FlowStepType.BACKEND,
         FlowStepType.FRONTEND,
+        FlowStepType.REVIEW,
     )
 
     fun planFor(wizardData: WizardData): WizardProgressionPlan {
@@ -42,34 +43,40 @@ class WizardProgressionPolicy(
                     ?.visibleSteps
                     ?.takeIf { it.isNotEmpty() }
             }
-        if (catalogSteps != null) return catalogSteps
+        if (catalogSteps != null) return withReviewStep(catalogSteps)
 
-        return when (category) {
-            ProductCategory.LIBRARY -> listOf(
-                FlowStepType.IDEA,
-                FlowStepType.PROBLEM,
-                FlowStepType.FEATURES,
-                FlowStepType.MVP,
-            )
-            ProductCategory.CLI_TOOL -> listOf(
-                FlowStepType.IDEA,
-                FlowStepType.PROBLEM,
-                FlowStepType.FEATURES,
-                FlowStepType.MVP,
-                FlowStepType.ARCHITECTURE,
-            )
-            ProductCategory.API -> listOf(
-                FlowStepType.IDEA,
-                FlowStepType.PROBLEM,
-                FlowStepType.FEATURES,
-                FlowStepType.MVP,
-                FlowStepType.ARCHITECTURE,
-                FlowStepType.BACKEND,
-            )
-            ProductCategory.SAAS,
-            ProductCategory.MOBILE_APP,
-            ProductCategory.DESKTOP_APP,
-            null -> fullFlowSteps
-        }
+        return withReviewStep(
+            when (category) {
+                ProductCategory.LIBRARY -> listOf(
+                    FlowStepType.IDEA,
+                    FlowStepType.PROBLEM,
+                    FlowStepType.FEATURES,
+                    FlowStepType.MVP,
+                )
+                ProductCategory.CLI_TOOL -> listOf(
+                    FlowStepType.IDEA,
+                    FlowStepType.PROBLEM,
+                    FlowStepType.FEATURES,
+                    FlowStepType.MVP,
+                    FlowStepType.ARCHITECTURE,
+                )
+                ProductCategory.API -> listOf(
+                    FlowStepType.IDEA,
+                    FlowStepType.PROBLEM,
+                    FlowStepType.FEATURES,
+                    FlowStepType.MVP,
+                    FlowStepType.ARCHITECTURE,
+                    FlowStepType.BACKEND,
+                )
+                ProductCategory.SAAS,
+                ProductCategory.MOBILE_APP,
+                ProductCategory.DESKTOP_APP,
+                null -> fullFlowSteps
+            }
+        )
     }
+
+    private fun withReviewStep(steps: List<FlowStepType>): List<FlowStepType> =
+        if (steps.lastOrNull() == FlowStepType.REVIEW) steps
+        else steps.filterNot { it == FlowStepType.REVIEW } + FlowStepType.REVIEW
 }

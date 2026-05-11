@@ -5,7 +5,7 @@ import java.time.Instant
 
 enum class FlowStepType {
     IDEA, PROBLEM, FEATURES, MVP, DESIGN,
-    ARCHITECTURE, BACKEND, FRONTEND
+    ARCHITECTURE, BACKEND, FRONTEND, REVIEW
 }
 
 enum class FlowStepStatus {

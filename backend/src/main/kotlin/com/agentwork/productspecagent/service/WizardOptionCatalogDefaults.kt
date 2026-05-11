@@ -37,7 +37,7 @@ object WizardOptionCatalogDefaults {
             categories = listOf(
                 category(
                     id = "SaaS",
-                    visibleSteps = baseSteps + listOf(FlowStepType.DESIGN, FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND),
+                    visibleSteps = withReviewStep(baseSteps + listOf(FlowStepType.DESIGN, FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND)),
                     allowedScopes = listOf(FeatureScope.FRONTEND, FeatureScope.BACKEND),
                     fields = saasMobileApiArchitecture + saasApiBackend + listOf(
                         field(FlowStepType.FRONTEND, "framework", "Next.js+React", "Vue+Nuxt", "Svelte", "Angular", "Stitch"),
@@ -48,7 +48,7 @@ object WizardOptionCatalogDefaults {
                 ),
                 category(
                     id = "Mobile App",
-                    visibleSteps = baseSteps + listOf(FlowStepType.DESIGN, FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND),
+                    visibleSteps = withReviewStep(baseSteps + listOf(FlowStepType.DESIGN, FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND)),
                     allowedScopes = listOf(FeatureScope.FRONTEND, FeatureScope.BACKEND),
                     fields = listOf(
                         field(FlowStepType.ARCHITECTURE, "architecture", "Monolith", "Microservices", "Serverless"),
@@ -65,7 +65,7 @@ object WizardOptionCatalogDefaults {
                 ),
                 category(
                     id = "CLI Tool",
-                    visibleSteps = baseSteps + FlowStepType.ARCHITECTURE,
+                    visibleSteps = withReviewStep(baseSteps + FlowStepType.ARCHITECTURE),
                     allowedScopes = listOf(FeatureScope.BACKEND),
                     fields = listOf(
                         field(FlowStepType.ARCHITECTURE, "architecture", "Single Binary", "Multi-Command"),
@@ -75,13 +75,13 @@ object WizardOptionCatalogDefaults {
                 ),
                 category(
                     id = "Library",
-                    visibleSteps = baseSteps,
+                    visibleSteps = withReviewStep(baseSteps),
                     allowedScopes = emptyList(),
                     fields = emptyList(),
                 ),
                 category(
                     id = "Desktop App",
-                    visibleSteps = baseSteps + listOf(FlowStepType.DESIGN, FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND),
+                    visibleSteps = withReviewStep(baseSteps + listOf(FlowStepType.DESIGN, FlowStepType.ARCHITECTURE, FlowStepType.BACKEND, FlowStepType.FRONTEND)),
                     allowedScopes = listOf(FeatureScope.FRONTEND, FeatureScope.BACKEND),
                     fields = listOf(
                         field(FlowStepType.ARCHITECTURE, "architecture", "Monolith", "Plugin-basiert"),
@@ -98,7 +98,7 @@ object WizardOptionCatalogDefaults {
                 ),
                 category(
                     id = "API",
-                    visibleSteps = baseSteps + listOf(FlowStepType.ARCHITECTURE, FlowStepType.BACKEND),
+                    visibleSteps = withReviewStep(baseSteps + listOf(FlowStepType.ARCHITECTURE, FlowStepType.BACKEND)),
                     allowedScopes = listOf(FeatureScope.BACKEND),
                     fields = listOf(
                         field(FlowStepType.ARCHITECTURE, "architecture", "Monolith", "Microservices", "Serverless"),
@@ -140,4 +140,7 @@ object WizardOptionCatalogDefaults {
             .replace("/", "-")
             .replace(Regex("[^a-z0-9]+"), "-")
             .trim('-')
+
+    private fun withReviewStep(steps: List<FlowStepType>): List<FlowStepType> =
+        steps.filterNot { it == FlowStepType.REVIEW } + FlowStepType.REVIEW
 }
