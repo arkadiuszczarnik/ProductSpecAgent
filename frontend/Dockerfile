@@ -9,6 +9,7 @@ RUN npm run build
 FROM harbor.eos.netrtl.com/docker/library/node:22-alpine AS prod
 WORKDIR /app
 ENV NODE_ENV=production
+ENV NEXT_PUBLIC_API_URL=https://productspecagent-backend.hackathon.netrtl.com
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
