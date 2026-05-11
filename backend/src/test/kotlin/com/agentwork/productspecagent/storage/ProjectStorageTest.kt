@@ -84,7 +84,8 @@ class ProjectStorageTest : S3TestSupport() {
         assertNotNull(loaded)
         assertEquals(flowState.projectId, loaded!!.projectId)
         assertEquals(flowState.currentStep, loaded.currentStep)
-        assertEquals(8, loaded.steps.size)
+        assertEquals(9, loaded.steps.size)
+        assertTrue(loaded.steps.any { it.stepType == FlowStepType.REVIEW })
     }
 
     @Test

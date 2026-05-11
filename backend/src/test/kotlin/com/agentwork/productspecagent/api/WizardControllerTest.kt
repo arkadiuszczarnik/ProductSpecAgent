@@ -85,9 +85,11 @@ class WizardControllerTest {
         mockMvc.perform(get("/api/v1/projects/$pid/wizard/progression"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.category").value("Library"))
-            .andExpect(jsonPath("$.steps.length()").value(4))
+            .andExpect(jsonPath("$.steps.length()").value(5))
             .andExpect(jsonPath("$.steps[3].step").value("MVP"))
-            .andExpect(jsonPath("$.steps[3].finalVisibleStep").value(true))
+            .andExpect(jsonPath("$.steps[3].finalVisibleStep").value(false))
+            .andExpect(jsonPath("$.steps[4].step").value("REVIEW"))
+            .andExpect(jsonPath("$.steps[4].finalVisibleStep").value(true))
             .andExpect(jsonPath("$.primaryAction.type").value("COMPLETE_STEP"))
     }
 }

@@ -37,7 +37,8 @@ class ProjectControllerTest {
             .andExpect(jsonPath("$.project.name").value("Test Project"))
             .andExpect(jsonPath("$.project.status").value("DRAFT"))
             .andExpect(jsonPath("$.flowState.currentStep").value("IDEA"))
-            .andExpect(jsonPath("$.flowState.steps.length()").value(8))
+            .andExpect(jsonPath("$.flowState.steps.length()").value(9))
+            .andExpect(jsonPath("$.flowState.steps[8].stepType").value("REVIEW"))
     }
 
     @Test
@@ -87,7 +88,8 @@ class ProjectControllerTest {
         mockMvc.perform(get("/api/v1/projects/$projectId/flow"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.currentStep").value("IDEA"))
-            .andExpect(jsonPath("$.steps.length()").value(8))
+            .andExpect(jsonPath("$.steps.length()").value(9))
+            .andExpect(jsonPath("$.steps[8].stepType").value("REVIEW"))
 
         // Delete
         mockMvc.perform(delete("/api/v1/projects/$projectId"))
