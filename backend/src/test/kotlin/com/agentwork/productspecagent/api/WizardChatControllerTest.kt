@@ -42,8 +42,8 @@ class WizardChatControllerTest {
                     }
                     return WizardStepCompletionResult(
                         message = "Great idea! Let's move on to define the problem.",
-                        nextStep = if (command.step == FlowStepType.FRONTEND) null else FlowStepType.PROBLEM,
-                        exportTriggered = command.step == FlowStepType.FRONTEND,
+                        nextStep = if (command.step == FlowStepType.FRONTEND) FlowStepType.REVIEW else FlowStepType.PROBLEM,
+                        exportTriggered = false,
                         progression = progressionFor(command.step),
                         action = actionFor(command.step),
                         artifacts = WizardCreatedArtifacts(),
@@ -51,8 +51,7 @@ class WizardChatControllerTest {
                 }
 
                 private fun progressionFor(step: FlowStepType): WizardProgressionView {
-                    val currentStep = if (step == FlowStepType.FRONTEND) FlowStepType.FRONTEND else FlowStepType.PROBLEM
-                    val readyForExport = step == FlowStepType.FRONTEND
+                    val currentStep = if (step == FlowStepType.FRONTEND) FlowStepType.REVIEW else FlowStepType.PROBLEM
 
                     return WizardProgressionView(
                         category = ProductCategory.SAAS.wireValue,
@@ -63,27 +62,27 @@ class WizardChatControllerTest {
                             ),
                             WizardStepView(
                                 step = FlowStepType.PROBLEM.name,
-                                status = if (readyForExport) FlowStepStatus.COMPLETED.name else FlowStepStatus.IN_PROGRESS.name,
+                                status = if (step == FlowStepType.FRONTEND) FlowStepStatus.COMPLETED.name else FlowStepStatus.IN_PROGRESS.name,
                             ),
                             WizardStepView(
                                 step = FlowStepType.FRONTEND.name,
-                                status = if (readyForExport) FlowStepStatus.COMPLETED.name else FlowStepStatus.OPEN.name,
+                                status = if (step == FlowStepType.FRONTEND) FlowStepStatus.COMPLETED.name else FlowStepStatus.OPEN.name,
+                            ),
+                            WizardStepView(
+                                step = FlowStepType.REVIEW.name,
+                                status = if (step == FlowStepType.FRONTEND) FlowStepStatus.IN_PROGRESS.name else FlowStepStatus.OPEN.name,
                                 finalVisibleStep = true,
                             ),
                         ),
                         currentStep = currentStep.name,
-                        status = if (readyForExport) "READY_FOR_EXPORT" else "IN_PROGRESS",
-                        primaryAction = if (readyForExport) {
-                            WizardPrimaryActionDto(type = "OPEN_EXPORT")
-                        } else {
-                            WizardPrimaryActionDto(type = "COMPLETE_STEP", step = currentStep.name)
-                        },
+                        status = "IN_PROGRESS",
+                        primaryAction = WizardPrimaryActionDto(type = "COMPLETE_STEP", step = currentStep.name),
                     )
                 }
 
                 private fun actionFor(step: FlowStepType): WizardClientActionDto =
                     if (step == FlowStepType.FRONTEND) {
-                        WizardClientActionDto(type = "OPEN_EXPORT")
+                        WizardClientActionDto(type = "SHOW_STEP", step = FlowStepType.REVIEW.name)
                     } else {
                         WizardClientActionDto(type = "SHOW_STEP", step = FlowStepType.PROBLEM.name)
                     }
@@ -141,7 +140,7 @@ class WizardChatControllerTest {
     }
 
     @Test
-    fun `POST wizard-step-complete with FRONTEND sets exportTriggered`() {
+    fun `POST wizard-step-complete with FRONTEND advances to REVIEW`() {
         val projectId = createProject()
 
         mockMvc.perform(
@@ -150,13 +149,15 @@ class WizardChatControllerTest {
                 .content("""{"step": "FRONTEND", "fields": {"framework": "Next.js+React"}}""")
         )
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.nextStep").isEmpty())
-            .andExpect(jsonPath("$.exportTriggered").value(true))
-            .andExpect(jsonPath("$.progression.status").value("READY_FOR_EXPORT"))
-            .andExpect(jsonPath("$.progression.currentStep").value("FRONTEND"))
-            .andExpect(jsonPath("$.progression.primaryAction.type").value("OPEN_EXPORT"))
+            .andExpect(jsonPath("$.nextStep").value("REVIEW"))
+            .andExpect(jsonPath("$.exportTriggered").value(false))
+            .andExpect(jsonPath("$.progression.status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.progression.currentStep").value("REVIEW"))
+            .andExpect(jsonPath("$.progression.primaryAction.type").value("COMPLETE_STEP"))
+            .andExpect(jsonPath("$.progression.primaryAction.step").value("REVIEW"))
             .andExpect(jsonPath("$.progression.steps").isArray())
-            .andExpect(jsonPath("$.action.type").value("OPEN_EXPORT"))
+            .andExpect(jsonPath("$.action.type").value("SHOW_STEP"))
+            .andExpect(jsonPath("$.action.step").value("REVIEW"))
             .andExpect(jsonPath("$.artifacts.decisionIds").isArray())
             .andExpect(jsonPath("$.artifacts.clarificationIds").isArray())
     }

@@ -122,23 +122,36 @@ class IdeaToSpecAgentTest {
     }
 
     @Test
-    fun `chat does not advance beyond FRONTEND step`() = runBlocking {
+    fun `chat advances from FRONTEND to REVIEW step`() = runBlocking {
         val project = projectService.createProject("Test")
-        // Manually advance to FRONTEND step (the last step)
         val flowState = projectService.getFlowState(project.project.id)
-        val allCompleted = flowState.steps.map { step ->
-            if (step.stepType == FlowStepType.FRONTEND) step.copy(status = FlowStepStatus.IN_PROGRESS)
-            else step.copy(status = FlowStepStatus.COMPLETED)
+        val frontendInProgress = flowState.steps.map { step ->
+            when (step.stepType) {
+                FlowStepType.FRONTEND -> step.copy(status = FlowStepStatus.IN_PROGRESS)
+                FlowStepType.REVIEW -> step.copy(status = FlowStepStatus.OPEN)
+                else -> step.copy(status = FlowStepStatus.COMPLETED)
+            }
         }
         projectService.updateFlowState(project.project.id, flowState.copy(
-            steps = allCompleted, currentStep = FlowStepType.FRONTEND
+            steps = frontendInProgress, currentStep = FlowStepType.FRONTEND
         ))
 
         val agent = createTestAgent("Here is your frontend spec.\n[STEP_COMPLETE]\n[STEP_SUMMARY]: Full frontend specification.")
         val response = agent.chat(project.project.id, "Finalize")
 
         assertTrue(response.flowStateChanged)
-        assertEquals("FRONTEND", response.currentStep)
+        assertEquals("REVIEW", response.currentStep)
+
+        val updatedFlowState = projectService.getFlowState(project.project.id)
+        assertEquals(FlowStepType.REVIEW, updatedFlowState.currentStep)
+        assertEquals(
+            FlowStepStatus.COMPLETED,
+            updatedFlowState.steps.find { it.stepType == FlowStepType.FRONTEND }?.status
+        )
+        assertEquals(
+            FlowStepStatus.IN_PROGRESS,
+            updatedFlowState.steps.find { it.stepType == FlowStepType.REVIEW }?.status
+        )
     }
 
     @Test
