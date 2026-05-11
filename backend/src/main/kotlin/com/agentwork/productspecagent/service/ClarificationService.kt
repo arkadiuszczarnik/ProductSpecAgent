@@ -36,6 +36,16 @@ class ClarificationService(private val storage: ClarificationStorage) {
         return answered
     }
 
+    fun markApplied(projectId: String, clarificationId: String, appliedFields: List<String>): Clarification {
+        val clarification = storage.loadClarification(projectId, clarificationId)
+        val applied = clarification.copy(
+            appliedAt = Instant.now().toString(),
+            appliedFields = appliedFields
+        )
+        storage.saveClarification(applied)
+        return applied
+    }
+
     fun getClarification(projectId: String, clarificationId: String): Clarification {
         return storage.loadClarification(projectId, clarificationId)
     }

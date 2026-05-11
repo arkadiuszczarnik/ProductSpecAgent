@@ -634,9 +634,8 @@ export async function readProjectFile(projectId: string, filePath: string): Prom
 export async function exportProject(
   projectId: string,
   options: {
-    includeDecisions?: boolean;
-    includeClarifications?: boolean;
     includeTasks?: boolean;
+    includeDesign?: boolean;
   } = {}
 ): Promise<Blob> {
   const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/export`, {
@@ -644,9 +643,8 @@ export async function exportProject(
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      includeDecisions: options.includeDecisions ?? true,
-      includeClarifications: options.includeClarifications ?? true,
       includeTasks: options.includeTasks ?? true,
+      includeDesign: options.includeDesign ?? true,
     }),
   });
   if (res.status === 401) onUnauthorized?.();
@@ -688,6 +686,9 @@ export interface WizardStepCompleteResponse {
   progression?: WizardProgressionView;
   action?: WizardClientAction;
   artifacts?: WizardCreatedArtifacts;
+  appliedDecisionIds?: string[];
+  appliedClarificationIds?: string[];
+  wizardDataChanged?: boolean;
 }
 
 export async function completeWizardStep(

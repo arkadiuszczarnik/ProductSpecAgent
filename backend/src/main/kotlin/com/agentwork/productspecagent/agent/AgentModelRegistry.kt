@@ -10,6 +10,7 @@ class AgentModelRegistry(private val properties: AgentModelsProperties) {
         val KNOWN_AGENT_IDS: Set<String> = setOf(
             "idea-to-spec",
             "decision",
+            "wizard-blocker-apply",
             "feature-proposal",
             "plan-generator",
             "design-summary",

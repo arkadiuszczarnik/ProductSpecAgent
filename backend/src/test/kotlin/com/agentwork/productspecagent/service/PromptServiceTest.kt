@@ -138,7 +138,7 @@ class PromptServiceTest {
 
         val items = service.list()
 
-        assertEquals(9, items.size)
+        assertEquals(10, items.size)
         assertTrue(items.first { it.id == "idea-base" }.isOverridden)
         assertFalse(items.first { it.id == "decision-system" }.isOverridden)
     }

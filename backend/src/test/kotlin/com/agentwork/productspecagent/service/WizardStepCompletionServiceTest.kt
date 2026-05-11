@@ -32,6 +32,7 @@ class WizardStepCompletionServiceTest {
     private lateinit var wizardService: WizardService
     private lateinit var taskService: TaskService
     private lateinit var designWorkbenchStorage: DesignWorkbenchStorage
+    private lateinit var applyAgent: CapturingApplyAgent
 
     @BeforeEach
     fun setup() {
@@ -72,6 +73,13 @@ class WizardStepCompletionServiceTest {
         }
         taskService = TaskService(TaskStorage(InMemoryObjectStore()), planAgent)
         designWorkbenchStorage = DesignWorkbenchStorage(InMemoryObjectStore())
+        applyAgent = CapturingApplyAgent(
+            WizardBlockerApplyResult(
+                message = "Antwort wurde eingearbeitet.",
+                fieldUpdates = mapOf("primaryAudience" to JsonPrimitive("B2B SaaS teams")),
+                appliedFields = listOf("primaryAudience"),
+            )
+        )
     }
 
     @Test
@@ -196,6 +204,277 @@ class WizardStepCompletionServiceTest {
             .isEqualTo(FlowStepStatus.COMPLETED)
         assertThat(flowState.steps.first { it.stepType == FlowStepType.FEATURES }.status)
             .isEqualTo(FlowStepStatus.IN_PROGRESS)
+        Unit
+    }
+
+    @Test
+    fun `answered unapplied clarification is applied to wizard data and advances without completion agent`() = runBlocking {
+        val project = projectService.createProject("Test")
+        setFlowProgress(project.project.id, FlowStepType.PROBLEM, setOf(FlowStepType.IDEA))
+        wizardService.saveStepData(
+            project.project.id,
+            "PROBLEM",
+            WizardStepData(fields = mapOf("painPoints" to JsonPrimitive("Existing pain"))),
+        )
+        val clarification = clarificationService.createClarification(
+            project.project.id,
+            "Wer ist die Zielgruppe?",
+            "Grundlage fuer alles weitere",
+            FlowStepType.PROBLEM,
+        )
+        clarificationService.answerClarification(project.project.id, clarification.id, "B2B SaaS teams")
+        val completionAgent = CapturingWizardAgent("Should not be called.")
+        val completion = createCompletion(completionAgent)
+
+        val result = completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.PROBLEM,
+                fields = mapOf("coreProblem" to "Zu unklar", "primaryAudience" to ""),
+            )
+        )
+
+        assertThat(completionAgent.calls).isEmpty()
+        assertThat(applyAgent.calls).hasSize(1)
+        assertThat(applyAgent.calls.single().fields["painPoints"]).isEqualTo(JsonPrimitive("Existing pain"))
+        assertThat(applyAgent.calls.single().fields["coreProblem"]).isEqualTo(JsonPrimitive("Zu unklar"))
+        assertThat(result.message).isEqualTo("Antwort wurde eingearbeitet.")
+        assertThat(result.nextStep).isEqualTo(FlowStepType.FEATURES)
+        assertThat(result.action.type).isEqualTo("SHOW_STEP")
+        assertThat(result.wizardDataChanged).isTrue()
+        assertThat(result.appliedClarificationIds).containsExactly(clarification.id)
+
+        val wizardData = wizardService.getWizardData(project.project.id)
+        assertThat(wizardData.steps["PROBLEM"]?.fields?.get("primaryAudience"))
+            .isEqualTo(JsonPrimitive("B2B SaaS teams"))
+        assertThat(clarificationService.getClarification(project.project.id, clarification.id).appliedAt).isNotNull()
+        Unit
+    }
+
+    @Test
+    fun `resolved unapplied decision is applied to wizard data and advances without completion agent`() = runBlocking {
+        val project = projectService.createProject("Test")
+        setFlowProgress(project.project.id, FlowStepType.PROBLEM, setOf(FlowStepType.IDEA))
+        val decision = decisionService.createDecision(project.project.id, "Which audience?", FlowStepType.PROBLEM)
+        decisionService.resolveDecision(project.project.id, decision.id, "opt-1", "B2B SaaS teams")
+        val completionAgent = CapturingWizardAgent("Should not be called.")
+        val completion = createCompletion(completionAgent)
+
+        val result = completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.PROBLEM,
+                fields = mapOf("coreProblem" to "Zu unklar", "primaryAudience" to ""),
+            )
+        )
+
+        assertThat(completionAgent.calls).isEmpty()
+        assertThat(applyAgent.calls).hasSize(1)
+        assertThat(result.appliedDecisionIds).containsExactly(decision.id)
+        assertThat(result.wizardDataChanged).isTrue()
+
+        val wizardData = wizardService.getWizardData(project.project.id)
+        assertThat(wizardData.steps["PROBLEM"]?.fields?.get("primaryAudience"))
+            .isEqualTo(JsonPrimitive("B2B SaaS teams"))
+        assertThat(decisionService.getDecision(project.project.id, decision.id).appliedAt).isNotNull()
+        Unit
+    }
+
+    @Test
+    fun `apply agent field updates are filtered to allowed wizard step fields`() = runBlocking {
+        applyAgent = CapturingApplyAgent(
+            WizardBlockerApplyResult(
+                message = "Antwort wurde eingearbeitet.",
+                fieldUpdates = mapOf("notAField" to JsonPrimitive("bad")),
+                appliedFields = listOf("notAField"),
+            )
+        )
+        val project = projectService.createProject("Test")
+        setFlowProgress(project.project.id, FlowStepType.PROBLEM, setOf(FlowStepType.IDEA))
+        val decision = decisionService.createDecision(project.project.id, "Which audience?", FlowStepType.PROBLEM)
+        decisionService.resolveDecision(project.project.id, decision.id, "opt-1", "B2B SaaS teams")
+        val completion = createCompletion(CapturingWizardAgent("Should not be called."))
+
+        completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.PROBLEM,
+                fields = mapOf("coreProblem" to "Zu unklar", "primaryAudience" to ""),
+            )
+        )
+
+        val problemFields = wizardService.getWizardData(project.project.id).steps["PROBLEM"]?.fields.orEmpty()
+        assertThat(problemFields).doesNotContainKey("notAField")
+        assertThat(decisionService.getDecision(project.project.id, decision.id).appliedFields).isEmpty()
+        Unit
+    }
+
+    @Test
+    fun `already applied clarification is not applied twice`() = runBlocking {
+        val project = projectService.createProject("Test")
+        setFlowProgress(project.project.id, FlowStepType.PROBLEM, setOf(FlowStepType.IDEA))
+        val clarification = clarificationService.createClarification(
+            project.project.id,
+            "Wer ist die Zielgruppe?",
+            "Grundlage fuer alles weitere",
+            FlowStepType.PROBLEM,
+        )
+        val answered = clarificationService.answerClarification(project.project.id, clarification.id, "B2B SaaS teams")
+        clarificationService.markApplied(project.project.id, answered.id, listOf("primaryAudience"))
+        val completionAgent = CapturingWizardAgent("Looks good.")
+        val completion = createCompletion(completionAgent)
+
+        val result = completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.PROBLEM,
+                fields = mapOf("coreProblem" to "Zu unklar", "primaryAudience" to "B2B SaaS teams"),
+            )
+        )
+
+        assertThat(applyAgent.calls).isEmpty()
+        assertThat(completionAgent.calls).hasSize(1)
+        assertThat(result.nextStep).isEqualTo(FlowStepType.FEATURES)
+        Unit
+    }
+
+    @Test
+    fun `answered unapplied clarification on FEATURES syncs tasks from merged fields`() = runBlocking {
+        applyAgent = CapturingApplyAgent(
+            WizardBlockerApplyResult(
+                message = "Feature wurde eingearbeitet.",
+                fieldUpdates = mapOf(
+                    "features" to WizardMarkdown.toJsonElement(
+                        listOf(
+                            mapOf(
+                                "id" to "f-apply",
+                                "title" to "Applied Feature",
+                                "scopes" to listOf("BACKEND"),
+                                "scopeFields" to mapOf("apiEndpoints" to "POST /apply"),
+                            )
+                        )
+                    ),
+                    "edges" to WizardMarkdown.toJsonElement(emptyList<Any>()),
+                ),
+                appliedFields = listOf("features", "edges"),
+            )
+        )
+        val project = projectService.createProject("Test")
+        wizardService.saveStepData(
+            project.project.id,
+            "IDEA",
+            WizardStepData(fields = mapOf("category" to JsonPrimitive("SaaS"))),
+        )
+        setFlowProgress(project.project.id, FlowStepType.FEATURES, setOf(FlowStepType.IDEA, FlowStepType.PROBLEM))
+        val clarification = clarificationService.createClarification(
+            project.project.id,
+            "Welche Features fehlen?",
+            "Feature-Liste vervollstaendigen",
+            FlowStepType.FEATURES,
+        )
+        clarificationService.answerClarification(project.project.id, clarification.id, "Applied Feature")
+        val completionAgent = CapturingWizardAgent("Should not be called.")
+        val completion = createCompletion(completionAgent)
+
+        val result = completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.FEATURES,
+                fields = mapOf(
+                    "features" to emptyList<Any>(),
+                    "edges" to emptyList<Any>(),
+                ),
+            )
+        )
+
+        assertThat(completionAgent.calls).isEmpty()
+        assertThat(result.nextStep).isEqualTo(FlowStepType.MVP)
+        assertThat(taskService.listTasks(project.project.id).map { it.id }).containsExactly("epic-f-apply")
+        Unit
+    }
+
+    @Test
+    fun `answered blocker on REVIEW uses normal final spec path without apply agent`() = runBlocking {
+        val project = projectService.createProject("Test")
+        setFlowProgress(
+            project.project.id,
+            FlowStepType.REVIEW,
+            setOf(
+                FlowStepType.IDEA,
+                FlowStepType.PROBLEM,
+                FlowStepType.FEATURES,
+                FlowStepType.MVP,
+                FlowStepType.DESIGN,
+                FlowStepType.ARCHITECTURE,
+                FlowStepType.BACKEND,
+                FlowStepType.FRONTEND,
+            ),
+        )
+        val clarification = clarificationService.createClarification(
+            project.project.id,
+            "Finale Rueckfrage?",
+            "Sollte nicht per apply verarbeitet werden",
+            FlowStepType.REVIEW,
+        )
+        clarificationService.answerClarification(project.project.id, clarification.id, "Bestaetigt")
+        val agent = SequenceWizardAgent(
+            listOf(
+                "Review confirmed.",
+                "# Product Specification\n\nDone.",
+            )
+        )
+        val completion = createCompletion(agent)
+
+        val result = completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.REVIEW,
+                fields = mapOf("confirmed" to true),
+            )
+        )
+
+        assertThat(applyAgent.calls).isEmpty()
+        assertThat(agent.calls).hasSize(2)
+        assertThat(result.exportTriggered).isTrue()
+        assertThat(result.action.type).isEqualTo("OPEN_EXPORT")
+        assertThat(projectService.readSpecFile(project.project.id, "spec.md"))
+            .isEqualTo("# Product Specification\n\nDone.")
+        Unit
+    }
+
+    @Test
+    fun `mark clarification applied records applied fields`() {
+        val project = projectService.createProject("Test")
+        val clarification = clarificationService.createClarification(
+            project.project.id,
+            "Wer ist die Zielgruppe?",
+            "Grundlage fuer alles weitere",
+            FlowStepType.PROBLEM,
+        )
+        val answered = clarificationService.answerClarification(project.project.id, clarification.id, "Teams in KMU")
+
+        val applied = clarificationService.markApplied(project.project.id, answered.id, listOf("primaryAudience"))
+
+        assertThat(applied.appliedAt).isNotNull()
+        assertThat(applied.appliedFields).containsExactly("primaryAudience")
+        val reloaded = clarificationService.getClarification(project.project.id, answered.id)
+        assertThat(reloaded.appliedAt).isEqualTo(applied.appliedAt)
+        assertThat(reloaded.appliedFields).containsExactly("primaryAudience")
+    }
+
+    @Test
+    fun `mark decision applied records applied fields`() = runBlocking {
+        val project = projectService.createProject("Test")
+        val decision = decisionService.createDecision(project.project.id, "Which audience?", FlowStepType.PROBLEM)
+        val resolved = decisionService.resolveDecision(project.project.id, decision.id, "opt-1", "B2B teams")
+
+        val applied = decisionService.markApplied(project.project.id, resolved.id, listOf("primaryAudience"))
+
+        assertThat(applied.appliedAt).isNotNull()
+        assertThat(applied.appliedFields).containsExactly("primaryAudience")
+        val reloaded = decisionService.getDecision(project.project.id, resolved.id)
+        assertThat(reloaded.appliedAt).isEqualTo(applied.appliedAt)
+        assertThat(reloaded.appliedFields).containsExactly("primaryAudience")
         Unit
     }
 
@@ -551,6 +830,7 @@ class WizardStepCompletionServiceTest {
             clarificationService = clarificationService,
             wizardService = wizardService,
             completionAgent = agent,
+            applyAgent = applyAgent,
             taskService = taskService,
             designWorkbenchStorage = designWorkbenchStorage,
         )
@@ -580,6 +860,15 @@ class WizardStepCompletionServiceTest {
         override suspend fun respond(systemPrompt: String, userPrompt: String): String {
             calls.add(AgentCall(systemPrompt, userPrompt))
             return response
+        }
+    }
+
+    private class CapturingApplyAgent(private val result: WizardBlockerApplyResult) : WizardBlockerApplyAgent {
+        val calls = mutableListOf<ApplyWizardBlockers>()
+
+        override suspend fun apply(command: ApplyWizardBlockers): WizardBlockerApplyResult {
+            calls.add(command)
+            return result
         }
     }
 

@@ -15,7 +15,9 @@ data class Clarification(
     val status: ClarificationStatus = ClarificationStatus.OPEN,
     val answer: String? = null,
     val createdAt: String,
-    val answeredAt: String? = null
+    val answeredAt: String? = null,
+    val appliedAt: String? = null,
+    val appliedFields: List<String> = emptyList()
 )
 
 @Serializable

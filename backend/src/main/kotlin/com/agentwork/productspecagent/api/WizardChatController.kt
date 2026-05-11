@@ -48,6 +48,9 @@ class WizardChatController(
                 progression = result.progression,
                 action = result.action,
                 artifacts = result.artifacts,
+                appliedDecisionIds = result.appliedDecisionIds,
+                appliedClarificationIds = result.appliedClarificationIds,
+                wizardDataChanged = result.wizardDataChanged,
             )
         )
     }

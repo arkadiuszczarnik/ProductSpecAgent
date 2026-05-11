@@ -28,6 +28,7 @@ agent:
     defaults:
       idea-to-spec: LARGE
       decision: MEDIUM
+      wizard-blocker-apply: MEDIUM
       feature-proposal: MEDIUM
       plan-generator: LARGE
       design-summary: MEDIUM

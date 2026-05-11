@@ -45,9 +45,10 @@ data class ZipPackage(
 }
 
 data class ProjectExportOptions(
-    val includeDecisions: Boolean = true,
-    val includeClarifications: Boolean = true,
+    val includeDecisions: Boolean = false,
+    val includeClarifications: Boolean = false,
     val includeTasks: Boolean = true,
+    val includeDesign: Boolean = true,
 )
 
 data class HandoffPackageOptions(
@@ -83,13 +84,15 @@ fun ProjectExportOptions.toExportRequest(): ExportRequest =
         includeDecisions = includeDecisions,
         includeClarifications = includeClarifications,
         includeTasks = includeTasks,
+        includeDesign = includeDesign,
     )
 
 fun ExportRequest.toProjectExportOptions(): ProjectExportOptions =
     ProjectExportOptions(
-        includeDecisions = includeDecisions,
-        includeClarifications = includeClarifications,
+        includeDecisions = false,
+        includeClarifications = false,
         includeTasks = includeTasks,
+        includeDesign = includeDesign,
     )
 
 fun HandoffExportRequest.toHandoffPackageOptions(): HandoffPackageOptions =

@@ -3,8 +3,11 @@ package com.agentwork.productspecagent.service
 import com.agentwork.productspecagent.agent.KoogAgentRunner
 import com.agentwork.productspecagent.agent.SpecContextBuilder
 import com.agentwork.productspecagent.agent.AgentResponseMarkers
+import com.agentwork.productspecagent.domain.Clarification
 import com.agentwork.productspecagent.domain.ClarificationStatus
+import com.agentwork.productspecagent.domain.Decision
 import com.agentwork.productspecagent.domain.DecisionStatus
+import com.agentwork.productspecagent.domain.FlowState
 import com.agentwork.productspecagent.domain.FlowStepStatus
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.ProductCategory
@@ -15,6 +18,10 @@ import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.domain.WizardStepView
 import com.agentwork.productspecagent.domain.emptyWizardProgressionView
 import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
@@ -40,6 +47,9 @@ data class WizardStepCompletionResult(
     val progression: WizardProgressionView = emptyWizardProgressionView(),
     val action: WizardClientActionDto = stayClientAction,
     val artifacts: WizardCreatedArtifacts = WizardCreatedArtifacts(),
+    val appliedDecisionIds: List<String> = emptyList(),
+    val appliedClarificationIds: List<String> = emptyList(),
+    val wizardDataChanged: Boolean = false,
 )
 
 class WizardStepNotVisibleException(
@@ -77,6 +87,7 @@ class WizardStepCompletionService(
     private val clarificationService: ClarificationService,
     private val wizardService: WizardService,
     private val completionAgent: WizardCompletionAgent,
+    private val applyAgent: WizardBlockerApplyAgent,
     private val designWorkbenchStorage: DesignWorkbenchStorage,
     private val taskService: TaskService? = null,
     private val progressionPolicy: WizardProgressionPolicy = WizardProgressionPolicy(),
@@ -107,6 +118,17 @@ class WizardStepCompletionService(
             )
         }
         val isLastStep = plan.isTerminal(command.step)
+        val unappliedDecisions = answeredUnappliedDecisions(command.projectId, command.step)
+        val unappliedClarifications = answeredUnappliedClarifications(command.projectId, command.step)
+        if (!isLastStep && (unappliedDecisions.isNotEmpty() || unappliedClarifications.isNotEmpty())) {
+            return applyAnsweredBlockers(
+                command = command,
+                flowState = flowState,
+                plan = plan,
+                decisions = unappliedDecisions,
+                clarifications = unappliedClarifications,
+            )
+        }
         val nextStep = if (!isLastStep) plan.nextAfter(command.step) else null
         val stepName = command.step.name
         val wizardContext = contextBuilder.buildWizardContext(wizardData, stepName, command.fields)
@@ -147,20 +169,15 @@ class WizardStepCompletionService(
             ).id
         }
 
-        if (command.step == FlowStepType.FEATURES && taskService != null) {
-            val parsedFeatures = WizardFeatureParser.parse(command.fields, wizardCategory)
-            if (parsedFeatures.isNotEmpty()) {
-                logger.info("completeWizardStep(FEATURES) syncing {} wizard feature tasks", parsedFeatures.size)
-                taskService.replaceWizardFeatureTasks(command.projectId, parsedFeatures)
-            }
-        }
+        val commandFields = command.fields.mapValues { (_, value) -> WizardMarkdown.toJsonElement(value) }
+        syncWizardFeatureTasks(command.projectId, command.step, commandFields, wizardCategory)
 
         val now = Instant.now().toString()
         wizardService.saveStepData(
             command.projectId,
             stepName,
             WizardStepData(
-                fields = command.fields.mapValues { (_, value) -> WizardMarkdown.toJsonElement(value) },
+                fields = commandFields,
                 completedAt = now,
             ),
         )
@@ -236,6 +253,113 @@ class WizardStepCompletionService(
             ),
         )
     }
+
+    private suspend fun applyAnsweredBlockers(
+        command: CompleteWizardStep,
+        flowState: FlowState,
+        plan: WizardProgressionPlan,
+        decisions: List<Decision>,
+        clarifications: List<Clarification>,
+    ): WizardStepCompletionResult {
+        val stepName = command.step.name
+        val existingFields = wizardService.getWizardData(command.projectId).steps[stepName]?.fields.orEmpty()
+        val commandFields = command.fields.mapValues { (_, value) -> WizardMarkdown.toJsonElement(value) }
+        val baseFields = existingFields + commandFields
+        val applyResult = applyAgent.apply(
+            ApplyWizardBlockers(
+                projectId = command.projectId,
+                step = command.step,
+                fields = baseFields,
+                decisions = decisions,
+                clarifications = clarifications,
+                locale = command.locale,
+            )
+        )
+        val validFieldUpdates = applyResult.fieldUpdates
+            .filterKeys { it in WizardStepFieldSchema.allowedFields(command.step) }
+        val appliedFields = validFieldUpdates.keys.toList()
+        val mergedFields = baseFields + validFieldUpdates
+        val wizardCategory = wizardService.getWizardData(command.projectId).steps["IDEA"]?.fields?.get("category")
+            ?.let { runCatching { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }.getOrNull() }
+        syncWizardFeatureTasks(command.projectId, command.step, mergedFields, wizardCategory)
+        val now = Instant.now().toString()
+        wizardService.saveStepData(
+            command.projectId,
+            stepName,
+            WizardStepData(fields = mergedFields, completedAt = now),
+        )
+        decisions.forEach { decisionService.markApplied(command.projectId, it.id, appliedFields) }
+        clarifications.forEach { clarificationService.markApplied(command.projectId, it.id, appliedFields) }
+
+        val isLastStep = plan.isTerminal(command.step)
+        val nextStep = if (!isLastStep) plan.nextAfter(command.step) else null
+        val updatedSteps = flowState.steps.map { step ->
+            when (step.stepType) {
+                command.step -> step.copy(status = FlowStepStatus.COMPLETED, updatedAt = now)
+                nextStep -> step.copy(status = FlowStepStatus.IN_PROGRESS, updatedAt = now)
+                else -> step
+            }
+        }
+        projectService.updateFlowState(
+            command.projectId,
+            flowState.copy(steps = updatedSteps, currentStep = nextStep ?: command.step),
+        )
+        if (!isLastStep) {
+            projectService.regenerateDocsScaffold(command.projectId)
+        }
+
+        val progression = snapshotFor(command.projectId)
+        val action = when {
+            isLastStep -> openExportClientAction
+            nextStep != null -> showStepAction(nextStep)
+            else -> stayClientAction
+        }
+        return WizardStepCompletionResult(
+            message = applyResult.message,
+            nextStep = nextStep,
+            exportTriggered = isLastStep,
+            progression = progression,
+            action = action,
+            appliedDecisionIds = decisions.map { it.id },
+            appliedClarificationIds = clarifications.map { it.id },
+            wizardDataChanged = true,
+        )
+    }
+
+    private suspend fun syncWizardFeatureTasks(
+        projectId: String,
+        step: FlowStepType,
+        fields: Map<String, JsonElement>,
+        wizardCategory: String?,
+    ) {
+        if (step != FlowStepType.FEATURES || taskService == null) return
+
+        val parsedFeatures = WizardFeatureParser.parse(
+            fields.mapValues { (_, value) -> jsonElementToKotlin(value) },
+            wizardCategory,
+        )
+        if (parsedFeatures.isNotEmpty()) {
+            logger.info("completeWizardStep(FEATURES) syncing {} wizard feature tasks", parsedFeatures.size)
+            taskService.replaceWizardFeatureTasks(projectId, parsedFeatures)
+        }
+    }
+
+    private fun jsonElementToKotlin(value: JsonElement): Any? = when (value) {
+        JsonNull -> null
+        is JsonArray -> value.map(::jsonElementToKotlin)
+        is JsonObject -> value.mapValues { (_, child) -> jsonElementToKotlin(child) }
+        else -> WizardMarkdown.jsonPrimitiveValue(value)
+    }
+
+    private fun answeredUnappliedDecisions(projectId: String, step: FlowStepType) =
+        decisionService.listDecisions(projectId).filter {
+            it.stepType == step && it.status == DecisionStatus.RESOLVED && it.appliedAt == null
+        }
+
+    private fun answeredUnappliedClarifications(projectId: String, step: FlowStepType) =
+        clarificationService.listClarifications(projectId).filter {
+            it.stepType == step && it.status == ClarificationStatus.ANSWERED && it.appliedAt == null
+        }
 
     private fun hasAnsweredStepBlocker(projectId: String, step: FlowStepType): Boolean =
         decisionService.listDecisions(projectId).any {

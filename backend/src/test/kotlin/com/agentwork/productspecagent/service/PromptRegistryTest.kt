@@ -1,5 +1,6 @@
 package com.agentwork.productspecagent.service
 
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -11,7 +12,7 @@ class PromptRegistryTest {
         val ids = PromptRegistry().definitions.map { it.id }.toSet()
         assertEquals(
             setOf("idea-base", "idea-marker-reminder", "idea-step-IDEA",
-                  "decision-system", "plan-system", "feature-proposal-system",
+                  "decision-system", "wizard-blocker-apply-system", "plan-system", "feature-proposal-system",
                   "acceptance-criteria-proposal-system", "design-variant-system",
                   "design-image-analysis-system"),
             ids,
@@ -43,5 +44,25 @@ class PromptRegistryTest {
         org.junit.jupiter.api.assertThrows<PromptNotFoundException> {
             PromptRegistry().byId("nonexistent")
         }
+    }
+
+    @Test
+    fun `registry includes wizard blocker apply prompt`() {
+        val registry = PromptRegistry()
+
+        val prompt = registry.byId("wizard-blocker-apply-system")
+
+        assertThat(prompt.agent).isEqualTo("WizardBlockerApply")
+        assertThat(prompt.resourcePath).isEqualTo("/prompts/wizard-blocker-apply-system.md")
+    }
+
+    @Test
+    fun `wizard blocker apply prompt requires schema-safe field update values`() {
+        val content = this::class.java.getResourceAsStream("/prompts/wizard-blocker-apply-system.md")!!
+            .bufferedReader(Charsets.UTF_8).use { it.readText() }
+
+        assertThat(content).contains("fieldUpdates-Werte muessen den korrekten JSON-Typ des Felds verwenden.")
+        assertThat(content).contains("Bestehende Array- oder Objekt-Strukturen bleiben erhalten")
+        assertThat(content).contains("Lasse Felder weg, statt Platzhalter oder stringifiziertes JSON zurueckzugeben.")
     }
 }
