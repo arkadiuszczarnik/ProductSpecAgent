@@ -634,8 +634,6 @@ export async function readProjectFile(projectId: string, filePath: string): Prom
 export async function exportProject(
   projectId: string,
   options: {
-    includeDecisions?: boolean;
-    includeClarifications?: boolean;
     includeTasks?: boolean;
   } = {}
 ): Promise<Blob> {
@@ -644,8 +642,6 @@ export async function exportProject(
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      includeDecisions: options.includeDecisions ?? true,
-      includeClarifications: options.includeClarifications ?? true,
       includeTasks: options.includeTasks ?? true,
     }),
   });

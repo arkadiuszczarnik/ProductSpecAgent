@@ -1,5 +1,11 @@
 package com.agentwork.productspecagent.api
 
+import com.agentwork.productspecagent.domain.Clarification
+import com.agentwork.productspecagent.domain.ClarificationStatus
+import com.agentwork.productspecagent.domain.Decision
+import com.agentwork.productspecagent.domain.DecisionOption
+import com.agentwork.productspecagent.domain.DecisionStatus
+import com.agentwork.productspecagent.domain.FlowStepType
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -29,6 +35,8 @@ class ExportControllerTest {
     @Autowired lateinit var projectStorage: com.agentwork.productspecagent.storage.ProjectStorage
     @Autowired lateinit var designWorkbenchStorage: com.agentwork.productspecagent.storage.DesignWorkbenchStorage
     @Autowired lateinit var objectStore: com.agentwork.productspecagent.storage.ObjectStore
+    @Autowired lateinit var decisionStorage: com.agentwork.productspecagent.storage.DecisionStorage
+    @Autowired lateinit var clarificationStorage: com.agentwork.productspecagent.storage.ClarificationStorage
 
     private val createdProjectIds = mutableListOf<String>()
 
@@ -226,6 +234,71 @@ class ExportControllerTest {
     }
 
     @Test
+    fun `POST export never includes decisions or clarifications`() {
+        val pid = createProject()
+        val now = "2026-05-11T12:00:00Z"
+        decisionStorage.saveDecision(
+            Decision(
+                id = "decision-1",
+                projectId = pid,
+                stepType = FlowStepType.PROBLEM,
+                title = "Welche Zielgruppe?",
+                options = listOf(
+                    DecisionOption(
+                        id = "opt-1",
+                        label = "B2B SaaS teams",
+                        pros = emptyList(),
+                        cons = emptyList(),
+                        recommended = true,
+                    )
+                ),
+                recommendation = "B2B SaaS teams",
+                status = DecisionStatus.RESOLVED,
+                chosenOptionId = "opt-1",
+                rationale = "Passt zum Produkt",
+                createdAt = now,
+                resolvedAt = now,
+                appliedAt = now,
+                appliedFields = listOf("primaryAudience"),
+            )
+        )
+        clarificationStorage.saveClarification(
+            Clarification(
+                id = "clarification-1",
+                projectId = pid,
+                stepType = FlowStepType.PROBLEM,
+                question = "Wer ist die Zielgruppe?",
+                reason = "Grundlage fuer alles weitere",
+                status = ClarificationStatus.ANSWERED,
+                answer = "B2B SaaS teams",
+                createdAt = now,
+                answeredAt = now,
+                appliedAt = now,
+                appliedFields = listOf("primaryAudience"),
+            )
+        )
+
+        val result = mockMvc.perform(
+            post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
+                .content("""{"includeDecisions":true,"includeClarifications":true,"includeTasks":true}""")
+        )
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val entries = mutableListOf<String>()
+        ZipInputStream(ByteArrayInputStream(result.response.contentAsByteArray)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                entries.add(entry.name)
+                entry = zis.nextEntry
+            }
+        }
+
+        assertFalse(entries.any { it.contains("/docs/decisions/") }, "ZIP should not contain decisions, got: $entries")
+        assertFalse(entries.any { it.contains("/docs/clarifications/") }, "ZIP should not contain clarifications, got: $entries")
+    }
+
+    @Test
     fun `POST export ZIP includes generated docs SPEC only`() {
         val pid = createProject()
         projectService.saveSpecFile(pid, "problem.md", "# Problem\n\nRaw problem spec.")
@@ -362,8 +435,8 @@ class ExportControllerTest {
         assertFalse(readme.contains("`spec/spec.md`"), "README should not reference spec/spec.md")
         assertTrue(readme.contains("`docs/plan.md`"), "README should reference docs/plan.md")
         assertFalse(readme.contains("`docs/PLAN.md`"), "README should not reference docs/PLAN.md")
-        assertTrue(readme.contains("`docs/decisions/`"), "README should reference docs/decisions/")
-        assertTrue(readme.contains("`docs/clarifications/`"), "README should reference docs/clarifications/")
+        assertFalse(readme.contains("`docs/decisions/`"), "README should not reference docs/decisions/")
+        assertFalse(readme.contains("`docs/clarifications/`"), "README should not reference docs/clarifications/")
         assertTrue(readme.contains("`docs/tasks/`"), "README should reference docs/tasks/")
     }
 

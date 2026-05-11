@@ -1,7 +1,7 @@
 package com.agentwork.productspecagent.domain
 
 data class ExportRequest(
-    val includeDecisions: Boolean = true,
-    val includeClarifications: Boolean = true,
+    val includeDecisions: Boolean = false,
+    val includeClarifications: Boolean = false,
     val includeTasks: Boolean = true
 )

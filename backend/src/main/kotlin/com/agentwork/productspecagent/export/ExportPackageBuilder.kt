@@ -45,8 +45,8 @@ data class ZipPackage(
 }
 
 data class ProjectExportOptions(
-    val includeDecisions: Boolean = true,
-    val includeClarifications: Boolean = true,
+    val includeDecisions: Boolean = false,
+    val includeClarifications: Boolean = false,
     val includeTasks: Boolean = true,
 )
 
@@ -87,8 +87,8 @@ fun ProjectExportOptions.toExportRequest(): ExportRequest =
 
 fun ExportRequest.toProjectExportOptions(): ProjectExportOptions =
     ProjectExportOptions(
-        includeDecisions = includeDecisions,
-        includeClarifications = includeClarifications,
+        includeDecisions = false,
+        includeClarifications = false,
         includeTasks = includeTasks,
     )
 
