@@ -384,32 +384,6 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         set({ progression: response.progression });
       }
 
-      const action = response.action;
-      if (action?.type === "SHOW_STEP" && action.step) {
-        const steps = get().visibleSteps();
-        const nextVisible = steps.find((s) => s.key === action.step);
-        set({
-          activeStep: nextVisible ? action.step : get().activeStep,
-          chatPending: false,
-        });
-      } else {
-        set({ chatPending: false });
-      }
-
-      // Navigate to next step
-      if (!action && response.nextStep) {
-        const steps = visibleSteps();
-        const nextVisible = steps.find((s) => s.key === response.nextStep);
-        if (nextVisible) {
-          set({ activeStep: response.nextStep, chatPending: false });
-        } else {
-          set({ chatPending: false });
-        }
-      } else {
-        set({ chatPending: false });
-      }
-
-      // If a decision was triggered, fetch it
       const decisionIds = Array.from(new Set([
         ...(response.artifacts?.decisionIds ?? []),
         ...(response.decisionId ? [response.decisionId] : []),
@@ -431,6 +405,25 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         const clarification = await getClarification(projectId, clarificationId);
         const { useClarificationStore } = await import("@/lib/stores/clarification-store");
         useClarificationStore.getState().addClarification(clarification);
+      }
+
+      const action = response.action;
+      if (action?.type === "SHOW_STEP" && action.step) {
+        const steps = get().visibleSteps();
+        const nextVisible = steps.find((s) => s.key === action.step);
+        set({
+          activeStep: nextVisible ? action.step : get().activeStep,
+          chatPending: false,
+        });
+      } else if (!action && response.nextStep) {
+        const steps = visibleSteps();
+        const nextVisible = steps.find((s) => s.key === response.nextStep);
+        set({
+          activeStep: nextVisible ? response.nextStep : get().activeStep,
+          chatPending: false,
+        });
+      } else {
+        set({ chatPending: false });
       }
 
       // Handle export trigger on last step

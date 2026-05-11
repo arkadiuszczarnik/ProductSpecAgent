@@ -3,6 +3,8 @@ package com.agentwork.productspecagent.service
 import com.agentwork.productspecagent.agent.KoogAgentRunner
 import com.agentwork.productspecagent.agent.SpecContextBuilder
 import com.agentwork.productspecagent.agent.AgentResponseMarkers
+import com.agentwork.productspecagent.domain.ClarificationStatus
+import com.agentwork.productspecagent.domain.DecisionStatus
 import com.agentwork.productspecagent.domain.FlowStepStatus
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.ProductCategory
@@ -94,6 +96,16 @@ class WizardStepCompletionService(
         if (command.step != currentStep) {
             throw WizardStepNotCurrentException(command.step, currentStep?.name)
         }
+        val openBlockers = countOpenStepBlockers(command.projectId, command.step)
+        if (openBlockers.total > 0) {
+            return WizardStepCompletionResult(
+                message = openBlockers.message(),
+                nextStep = null,
+                exportTriggered = false,
+                progression = snapshotFor(command.projectId),
+                action = stayClientAction,
+            )
+        }
         val isLastStep = plan.isTerminal(command.step)
         val nextStep = if (!isLastStep) plan.nextAfter(command.step) else null
         val stepName = command.step.name
@@ -113,19 +125,20 @@ class WizardStepCompletionService(
         val decisionTitle = AgentResponseMarkers.extractDecisionTitle(rawResponse)
         val clarification = AgentResponseMarkers.extractClarification(rawResponse)
         val cleanMessage = AgentResponseMarkers.clean(rawResponse)
+        val hasAnsweredBlocker = hasAnsweredStepBlocker(command.projectId, command.step)
 
         logger.info(
-            "completeWizardStep({}) markers - decision={}, clarification={}, isLastStep={}",
-            stepName, decisionTitle, clarification?.first, isLastStep
+            "completeWizardStep({}) markers - decision={}, clarification={}, isLastStep={}, hasAnsweredBlocker={}",
+            stepName, decisionTitle, clarification?.first, isLastStep, hasAnsweredBlocker
         )
 
         var createdDecisionId: String? = null
-        if (!isLastStep && decisionTitle != null) {
+        if (!isLastStep && !hasAnsweredBlocker && decisionTitle != null) {
             createdDecisionId = decisionService.createDecision(command.projectId, decisionTitle, command.step).id
         }
 
         var createdClarificationId: String? = null
-        if (!isLastStep && clarification != null) {
+        if (!isLastStep && !hasAnsweredBlocker && clarification != null) {
             createdClarificationId = clarificationService.createClarification(
                 command.projectId,
                 clarification.first,
@@ -143,6 +156,33 @@ class WizardStepCompletionService(
         }
 
         val now = Instant.now().toString()
+        wizardService.saveStepData(
+            command.projectId,
+            stepName,
+            WizardStepData(
+                fields = command.fields.mapValues { (_, value) -> WizardMarkdown.toJsonElement(value) },
+                completedAt = now,
+            ),
+        )
+
+        val createdBlockingArtifact = createdDecisionId != null || createdClarificationId != null
+        if (createdBlockingArtifact) {
+            val progression = snapshotFor(command.projectId)
+            return WizardStepCompletionResult(
+                message = cleanMessage,
+                nextStep = null,
+                exportTriggered = false,
+                decisionId = createdDecisionId,
+                clarificationId = createdClarificationId,
+                progression = progression,
+                action = stayClientAction,
+                artifacts = WizardCreatedArtifacts(
+                    decisionIds = listOfNotNull(createdDecisionId),
+                    clarificationIds = listOfNotNull(createdClarificationId),
+                ),
+            )
+        }
+
         val updatedSteps = flowState.steps.map { step ->
             when (step.stepType) {
                 command.step -> step.copy(status = FlowStepStatus.COMPLETED, updatedAt = now)
@@ -153,15 +193,6 @@ class WizardStepCompletionService(
         projectService.updateFlowState(
             command.projectId,
             flowState.copy(steps = updatedSteps, currentStep = nextStep ?: command.step),
-        )
-
-        wizardService.saveStepData(
-            command.projectId,
-            stepName,
-            WizardStepData(
-                fields = command.fields.mapValues { (_, value) -> WizardMarkdown.toJsonElement(value) },
-                completedAt = now,
-            ),
         )
 
         if (isLastStep) {
@@ -204,6 +235,43 @@ class WizardStepCompletionService(
                 clarificationIds = listOfNotNull(createdClarificationId),
             ),
         )
+    }
+
+    private fun hasAnsweredStepBlocker(projectId: String, step: FlowStepType): Boolean =
+        decisionService.listDecisions(projectId).any {
+            it.stepType == step && it.status == DecisionStatus.RESOLVED
+        } || clarificationService.listClarifications(projectId).any {
+            it.stepType == step && it.status == ClarificationStatus.ANSWERED
+        }
+
+    private fun countOpenStepBlockers(projectId: String, step: FlowStepType): StepBlockerCounts {
+        val pendingDecisions = decisionService.listDecisions(projectId)
+            .count { it.stepType == step && it.status == DecisionStatus.PENDING }
+        val openClarifications = clarificationService.listClarifications(projectId)
+            .count { it.stepType == step && it.status == ClarificationStatus.OPEN }
+        return StepBlockerCounts(pendingDecisions, openClarifications)
+    }
+
+    private data class StepBlockerCounts(
+        val pendingDecisions: Int,
+        val openClarifications: Int,
+    ) {
+        val total: Int = pendingDecisions + openClarifications
+
+        fun message(): String = when {
+            pendingDecisions > 0 && openClarifications > 0 ->
+                "${pendingDecisions} offene ${decisionLabel()} und ${openClarifications} offene ${clarificationLabel()} blockieren den naechsten Schritt."
+            pendingDecisions > 0 ->
+                "${pendingDecisions} offene ${decisionLabel()} blockier${if (pendingDecisions == 1) "t" else "en"} den naechsten Schritt."
+            else ->
+                "${openClarifications} offene ${clarificationLabel()} blockier${if (openClarifications == 1) "t" else "en"} den naechsten Schritt."
+        }
+
+        private fun decisionLabel(): String =
+            if (pendingDecisions == 1) "Entscheidung" else "Entscheidungen"
+
+        private fun clarificationLabel(): String =
+            if (openClarifications == 1) "Klaerung" else "Klaerungen"
     }
 
     private fun buildDesignArtifactInstruction(projectId: String): String? =

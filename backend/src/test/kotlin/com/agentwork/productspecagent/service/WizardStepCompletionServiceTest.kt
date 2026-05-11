@@ -143,8 +143,95 @@ class WizardStepCompletionServiceTest {
 
         assertThat(result.message).isEqualTo("Gut.")
         assertThat(result.clarificationId).isNotNull()
+        assertThat(result.nextStep).isNull()
         assertThat(result.exportTriggered).isFalse()
+        assertThat(result.progression.currentStep).isEqualTo(FlowStepType.PROBLEM.name)
+        assertThat(result.progression.primaryAction.type).isEqualTo("COMPLETE_STEP")
+        assertThat(result.progression.primaryAction.step).isEqualTo(FlowStepType.PROBLEM.name)
+        assertThat(result.action.type).isEqualTo("STAY")
         assertThat(clarificationService.listClarifications(project.project.id)).hasSize(1)
+
+        val flowState = projectService.getFlowState(project.project.id)
+        assertThat(flowState.currentStep).isEqualTo(FlowStepType.PROBLEM)
+        assertThat(flowState.steps.first { it.stepType == FlowStepType.PROBLEM }.status)
+            .isEqualTo(FlowStepStatus.IN_PROGRESS)
+        assertThat(flowState.steps.first { it.stepType == FlowStepType.FEATURES }.status)
+            .isEqualTo(FlowStepStatus.OPEN)
+        Unit
+    }
+
+    @Test
+    fun `answered clarification prevents repeated marker from blocking completion again`() = runBlocking {
+        val project = projectService.createProject("Test")
+        setFlowProgress(project.project.id, FlowStepType.PROBLEM, setOf(FlowStepType.IDEA))
+        val clarification = clarificationService.createClarification(
+            project.project.id,
+            "Wer ist die Zielgruppe?",
+            "Grundlage fuer alles weitere",
+            FlowStepType.PROBLEM,
+        )
+        clarificationService.answerClarification(project.project.id, clarification.id, "Teams in KMU")
+        val agent = CapturingWizardAgent(
+            "Gut.\n[CLARIFICATION_NEEDED]: Wer ist die Zielgruppe? | Grundlage fuer alles weitere"
+        )
+        val completion = createCompletion(agent)
+
+        val result = completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.PROBLEM,
+                fields = mapOf("description" to "Kurz"),
+            )
+        )
+
+        assertThat(result.nextStep).isEqualTo(FlowStepType.FEATURES)
+        assertThat(result.clarificationId).isNull()
+        assertThat(result.action.type).isEqualTo("SHOW_STEP")
+        assertThat(result.action.step).isEqualTo(FlowStepType.FEATURES.name)
+        assertThat(clarificationService.listClarifications(project.project.id)).hasSize(1)
+
+        val flowState = projectService.getFlowState(project.project.id)
+        assertThat(flowState.currentStep).isEqualTo(FlowStepType.FEATURES)
+        assertThat(flowState.steps.first { it.stepType == FlowStepType.PROBLEM }.status)
+            .isEqualTo(FlowStepStatus.COMPLETED)
+        assertThat(flowState.steps.first { it.stepType == FlowStepType.FEATURES }.status)
+            .isEqualTo(FlowStepStatus.IN_PROGRESS)
+        Unit
+    }
+
+    @Test
+    fun `open clarification blocks completion without asking agent again`() = runBlocking {
+        val project = projectService.createProject("Test")
+        setFlowProgress(project.project.id, FlowStepType.PROBLEM, setOf(FlowStepType.IDEA))
+        clarificationService.createClarification(
+            project.project.id,
+            "Wer ist die Zielgruppe?",
+            "Grundlage fuer alles weitere",
+            FlowStepType.PROBLEM,
+        )
+        val agent = CapturingWizardAgent(
+            "Gut.\n[CLARIFICATION_NEEDED]: Wer ist die Zielgruppe? | Grundlage fuer alles weitere"
+        )
+        val completion = createCompletion(agent)
+
+        val result = completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.PROBLEM,
+                fields = mapOf("description" to "Kurz"),
+            )
+        )
+
+        assertThat(result.nextStep).isNull()
+        assertThat(result.clarificationId).isNull()
+        assertThat(result.action.type).isEqualTo("STAY")
+        assertThat(agent.calls).isEmpty()
+        assertThat(clarificationService.listClarifications(project.project.id)).hasSize(1)
+
+        val flowState = projectService.getFlowState(project.project.id)
+        assertThat(flowState.currentStep).isEqualTo(FlowStepType.PROBLEM)
+        assertThat(flowState.steps.first { it.stepType == FlowStepType.PROBLEM }.status)
+            .isEqualTo(FlowStepStatus.IN_PROGRESS)
         Unit
     }
 
