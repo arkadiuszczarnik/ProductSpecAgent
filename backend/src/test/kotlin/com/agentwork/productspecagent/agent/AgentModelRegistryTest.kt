@@ -16,6 +16,7 @@ class AgentModelRegistryTest {
         defaults = mapOf(
             "idea-to-spec" to AgentModelTier.LARGE,
             "decision" to AgentModelTier.MEDIUM,
+            "wizard-blocker-apply" to AgentModelTier.MEDIUM,
             "feature-proposal" to AgentModelTier.MEDIUM,
             "plan-generator" to AgentModelTier.LARGE,
             "design-summary" to AgentModelTier.MEDIUM,
@@ -30,6 +31,7 @@ class AgentModelRegistryTest {
         assertThat(reg.agentIds()).containsExactlyInAnyOrder(
             "idea-to-spec",
             "decision",
+            "wizard-blocker-apply",
             "feature-proposal",
             "plan-generator",
             "design-summary",
@@ -83,5 +85,10 @@ class AgentModelRegistryTest {
         assertThatThrownBy { reg.defaultTier("ghost") }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("ghost")
+    }
+
+    @Test
+    fun `known agents include wizard blocker apply`() {
+        assertThat(AgentModelRegistry.KNOWN_AGENT_IDS).contains("wizard-blocker-apply")
     }
 }

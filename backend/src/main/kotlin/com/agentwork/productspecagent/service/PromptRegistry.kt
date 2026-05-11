@@ -63,6 +63,14 @@ class PromptRegistry {
             validators = listOf(PromptValidator.NotBlank, PromptValidator.MaxLength(50_000)),
         ),
         PromptDefinition(
+            id = "wizard-blocker-apply-system",
+            title = "WizardBlockerApply — System-Prompt",
+            description = "Arbeitet beantwortete Decisions und Clarifications in Wizard-Felder ein.",
+            agent = "WizardBlockerApply",
+            resourcePath = "/prompts/wizard-blocker-apply-system.md",
+            validators = listOf(PromptValidator.NotBlank, PromptValidator.MaxLength(50_000)),
+        ),
+        PromptDefinition(
             id = "plan-system",
             title = "Plan — System-Prompt",
             description = "Rolle des Plan-Generators (Epics/Stories/Tasks als JSON).",
