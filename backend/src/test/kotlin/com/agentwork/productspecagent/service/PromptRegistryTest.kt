@@ -55,4 +55,14 @@ class PromptRegistryTest {
         assertThat(prompt.agent).isEqualTo("WizardBlockerApply")
         assertThat(prompt.resourcePath).isEqualTo("/prompts/wizard-blocker-apply-system.md")
     }
+
+    @Test
+    fun `wizard blocker apply prompt requires schema-safe field update values`() {
+        val content = this::class.java.getResourceAsStream("/prompts/wizard-blocker-apply-system.md")!!
+            .bufferedReader(Charsets.UTF_8).use { it.readText() }
+
+        assertThat(content).contains("fieldUpdates-Werte muessen den korrekten JSON-Typ des Felds verwenden.")
+        assertThat(content).contains("Bestehende Array- oder Objekt-Strukturen bleiben erhalten")
+        assertThat(content).contains("Lasse Felder weg, statt Platzhalter oder stringifiziertes JSON zurueckzugeben.")
+    }
 }
