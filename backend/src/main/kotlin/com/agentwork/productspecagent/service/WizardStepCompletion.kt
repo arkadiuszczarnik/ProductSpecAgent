@@ -275,7 +275,10 @@ class WizardStepCompletionService(
                 locale = command.locale,
             )
         )
-        val mergedFields = baseFields + applyResult.fieldUpdates
+        val validFieldUpdates = applyResult.fieldUpdates
+            .filterKeys { it in WizardStepFieldSchema.allowedFields(command.step) }
+        val appliedFields = validFieldUpdates.keys.toList()
+        val mergedFields = baseFields + validFieldUpdates
         val wizardCategory = wizardService.getWizardData(command.projectId).steps["IDEA"]?.fields?.get("category")
             ?.let { runCatching { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }.getOrNull() }
         syncWizardFeatureTasks(command.projectId, command.step, mergedFields, wizardCategory)
@@ -285,8 +288,8 @@ class WizardStepCompletionService(
             stepName,
             WizardStepData(fields = mergedFields, completedAt = now),
         )
-        decisions.forEach { decisionService.markApplied(command.projectId, it.id, applyResult.appliedFields) }
-        clarifications.forEach { clarificationService.markApplied(command.projectId, it.id, applyResult.appliedFields) }
+        decisions.forEach { decisionService.markApplied(command.projectId, it.id, appliedFields) }
+        clarifications.forEach { clarificationService.markApplied(command.projectId, it.id, appliedFields) }
 
         val isLastStep = plan.isTerminal(command.step)
         val nextStep = if (!isLastStep) plan.nextAfter(command.step) else null
