@@ -211,6 +211,11 @@ class WizardStepCompletionServiceTest {
     fun `answered unapplied clarification is applied to wizard data and advances without completion agent`() = runBlocking {
         val project = projectService.createProject("Test")
         setFlowProgress(project.project.id, FlowStepType.PROBLEM, setOf(FlowStepType.IDEA))
+        wizardService.saveStepData(
+            project.project.id,
+            "PROBLEM",
+            WizardStepData(fields = mapOf("painPoints" to JsonPrimitive("Existing pain"))),
+        )
         val clarification = clarificationService.createClarification(
             project.project.id,
             "Wer ist die Zielgruppe?",
@@ -231,6 +236,8 @@ class WizardStepCompletionServiceTest {
 
         assertThat(completionAgent.calls).isEmpty()
         assertThat(applyAgent.calls).hasSize(1)
+        assertThat(applyAgent.calls.single().fields["painPoints"]).isEqualTo(JsonPrimitive("Existing pain"))
+        assertThat(applyAgent.calls.single().fields["coreProblem"]).isEqualTo(JsonPrimitive("Zu unklar"))
         assertThat(result.message).isEqualTo("Antwort wurde eingearbeitet.")
         assertThat(result.nextStep).isEqualTo(FlowStepType.FEATURES)
         assertThat(result.action.type).isEqualTo("SHOW_STEP")
@@ -241,6 +248,7 @@ class WizardStepCompletionServiceTest {
         assertThat(wizardData.steps["PROBLEM"]?.fields?.get("primaryAudience"))
             .isEqualTo(JsonPrimitive("B2B SaaS teams"))
         assertThat(clarificationService.getClarification(project.project.id, clarification.id).appliedAt).isNotNull()
+        Unit
     }
 
     @Test
@@ -269,6 +277,111 @@ class WizardStepCompletionServiceTest {
         assertThat(applyAgent.calls).isEmpty()
         assertThat(completionAgent.calls).hasSize(1)
         assertThat(result.nextStep).isEqualTo(FlowStepType.FEATURES)
+        Unit
+    }
+
+    @Test
+    fun `answered unapplied clarification on FEATURES syncs tasks from merged fields`() = runBlocking {
+        applyAgent = CapturingApplyAgent(
+            WizardBlockerApplyResult(
+                message = "Feature wurde eingearbeitet.",
+                fieldUpdates = mapOf(
+                    "features" to WizardMarkdown.toJsonElement(
+                        listOf(
+                            mapOf(
+                                "id" to "f-apply",
+                                "title" to "Applied Feature",
+                                "scopes" to listOf("BACKEND"),
+                                "scopeFields" to mapOf("apiEndpoints" to "POST /apply"),
+                            )
+                        )
+                    ),
+                    "edges" to WizardMarkdown.toJsonElement(emptyList<Any>()),
+                ),
+                appliedFields = listOf("features", "edges"),
+            )
+        )
+        val project = projectService.createProject("Test")
+        wizardService.saveStepData(
+            project.project.id,
+            "IDEA",
+            WizardStepData(fields = mapOf("category" to JsonPrimitive("SaaS"))),
+        )
+        setFlowProgress(project.project.id, FlowStepType.FEATURES, setOf(FlowStepType.IDEA, FlowStepType.PROBLEM))
+        val clarification = clarificationService.createClarification(
+            project.project.id,
+            "Welche Features fehlen?",
+            "Feature-Liste vervollstaendigen",
+            FlowStepType.FEATURES,
+        )
+        clarificationService.answerClarification(project.project.id, clarification.id, "Applied Feature")
+        val completionAgent = CapturingWizardAgent("Should not be called.")
+        val completion = createCompletion(completionAgent)
+
+        val result = completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.FEATURES,
+                fields = mapOf(
+                    "features" to emptyList<Any>(),
+                    "edges" to emptyList<Any>(),
+                ),
+            )
+        )
+
+        assertThat(completionAgent.calls).isEmpty()
+        assertThat(result.nextStep).isEqualTo(FlowStepType.MVP)
+        assertThat(taskService.listTasks(project.project.id).map { it.id }).containsExactly("epic-f-apply")
+        Unit
+    }
+
+    @Test
+    fun `answered blocker on REVIEW uses normal final spec path without apply agent`() = runBlocking {
+        val project = projectService.createProject("Test")
+        setFlowProgress(
+            project.project.id,
+            FlowStepType.REVIEW,
+            setOf(
+                FlowStepType.IDEA,
+                FlowStepType.PROBLEM,
+                FlowStepType.FEATURES,
+                FlowStepType.MVP,
+                FlowStepType.DESIGN,
+                FlowStepType.ARCHITECTURE,
+                FlowStepType.BACKEND,
+                FlowStepType.FRONTEND,
+            ),
+        )
+        val clarification = clarificationService.createClarification(
+            project.project.id,
+            "Finale Rueckfrage?",
+            "Sollte nicht per apply verarbeitet werden",
+            FlowStepType.REVIEW,
+        )
+        clarificationService.answerClarification(project.project.id, clarification.id, "Bestaetigt")
+        val agent = SequenceWizardAgent(
+            listOf(
+                "Review confirmed.",
+                "# Product Specification\n\nDone.",
+            )
+        )
+        val completion = createCompletion(agent)
+
+        val result = completion.complete(
+            CompleteWizardStep(
+                projectId = project.project.id,
+                step = FlowStepType.REVIEW,
+                fields = mapOf("confirmed" to true),
+            )
+        )
+
+        assertThat(applyAgent.calls).isEmpty()
+        assertThat(agent.calls).hasSize(2)
+        assertThat(result.exportTriggered).isTrue()
+        assertThat(result.action.type).isEqualTo("OPEN_EXPORT")
+        assertThat(projectService.readSpecFile(project.project.id, "spec.md"))
+            .isEqualTo("# Product Specification\n\nDone.")
+        Unit
     }
 
     @Test
@@ -304,6 +417,7 @@ class WizardStepCompletionServiceTest {
         val reloaded = decisionService.getDecision(project.project.id, resolved.id)
         assertThat(reloaded.appliedAt).isEqualTo(applied.appliedAt)
         assertThat(reloaded.appliedFields).containsExactly("primaryAudience")
+        Unit
     }
 
     @Test

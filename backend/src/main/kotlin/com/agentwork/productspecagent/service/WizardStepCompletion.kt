@@ -18,6 +18,10 @@ import com.agentwork.productspecagent.domain.WizardStepData
 import com.agentwork.productspecagent.domain.WizardStepView
 import com.agentwork.productspecagent.domain.emptyWizardProgressionView
 import com.agentwork.productspecagent.storage.DesignWorkbenchStorage
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
@@ -113,9 +117,10 @@ class WizardStepCompletionService(
                 action = stayClientAction,
             )
         }
+        val isLastStep = plan.isTerminal(command.step)
         val unappliedDecisions = answeredUnappliedDecisions(command.projectId, command.step)
         val unappliedClarifications = answeredUnappliedClarifications(command.projectId, command.step)
-        if (unappliedDecisions.isNotEmpty() || unappliedClarifications.isNotEmpty()) {
+        if (!isLastStep && (unappliedDecisions.isNotEmpty() || unappliedClarifications.isNotEmpty())) {
             return applyAnsweredBlockers(
                 command = command,
                 flowState = flowState,
@@ -124,7 +129,6 @@ class WizardStepCompletionService(
                 clarifications = unappliedClarifications,
             )
         }
-        val isLastStep = plan.isTerminal(command.step)
         val nextStep = if (!isLastStep) plan.nextAfter(command.step) else null
         val stepName = command.step.name
         val wizardContext = contextBuilder.buildWizardContext(wizardData, stepName, command.fields)
@@ -165,20 +169,15 @@ class WizardStepCompletionService(
             ).id
         }
 
-        if (command.step == FlowStepType.FEATURES && taskService != null) {
-            val parsedFeatures = WizardFeatureParser.parse(command.fields, wizardCategory)
-            if (parsedFeatures.isNotEmpty()) {
-                logger.info("completeWizardStep(FEATURES) syncing {} wizard feature tasks", parsedFeatures.size)
-                taskService.replaceWizardFeatureTasks(command.projectId, parsedFeatures)
-            }
-        }
+        val commandFields = command.fields.mapValues { (_, value) -> WizardMarkdown.toJsonElement(value) }
+        syncWizardFeatureTasks(command.projectId, command.step, commandFields, wizardCategory)
 
         val now = Instant.now().toString()
         wizardService.saveStepData(
             command.projectId,
             stepName,
             WizardStepData(
-                fields = command.fields.mapValues { (_, value) -> WizardMarkdown.toJsonElement(value) },
+                fields = commandFields,
                 completedAt = now,
             ),
         )
@@ -277,6 +276,9 @@ class WizardStepCompletionService(
             )
         )
         val mergedFields = baseFields + applyResult.fieldUpdates
+        val wizardCategory = wizardService.getWizardData(command.projectId).steps["IDEA"]?.fields?.get("category")
+            ?.let { runCatching { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }.getOrNull() }
+        syncWizardFeatureTasks(command.projectId, command.step, mergedFields, wizardCategory)
         val now = Instant.now().toString()
         wizardService.saveStepData(
             command.projectId,
@@ -319,6 +321,31 @@ class WizardStepCompletionService(
             appliedClarificationIds = clarifications.map { it.id },
             wizardDataChanged = true,
         )
+    }
+
+    private suspend fun syncWizardFeatureTasks(
+        projectId: String,
+        step: FlowStepType,
+        fields: Map<String, JsonElement>,
+        wizardCategory: String?,
+    ) {
+        if (step != FlowStepType.FEATURES || taskService == null) return
+
+        val parsedFeatures = WizardFeatureParser.parse(
+            fields.mapValues { (_, value) -> jsonElementToKotlin(value) },
+            wizardCategory,
+        )
+        if (parsedFeatures.isNotEmpty()) {
+            logger.info("completeWizardStep(FEATURES) syncing {} wizard feature tasks", parsedFeatures.size)
+            taskService.replaceWizardFeatureTasks(projectId, parsedFeatures)
+        }
+    }
+
+    private fun jsonElementToKotlin(value: JsonElement): Any? = when (value) {
+        JsonNull -> null
+        is JsonArray -> value.map(::jsonElementToKotlin)
+        is JsonObject -> value.mapValues { (_, child) -> jsonElementToKotlin(child) }
+        else -> WizardMarkdown.jsonPrimitiveValue(value)
     }
 
     private fun answeredUnappliedDecisions(projectId: String, step: FlowStepType) =
