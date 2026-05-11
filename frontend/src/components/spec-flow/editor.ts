@@ -1,4 +1,4 @@
-import { NodeEditor, GetSchemes, ClassicPreset } from "rete";
+import { NodeEditor, ClassicPreset } from "rete";
 import { AreaPlugin, AreaExtensions } from "rete-area-plugin";
 import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-plugin";
 import { ReactPlugin, Presets as ReactPresets } from "rete-react-plugin";
@@ -17,19 +17,16 @@ export class FlowNode extends ClassicPreset.Node {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Schemes = GetSchemes<FlowNode, ClassicPreset.Connection<FlowNode, FlowNode>>;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AreaExtra = any;
-
 const STEPS: { type: StepType; label: string }[] = [
   { type: "IDEA", label: "Idee" },
   { type: "PROBLEM", label: "Problem & Zielgruppe" },
   { type: "FEATURES", label: "Features" },
   { type: "MVP", label: "MVP" },
+  { type: "DESIGN", label: "Design" },
   { type: "ARCHITECTURE", label: "Architektur" },
   { type: "BACKEND", label: "Backend" },
   { type: "FRONTEND", label: "Frontend" },
+  { type: "REVIEW", label: "Review" },
 ];
 
 export interface EditorContext {
@@ -91,7 +88,7 @@ export async function createEditor(
 
   area.addPipe((ctx) => {
     if (ctx.type === "nodepicked" && clickCallback) {
-      const nodeId = (ctx as any).data.id;
+      const nodeId = (ctx as { data: { id: string } }).data.id;
       const node = editor.getNode(nodeId);
       if (node instanceof FlowNode) clickCallback(node.stepType);
     }

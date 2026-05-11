@@ -6,10 +6,11 @@ import { ChipSelect } from "../ChipSelect";
 import { useWizardStore } from "@/lib/stores/wizard-store";
 
 export function IdeaForm({ projectId }: { projectId: string }) {
+  void projectId;
   const { data, updateField } = useWizardStore();
   const fields = data?.steps["IDEA"]?.fields ?? {};
   const get = (key: string) => (fields[key] as string) ?? "";
-  const set = (key: string, val: any) => updateField("IDEA", key, val);
+  const set = (key: string, val: unknown) => updateField("IDEA", key, val);
 
   return (
     <div className="space-y-5">

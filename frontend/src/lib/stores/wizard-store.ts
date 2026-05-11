@@ -23,6 +23,7 @@ export const WIZARD_STEPS = [
   { key: "ARCHITECTURE", label: "Architektur" },
   { key: "BACKEND", label: "Backend" },
   { key: "FRONTEND", label: "Frontend" },
+  { key: "REVIEW", label: "Review" },
 ] as const;
 
 interface WizardState {
@@ -170,6 +171,61 @@ export const useWizardStore = create<WizardState>((set, get) => ({
   completeStep: async (projectId, step) => {
     const { data, visibleSteps } = get();
     if (!data) return null;
+
+    if (step === "REVIEW") {
+      const chatMessage = ["**Review**", "", "Finale Zusammenfassung geprueft und bestaetigt."].join("\n");
+      const userMsg = {
+        id: `wizard-${Date.now()}`,
+        role: "user" as const,
+        content: chatMessage,
+        timestamp: Date.now(),
+      };
+      useProjectStore.setState((s) => ({
+        messages: [...s.messages, userMsg],
+        chatSending: true,
+      }));
+
+      set({ chatPending: true, saving: true });
+      try {
+        const locale = typeof navigator !== "undefined" ? navigator.language : "de";
+        const response = await completeWizardStep(projectId, {
+          step,
+          fields: { confirmed: true },
+          locale,
+        });
+        const refreshedData = await getWizardData(projectId).catch(() => null);
+        const agentMsg = {
+          id: `wizard-agent-${Date.now()}`,
+          role: "agent" as const,
+          content: response.message,
+          timestamp: Date.now(),
+        };
+        useProjectStore.setState((s) => ({
+          messages: [...s.messages, agentMsg],
+          chatSending: false,
+        }));
+        set({
+          data: refreshedData ?? get().data,
+          progression: response.progression ?? get().progression,
+          saving: false,
+          chatPending: false,
+        });
+        return { exportTriggered: response.action?.type === "OPEN_EXPORT" || response.exportTriggered };
+      } catch (err) {
+        const errMsg = {
+          id: `wizard-err-${Date.now()}`,
+          role: "system" as const,
+          content: `Fehler: ${err instanceof Error ? err.message : "Agent konnte nicht antworten"}`,
+          timestamp: Date.now(),
+        };
+        useProjectStore.setState((s) => ({
+          messages: [...s.messages, errMsg],
+          chatSending: false,
+        }));
+        set({ saving: false, chatPending: false });
+        return null;
+      }
+    }
 
     // DESIGN step: skip generic wizard save, use dedicated workbench completion endpoint
     if (step === "DESIGN") {

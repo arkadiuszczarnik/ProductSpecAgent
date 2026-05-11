@@ -40,6 +40,9 @@ export const STEP_FIELD_LABELS: Record<string, Record<string, string>> = {
     styling: "Styling",
     theme: "Theme",
   },
+  REVIEW: {
+    confirmed: "Final bestaetigt",
+  },
 };
 
 export const SCOPE_FIELD_LABELS: Record<string, string> = {
@@ -60,13 +63,14 @@ export const SCOPE_FIELDS_BY_SCOPE: Record<FeatureScope | "CORE", string[]> = {
   CORE: ["publicApi", "typesExposed", "examples"],
 };
 
-export function formatStepFields(step: string, fields: Record<string, any>): string {
+export function formatStepFields(step: string, fields: Record<string, unknown>): string {
   const labels = STEP_FIELD_LABELS[step] ?? {};
   const stepLabel: Record<string, string> = {
     IDEA: "Idee", PROBLEM: "Problem & Zielgruppe",
     FEATURES: "Features", MVP: "MVP",
     DESIGN: "Design",
     ARCHITECTURE: "Architektur", BACKEND: "Backend", FRONTEND: "Frontend",
+    REVIEW: "Review",
   };
 
   const lines: string[] = [`**${stepLabel[step] ?? step}**`, ""];

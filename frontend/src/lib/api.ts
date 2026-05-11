@@ -66,7 +66,7 @@ export async function apiFetch<T>(
 // ─── Domain Types ────────────────────────────────────────────────────────────
 
 export type StepType = "IDEA" | "PROBLEM" | "FEATURES" | "MVP" | "DESIGN"
-  | "ARCHITECTURE" | "BACKEND" | "FRONTEND";
+  | "ARCHITECTURE" | "BACKEND" | "FRONTEND" | "REVIEW";
 export type StepStatus = "OPEN" | "IN_PROGRESS" | "COMPLETED";
 
 export interface WizardOption {

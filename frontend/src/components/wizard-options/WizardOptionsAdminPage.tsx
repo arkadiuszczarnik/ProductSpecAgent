@@ -22,16 +22,21 @@ const STEP_ORDER: StepType[] = [
   "ARCHITECTURE",
   "BACKEND",
   "FRONTEND",
+  "REVIEW",
 ];
-const REQUIRED_STEPS: StepType[] = ["IDEA", "PROBLEM", "FEATURES", "MVP"];
+const REQUIRED_STEPS: StepType[] = ["IDEA", "PROBLEM", "FEATURES", "MVP", "REVIEW"];
 const FEATURE_SCOPES: FeatureScope[] = ["FRONTEND", "BACKEND"];
+
+function withReviewStep(steps: StepType[]): StepType[] {
+  return [...steps.filter((step) => step !== "REVIEW"), "REVIEW"];
+}
 
 function cloneCatalog(catalog: WizardOptionCatalog): WizardOptionCatalog {
   return {
     ...catalog,
     categories: catalog.categories.map((category) => ({
       ...category,
-      visibleSteps: [...category.visibleSteps],
+      visibleSteps: withReviewStep(category.visibleSteps),
       allowedScopes: [...category.allowedScopes],
       fields: category.fields.map((field) => ({
         ...field,
@@ -146,7 +151,7 @@ export function WizardOptionsAdminPage() {
     }
     updateSelectedCategory({
       ...selectedCategory,
-      visibleSteps: STEP_ORDER.filter((entry) => selected.has(entry)),
+      visibleSteps: withReviewStep(STEP_ORDER.filter((entry) => selected.has(entry))),
     });
   }
 

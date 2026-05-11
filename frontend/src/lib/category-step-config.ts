@@ -6,10 +6,14 @@ export type Category = "SaaS" | "Mobile App" | "CLI Tool" | "Library" | "Desktop
 
 export const ALL_STEP_KEYS = [
   "IDEA", "PROBLEM", "FEATURES", "MVP", "DESIGN",
-  "ARCHITECTURE", "BACKEND", "FRONTEND",
+  "ARCHITECTURE", "BACKEND", "FRONTEND", "REVIEW",
 ] as const;
 
 export const BASE_STEPS = ["IDEA", "PROBLEM", "FEATURES", "MVP"] as const;
+
+function withReviewStep(steps: readonly StepType[]): StepType[] {
+  return [...steps.filter((step) => step !== "REVIEW"), "REVIEW"];
+}
 
 export type FieldOptions = Record<string, Record<string, string[]>>;
 
@@ -23,7 +27,7 @@ export type CategoryStepConfig = CategoryConfig;
 
 export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
   "SaaS": {
-    visibleSteps: [...BASE_STEPS, "DESIGN", "ARCHITECTURE", "BACKEND", "FRONTEND"],
+    visibleSteps: withReviewStep([...BASE_STEPS, "DESIGN", "ARCHITECTURE", "BACKEND", "FRONTEND"]),
     allowedScopes: ["FRONTEND", "BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
@@ -45,7 +49,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
     },
   },
   "Mobile App": {
-    visibleSteps: [...BASE_STEPS, "DESIGN", "ARCHITECTURE", "BACKEND", "FRONTEND"],
+    visibleSteps: withReviewStep([...BASE_STEPS, "DESIGN", "ARCHITECTURE", "BACKEND", "FRONTEND"]),
     allowedScopes: ["FRONTEND", "BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
@@ -67,7 +71,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
     },
   },
   "CLI Tool": {
-    visibleSteps: [...BASE_STEPS, "ARCHITECTURE"],
+    visibleSteps: withReviewStep([...BASE_STEPS, "ARCHITECTURE"]),
     allowedScopes: ["BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
@@ -78,12 +82,12 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
     },
   },
   "Library": {
-    visibleSteps: [...BASE_STEPS],
+    visibleSteps: withReviewStep([...BASE_STEPS]),
     allowedScopes: [],
     fieldOptions: {},
   },
   "Desktop App": {
-    visibleSteps: [...BASE_STEPS, "DESIGN", "ARCHITECTURE", "BACKEND", "FRONTEND"],
+    visibleSteps: withReviewStep([...BASE_STEPS, "DESIGN", "ARCHITECTURE", "BACKEND", "FRONTEND"]),
     allowedScopes: ["FRONTEND", "BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
@@ -105,7 +109,7 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
     },
   },
   "API": {
-    visibleSteps: [...BASE_STEPS, "ARCHITECTURE", "BACKEND"],
+    visibleSteps: withReviewStep([...BASE_STEPS, "ARCHITECTURE", "BACKEND"]),
     allowedScopes: ["BACKEND"],
     fieldOptions: {
       ARCHITECTURE: {
@@ -125,12 +129,12 @@ export const CATEGORY_STEP_CONFIG: Record<Category, CategoryConfig> = {
 export const DEFAULT_CATEGORY_STEP_CONFIG = CATEGORY_STEP_CONFIG;
 
 /** Default: all steps visible (no category selected) */
-export const DEFAULT_VISIBLE_STEPS: StepType[] = [...ALL_STEP_KEYS];
+export const DEFAULT_VISIBLE_STEPS: StepType[] = withReviewStep(ALL_STEP_KEYS);
 
 export function getVisibleSteps(category: string | undefined): StepType[] {
   if (!category) return [...DEFAULT_VISIBLE_STEPS];
   const config = CATEGORY_STEP_CONFIG[category as Category];
-  return config ? config.visibleSteps : [...DEFAULT_VISIBLE_STEPS];
+  return config ? withReviewStep(config.visibleSteps) : [...DEFAULT_VISIBLE_STEPS];
 }
 
 export function getFieldOptions(category: string | undefined, step: string): Record<string, string[]> | undefined {
@@ -187,7 +191,7 @@ export function catalogToCategoryStepConfig(catalog: WizardOptionCatalog): Recor
     }
 
     next[category.id] = {
-      visibleSteps: category.visibleSteps.length > 0 ? [...category.visibleSteps] : [...fallback.visibleSteps],
+      visibleSteps: withReviewStep(category.visibleSteps.length > 0 ? category.visibleSteps : fallback.visibleSteps),
       allowedScopes: [...category.allowedScopes],
       fieldOptions,
     };
@@ -201,7 +205,7 @@ export function getVisibleStepsFromCatalog(
   category: Category | string | undefined,
 ): StepType[] {
   if (!catalog || !category || !isCategory(category)) return getVisibleSteps(category);
-  return catalog.categories.find((entry) => entry.id === category)?.visibleSteps ?? getVisibleSteps(category);
+  return withReviewStep(catalog.categories.find((entry) => entry.id === category)?.visibleSteps ?? getVisibleSteps(category));
 }
 
 export function getFieldOptionsFromCatalog(

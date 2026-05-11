@@ -26,12 +26,6 @@ export function SpecFileViewer({ projectId, initialPath, open, onClose }: SpecFi
   const [tabs, setTabs] = useState<OpenTab[]>([]);
   const [activeTab, setActiveTab] = useState<string>("");
 
-  // Open a tab for the initial path
-  useEffect(() => {
-    if (!open || !initialPath) return;
-    openTab(initialPath);
-  }, [open, initialPath]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const openTab = useCallback(async (path: string) => {
     // If tab already exists, just activate it
     const existing = tabs.find((t) => t.path === path);
@@ -59,6 +53,12 @@ export function SpecFileViewer({ projectId, initialPath, open, onClose }: SpecFi
       );
     }
   }, [tabs, projectId]);
+
+  // Open a tab for the initial path
+  useEffect(() => {
+    if (!open || !initialPath) return;
+    void Promise.resolve().then(() => openTab(initialPath));
+  }, [open, initialPath]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function closeTab(path: string) {
     const newTabs = tabs.filter((t) => t.path !== path);

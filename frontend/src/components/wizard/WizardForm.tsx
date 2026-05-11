@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
+  CheckCircle2,
   Cpu,
   Download,
   FileText,
@@ -26,6 +27,7 @@ import { ArchitectureForm } from "./steps/ArchitectureForm";
 import { BackendForm } from "./steps/BackendForm";
 import { FrontendForm } from "./steps/FrontendForm";
 import { DesignWorkbenchForm } from "./steps/design-workbench/DesignWorkbenchForm";
+import { ReviewForm } from "./steps/ReviewForm";
 
 interface StepFormProps {
   projectId: string;
@@ -41,6 +43,7 @@ const FORM_MAP: Record<string, React.ComponentType<StepFormProps>> = {
   BACKEND: BackendForm,
   FRONTEND: FrontendForm,
   DESIGN: DesignWorkbenchForm,
+  REVIEW: ReviewForm,
 };
 
 const STEP_HELP: Record<string, string> = {
@@ -52,6 +55,7 @@ const STEP_HELP: Record<string, string> = {
   ARCHITECTURE: "Definiere Systemform, Datenhaltung und Deployment-Rahmen.",
   BACKEND: "Spezifiziere API, Authentifizierung und serverseitige Komponenten.",
   FRONTEND: "Schaerfe Framework, UI-Bibliothek, Styling und Frontend-Schnittstellen.",
+  REVIEW: "Pruefe die Zusammenfassung und bestaetige die Spezifikation fuer den Export.",
 };
 
 function StepIcon({ step }: { step: string }) {
@@ -73,6 +77,8 @@ function StepIcon({ step }: { step: string }) {
       return <Cpu className={iconClass} />;
     case "FRONTEND":
       return <Monitor className={iconClass} />;
+    case "REVIEW":
+      return <CheckCircle2 className={iconClass} />;
     default:
       return <FileText className={iconClass} />;
   }
@@ -133,7 +139,7 @@ export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardF
             </p>
           </div>
         </div>
-        <div className={activeStep === "FEATURES" || activeStep === "DESIGN" ? "h-[calc(100%-52px)] px-8 py-6" : "mx-auto max-w-2xl px-8 py-6"}>
+        <div className={activeStep === "FEATURES" || activeStep === "DESIGN" || activeStep === "REVIEW" ? "h-[calc(100%-52px)] px-8 py-6" : "mx-auto max-w-2xl px-8 py-6"}>
           {FormComponent && (
             <FormComponent
               projectId={projectId}
@@ -176,6 +182,8 @@ export function WizardForm({ projectId, onBlockerClick, onExportClick }: WizardF
               >
                 {wizardDone ? (
                   <><Download size={14} /> Exportieren</>
+                ) : activeStep === "REVIEW" ? (
+                  <><CheckCircle2 size={14} /> Final bestaetigen</>
                 ) : isLast ? (
                   <><Save size={14} /> Abschliessen</>
                 ) : (

@@ -4,14 +4,14 @@ import { TagInput } from "../TagInput";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useWizardStore } from "@/lib/stores/wizard-store";
-import { cn } from "@/lib/utils";
 
 export function ProblemForm({ projectId }: { projectId: string }) {
+  void projectId;
   const { data, updateField } = useWizardStore();
   const fields = data?.steps["PROBLEM"]?.fields ?? {};
   const get = (key: string) => (fields[key] as string) ?? "";
   const getTags = (key: string): string[] => (fields[key] as string[]) ?? [];
-  const set = (key: string, val: any) => updateField("PROBLEM", key, val);
+  const set = (key: string, val: unknown) => updateField("PROBLEM", key, val);
 
   return (
     <div className="space-y-5">

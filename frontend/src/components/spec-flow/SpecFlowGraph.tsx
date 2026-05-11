@@ -14,7 +14,10 @@ interface SpecFlowGraphProps {
 export function SpecFlowGraph({ flowState, onSelectStep }: SpecFlowGraphProps) {
   const ctxRef = useRef<EditorContext | null>(null);
   const onSelectStepRef = useRef(onSelectStep);
-  onSelectStepRef.current = onSelectStep;
+
+  useEffect(() => {
+    onSelectStepRef.current = onSelectStep;
+  }, [onSelectStep]);
 
   // Stable factory function — never changes, so useRete won't recreate the editor
   const editorFactory = useCallback(
