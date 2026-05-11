@@ -50,6 +50,7 @@ class WizardChatControllerTest {
                             FlowStepType.PROBLEM
                         },
                         exportTriggered = false,
+                        appliedDecisionIds = if (command.step == FlowStepType.IDEA) listOf("dec-1") else emptyList(),
                         appliedClarificationIds = if (command.step == FlowStepType.IDEA) listOf("clar-1") else emptyList(),
                         wizardDataChanged = command.step == FlowStepType.IDEA,
                         progression = progressionFor(command.step),
@@ -125,6 +126,7 @@ class WizardChatControllerTest {
             .andExpect(jsonPath("$.message").value("Applied."))
             .andExpect(jsonPath("$.nextStep").value("FEATURES"))
             .andExpect(jsonPath("$.exportTriggered").value(false))
+            .andExpect(jsonPath("$.appliedDecisionIds[0]").value("dec-1"))
             .andExpect(jsonPath("$.appliedClarificationIds[0]").value("clar-1"))
             .andExpect(jsonPath("$.wizardDataChanged").value(true))
             .andExpect(jsonPath("$.progression.steps").isArray())
