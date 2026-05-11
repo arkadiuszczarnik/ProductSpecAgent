@@ -200,6 +200,41 @@ class WizardStepCompletionServiceTest {
     }
 
     @Test
+    fun `mark clarification applied records applied fields`() {
+        val project = projectService.createProject("Test")
+        val clarification = clarificationService.createClarification(
+            project.project.id,
+            "Wer ist die Zielgruppe?",
+            "Grundlage fuer alles weitere",
+            FlowStepType.PROBLEM,
+        )
+        val answered = clarificationService.answerClarification(project.project.id, clarification.id, "Teams in KMU")
+
+        val applied = clarificationService.markApplied(project.project.id, answered.id, listOf("primaryAudience"))
+
+        assertThat(applied.appliedAt).isNotNull()
+        assertThat(applied.appliedFields).containsExactly("primaryAudience")
+        val reloaded = clarificationService.getClarification(project.project.id, answered.id)
+        assertThat(reloaded.appliedAt).isEqualTo(applied.appliedAt)
+        assertThat(reloaded.appliedFields).containsExactly("primaryAudience")
+    }
+
+    @Test
+    fun `mark decision applied records applied fields`() = runBlocking {
+        val project = projectService.createProject("Test")
+        val decision = decisionService.createDecision(project.project.id, "Which audience?", FlowStepType.PROBLEM)
+        val resolved = decisionService.resolveDecision(project.project.id, decision.id, "opt-1", "B2B teams")
+
+        val applied = decisionService.markApplied(project.project.id, resolved.id, listOf("primaryAudience"))
+
+        assertThat(applied.appliedAt).isNotNull()
+        assertThat(applied.appliedFields).containsExactly("primaryAudience")
+        val reloaded = decisionService.getDecision(project.project.id, resolved.id)
+        assertThat(reloaded.appliedAt).isEqualTo(applied.appliedAt)
+        assertThat(reloaded.appliedFields).containsExactly("primaryAudience")
+    }
+
+    @Test
     fun `open clarification blocks completion without asking agent again`() = runBlocking {
         val project = projectService.createProject("Test")
         setFlowProgress(project.project.id, FlowStepType.PROBLEM, setOf(FlowStepType.IDEA))

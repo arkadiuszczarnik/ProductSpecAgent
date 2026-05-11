@@ -42,4 +42,14 @@ class DecisionService(
         storage.saveDecision(resolved)
         return resolved
     }
+
+    fun markApplied(projectId: String, decisionId: String, appliedFields: List<String>): Decision {
+        val decision = storage.loadDecision(projectId, decisionId)
+        val applied = decision.copy(
+            appliedAt = Instant.now().toString(),
+            appliedFields = appliedFields
+        )
+        storage.saveDecision(applied)
+        return applied
+    }
 }

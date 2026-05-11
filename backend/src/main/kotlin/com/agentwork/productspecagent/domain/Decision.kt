@@ -26,7 +26,9 @@ data class Decision(
     val chosenOptionId: String? = null,
     val rationale: String? = null,
     val createdAt: String,
-    val resolvedAt: String? = null
+    val resolvedAt: String? = null,
+    val appliedAt: String? = null,
+    val appliedFields: List<String> = emptyList()
 )
 
 @Serializable
