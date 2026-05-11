@@ -3,8 +3,11 @@ package com.agentwork.productspecagent.service
 import com.agentwork.productspecagent.agent.KoogAgentRunner
 import com.agentwork.productspecagent.agent.SpecContextBuilder
 import com.agentwork.productspecagent.agent.AgentResponseMarkers
+import com.agentwork.productspecagent.domain.Clarification
 import com.agentwork.productspecagent.domain.ClarificationStatus
+import com.agentwork.productspecagent.domain.Decision
 import com.agentwork.productspecagent.domain.DecisionStatus
+import com.agentwork.productspecagent.domain.FlowState
 import com.agentwork.productspecagent.domain.FlowStepStatus
 import com.agentwork.productspecagent.domain.FlowStepType
 import com.agentwork.productspecagent.domain.ProductCategory
@@ -40,6 +43,9 @@ data class WizardStepCompletionResult(
     val progression: WizardProgressionView = emptyWizardProgressionView(),
     val action: WizardClientActionDto = stayClientAction,
     val artifacts: WizardCreatedArtifacts = WizardCreatedArtifacts(),
+    val appliedDecisionIds: List<String> = emptyList(),
+    val appliedClarificationIds: List<String> = emptyList(),
+    val wizardDataChanged: Boolean = false,
 )
 
 class WizardStepNotVisibleException(
@@ -77,6 +83,7 @@ class WizardStepCompletionService(
     private val clarificationService: ClarificationService,
     private val wizardService: WizardService,
     private val completionAgent: WizardCompletionAgent,
+    private val applyAgent: WizardBlockerApplyAgent,
     private val designWorkbenchStorage: DesignWorkbenchStorage,
     private val taskService: TaskService? = null,
     private val progressionPolicy: WizardProgressionPolicy = WizardProgressionPolicy(),
@@ -104,6 +111,17 @@ class WizardStepCompletionService(
                 exportTriggered = false,
                 progression = snapshotFor(command.projectId),
                 action = stayClientAction,
+            )
+        }
+        val unappliedDecisions = answeredUnappliedDecisions(command.projectId, command.step)
+        val unappliedClarifications = answeredUnappliedClarifications(command.projectId, command.step)
+        if (unappliedDecisions.isNotEmpty() || unappliedClarifications.isNotEmpty()) {
+            return applyAnsweredBlockers(
+                command = command,
+                flowState = flowState,
+                plan = plan,
+                decisions = unappliedDecisions,
+                clarifications = unappliedClarifications,
             )
         }
         val isLastStep = plan.isTerminal(command.step)
@@ -236,6 +254,82 @@ class WizardStepCompletionService(
             ),
         )
     }
+
+    private suspend fun applyAnsweredBlockers(
+        command: CompleteWizardStep,
+        flowState: FlowState,
+        plan: WizardProgressionPlan,
+        decisions: List<Decision>,
+        clarifications: List<Clarification>,
+    ): WizardStepCompletionResult {
+        val stepName = command.step.name
+        val existingFields = wizardService.getWizardData(command.projectId).steps[stepName]?.fields.orEmpty()
+        val commandFields = command.fields.mapValues { (_, value) -> WizardMarkdown.toJsonElement(value) }
+        val baseFields = existingFields + commandFields
+        val applyResult = applyAgent.apply(
+            ApplyWizardBlockers(
+                projectId = command.projectId,
+                step = command.step,
+                fields = baseFields,
+                decisions = decisions,
+                clarifications = clarifications,
+                locale = command.locale,
+            )
+        )
+        val mergedFields = baseFields + applyResult.fieldUpdates
+        val now = Instant.now().toString()
+        wizardService.saveStepData(
+            command.projectId,
+            stepName,
+            WizardStepData(fields = mergedFields, completedAt = now),
+        )
+        decisions.forEach { decisionService.markApplied(command.projectId, it.id, applyResult.appliedFields) }
+        clarifications.forEach { clarificationService.markApplied(command.projectId, it.id, applyResult.appliedFields) }
+
+        val isLastStep = plan.isTerminal(command.step)
+        val nextStep = if (!isLastStep) plan.nextAfter(command.step) else null
+        val updatedSteps = flowState.steps.map { step ->
+            when (step.stepType) {
+                command.step -> step.copy(status = FlowStepStatus.COMPLETED, updatedAt = now)
+                nextStep -> step.copy(status = FlowStepStatus.IN_PROGRESS, updatedAt = now)
+                else -> step
+            }
+        }
+        projectService.updateFlowState(
+            command.projectId,
+            flowState.copy(steps = updatedSteps, currentStep = nextStep ?: command.step),
+        )
+        if (!isLastStep) {
+            projectService.regenerateDocsScaffold(command.projectId)
+        }
+
+        val progression = snapshotFor(command.projectId)
+        val action = when {
+            isLastStep -> openExportClientAction
+            nextStep != null -> showStepAction(nextStep)
+            else -> stayClientAction
+        }
+        return WizardStepCompletionResult(
+            message = applyResult.message,
+            nextStep = nextStep,
+            exportTriggered = isLastStep,
+            progression = progression,
+            action = action,
+            appliedDecisionIds = decisions.map { it.id },
+            appliedClarificationIds = clarifications.map { it.id },
+            wizardDataChanged = true,
+        )
+    }
+
+    private fun answeredUnappliedDecisions(projectId: String, step: FlowStepType) =
+        decisionService.listDecisions(projectId).filter {
+            it.stepType == step && it.status == DecisionStatus.RESOLVED && it.appliedAt == null
+        }
+
+    private fun answeredUnappliedClarifications(projectId: String, step: FlowStepType) =
+        clarificationService.listClarifications(projectId).filter {
+            it.stepType == step && it.status == ClarificationStatus.ANSWERED && it.appliedAt == null
+        }
 
     private fun hasAnsweredStepBlocker(projectId: String, step: FlowStepType): Boolean =
         decisionService.listDecisions(projectId).any {
