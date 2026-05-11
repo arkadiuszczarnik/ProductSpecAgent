@@ -15,6 +15,7 @@ interface ExportDialogProps {
 
 export function ExportDialog({ projectId, projectName, open, onClose }: ExportDialogProps) {
   const [includeTasks, setIncludeTasks] = useState(true);
+  const [includeDesign, setIncludeDesign] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   if (!open) return null;
@@ -24,6 +25,7 @@ export function ExportDialog({ projectId, projectName, open, onClose }: ExportDi
     try {
       const blob = await exportProject(projectId, {
         includeTasks,
+        includeDesign,
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -75,6 +77,13 @@ export function ExportDialog({ projectId, projectName, open, onClose }: ExportDi
             <div>
               <span className="text-sm font-medium">Tasks & Plan</span>
               <p className="text-xs text-muted-foreground">docs/plan.md and individual task files</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 rounded-md border px-3 py-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+            <input type="checkbox" checked={includeDesign} onChange={(e) => setIncludeDesign(e.target.checked)} className="accent-primary" />
+            <div>
+              <span className="text-sm font-medium">Design</span>
+              <p className="text-xs text-muted-foreground">design/design.md and generated design screens</p>
             </div>
           </label>
         </CardContent>

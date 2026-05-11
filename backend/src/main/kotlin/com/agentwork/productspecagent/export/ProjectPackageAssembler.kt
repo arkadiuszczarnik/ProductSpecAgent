@@ -80,8 +80,10 @@ class ProjectPackageAssembler(
             writer.addBytes(relativePath, content)
         }
 
-        designWorkbenchStorage.listActiveOutputFiles(projectId).forEach { (relativePath, content) ->
-            writer.addBytes(relativePath, content)
+        if (options.includeDesign) {
+            designWorkbenchStorage.listActiveOutputFiles(projectId).forEach { (relativePath, content) ->
+                writer.addBytes(relativePath, content)
+            }
         }
 
         if (options.includeDecisions) {

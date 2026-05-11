@@ -353,6 +353,27 @@ class ExportControllerTest {
     }
 
     @Test
+    fun `POST export excludes active design files when includeDesign is false`() {
+        val pid = createProject()
+        saveActiveDesignScreen(pid)
+        designWorkbenchStorage.writeActiveScreen(pid, "<html><body>Landing design</body></html>".toByteArray())
+        designWorkbenchStorage.writeDesignSummary(pid, "# Design\n\nLanding design summary.")
+
+        val result = mockMvc.perform(
+            post("/api/v1/projects/$pid/export").contentType(MediaType.APPLICATION_JSON)
+                .content("""{"includeDesign":false,"includeTasks":true}""")
+        )
+            .andExpect(status().isOk())
+            .andReturn()
+
+        val zipBytes = result.response.contentAsByteArray
+
+        kotlin.test.assertNull(readZipEntry(zipBytes) { it.endsWith("/design/screens/design/index.html") })
+        kotlin.test.assertNull(readZipEntry(zipBytes) { it.endsWith("/design/design.md") })
+        assertNotNull(readZipEntry(zipBytes) { it.endsWith("/docs/spec.md") })
+    }
+
+    @Test
     fun `POST export does not fail for pre-completion active design variant`() {
         val pid = createProject()
         saveActiveDesignScreen(pid)

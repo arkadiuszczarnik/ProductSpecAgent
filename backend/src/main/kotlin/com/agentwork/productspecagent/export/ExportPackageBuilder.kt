@@ -48,6 +48,7 @@ data class ProjectExportOptions(
     val includeDecisions: Boolean = false,
     val includeClarifications: Boolean = false,
     val includeTasks: Boolean = true,
+    val includeDesign: Boolean = true,
 )
 
 data class HandoffPackageOptions(
@@ -83,6 +84,7 @@ fun ProjectExportOptions.toExportRequest(): ExportRequest =
         includeDecisions = includeDecisions,
         includeClarifications = includeClarifications,
         includeTasks = includeTasks,
+        includeDesign = includeDesign,
     )
 
 fun ExportRequest.toProjectExportOptions(): ProjectExportOptions =
@@ -90,6 +92,7 @@ fun ExportRequest.toProjectExportOptions(): ProjectExportOptions =
         includeDecisions = false,
         includeClarifications = false,
         includeTasks = includeTasks,
+        includeDesign = includeDesign,
     )
 
 fun HandoffExportRequest.toHandoffPackageOptions(): HandoffPackageOptions =

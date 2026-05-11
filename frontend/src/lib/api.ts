@@ -635,6 +635,7 @@ export async function exportProject(
   projectId: string,
   options: {
     includeTasks?: boolean;
+    includeDesign?: boolean;
   } = {}
 ): Promise<Blob> {
   const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/export`, {
@@ -643,6 +644,7 @@ export async function exportProject(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       includeTasks: options.includeTasks ?? true,
+      includeDesign: options.includeDesign ?? true,
     }),
   });
   if (res.status === 401) onUnauthorized?.();
