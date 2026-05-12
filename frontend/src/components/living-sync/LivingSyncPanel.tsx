@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, Bot, CheckCircle2, FileCode2, Loader2, RefreshCw, TestTube2, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Bot, CheckCircle2, FileCode2, Loader2, RefreshCw, TestTube2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getLivingSyncSummary, type LivingSyncFeatureStatus, type LivingSyncSummary } from "@/lib/api";
+import {
+  getLivingSyncSummary,
+  type FeatureCompletionSnapshot,
+  type LivingSyncFeatureStatus,
+  type LivingSyncSummary,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLE: Record<LivingSyncFeatureStatus, string> = {
@@ -115,12 +120,14 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
 }
 
 function FeatureStatuses({ summary }: { summary: LivingSyncSummary }) {
-  if (summary.features.length === 0) return <Section title="Feature Status" empty="Keine Feature-Meldungen." />;
+  const featureCards = toFeatureCards(summary);
+
+  if (featureCards.length === 0) return <Section title="Feature Status" empty="Keine Feature-Meldungen." />;
 
   return (
     <Section title="Feature Status">
       <div className="space-y-2">
-        {summary.features.map((feature) => (
+        {featureCards.map((feature) => (
           <div key={feature.featureId} className="rounded-md border bg-card p-2">
             <div className="flex items-center justify-between gap-2">
               <span className="truncate text-sm font-medium">{feature.featureId}</span>
@@ -128,12 +135,89 @@ function FeatureStatuses({ summary }: { summary: LivingSyncSummary }) {
                 {feature.status}
               </span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{feature.summary}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{feature.summary || "Noch keine Zusammenfassung."}</p>
+            {feature.snapshot && (
+              <>
+                <div className="mt-2 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+                  <span className="rounded-full border border-border/80 bg-background/70 px-2 py-0.5">
+                    Import: {feature.snapshot.sourceFileName}
+                  </span>
+                  {feature.snapshot.tests.length > 0 && (
+                    <span className="rounded-full border border-border/80 bg-background/70 px-2 py-0.5">
+                      {feature.snapshot.tests.length} Tests
+                    </span>
+                  )}
+                  {feature.snapshot.implementedItems.length > 0 && (
+                    <span className="rounded-full border border-border/80 bg-background/70 px-2 py-0.5">
+                      {feature.snapshot.implementedItems.length} umgesetzt
+                    </span>
+                  )}
+                </div>
+                {(feature.snapshot.openPoints.length > 0 || feature.snapshot.warnings.length > 0) && (
+                  <div className="mt-2 space-y-1">
+                    {feature.snapshot.openPoints.slice(0, 2).map((point) => (
+                      <div key={`open-${feature.featureId}-${point}`} className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Offen:</span> {point}
+                      </div>
+                    ))}
+                    {feature.snapshot.warnings.slice(0, 2).map((warning) => (
+                      <div key={`warning-${feature.featureId}-${warning}`} className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-300">
+                        <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                        <span className="min-w-0">{warning}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         ))}
       </div>
     </Section>
   );
+}
+
+interface FeatureCard {
+  featureId: string;
+  status: LivingSyncFeatureStatus;
+  summary: string;
+  updatedAt: string;
+  snapshot?: FeatureCompletionSnapshot;
+}
+
+function toFeatureCards(summary: LivingSyncSummary): FeatureCard[] {
+  const snapshotsByFeature = new Map<string, FeatureCompletionSnapshot>();
+  for (const snapshot of summary.featureCompletions) {
+    const current = snapshotsByFeature.get(snapshot.featureId);
+    if (!current || snapshot.updatedAt > current.updatedAt) {
+      snapshotsByFeature.set(snapshot.featureId, snapshot);
+    }
+  }
+
+  const cards = summary.features.map((feature) => {
+    const snapshot = snapshotsByFeature.get(feature.featureId);
+    return {
+      featureId: feature.featureId,
+      status: snapshot?.derivedStatus ?? feature.status,
+      summary: snapshot?.summary || feature.summary,
+      updatedAt: snapshot?.updatedAt ?? feature.updatedAt,
+      snapshot,
+    };
+  });
+
+  const existingFeatureIds = new Set(cards.map((feature) => feature.featureId));
+  for (const snapshot of summary.featureCompletions) {
+    if (existingFeatureIds.has(snapshot.featureId)) continue;
+    cards.push({
+      featureId: snapshot.featureId,
+      status: snapshot.derivedStatus,
+      summary: snapshot.summary,
+      updatedAt: snapshot.updatedAt,
+      snapshot,
+    });
+  }
+
+  return cards.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
 function ChangedFiles({ summary }: { summary: LivingSyncSummary }) {
@@ -183,7 +267,7 @@ function RecentEvents({ summary }: { summary: LivingSyncSummary }) {
           <div key={event.id} className="flex items-start gap-2 text-xs">
             <TestTube2 size={12} className="mt-0.5 text-muted-foreground" />
             <div className="min-w-0">
-              <div className="font-medium">{event.type}</div>
+              <div className="font-medium">{event.type === "FEATURE_DONE_IMPORT" ? "FEATURE_DONE_IMPORT · Snapshot importiert" : event.type}</div>
               <div className="truncate text-muted-foreground">{event.summary}</div>
             </div>
           </div>

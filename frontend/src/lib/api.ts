@@ -330,7 +330,7 @@ export interface HandoffExportRequest {
 // ─── Living Sync Types ──────────────────────────────────────────────────────
 
 export type LivingSyncFeatureStatus = "PLANNED" | "IN_PROGRESS" | "BLOCKED" | "DONE";
-export type LivingSyncEventType = "FEATURE_PROGRESS" | "TEST_RUN" | "TOKEN_USAGE" | "CODE_CHANGES" | "SYNC_NOTE";
+export type LivingSyncEventType = "FEATURE_PROGRESS" | "FEATURE_DONE_IMPORT" | "TEST_RUN" | "TOKEN_USAGE" | "CODE_CHANGES" | "SYNC_NOTE";
 
 export interface LivingSyncEvent {
   id: string;
@@ -361,6 +361,27 @@ export interface LivingSyncFeatureSummary {
   updatedAt: string;
 }
 
+export interface FeatureCompletionTestEvidence {
+  name: string;
+  status: string;
+}
+
+export interface FeatureCompletionSnapshot {
+  projectId: string;
+  featureId: string;
+  derivedStatus: LivingSyncFeatureStatus;
+  summary: string;
+  implementedItems: string[];
+  deviations: string[];
+  openPoints: string[];
+  technicalDebt: string[];
+  tests: FeatureCompletionTestEvidence[];
+  warnings: string[];
+  sourceEventId: string;
+  sourceFileName: string;
+  updatedAt: string;
+}
+
 export interface LivingSyncTestSummary {
   totalRuns: number;
   passed: number;
@@ -379,6 +400,7 @@ export interface LivingSyncTokenSummary {
 export interface LivingSyncSummary {
   projectId: string;
   features: LivingSyncFeatureSummary[];
+  featureCompletions: FeatureCompletionSnapshot[];
   tests: LivingSyncTestSummary;
   tokens: LivingSyncTokenSummary;
   changedFiles: string[];
