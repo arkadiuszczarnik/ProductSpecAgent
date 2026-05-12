@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class LivingSyncEventType {
     FEATURE_PROGRESS,
+    FEATURE_DONE_IMPORT,
     TEST_RUN,
     TOKEN_USAGE,
     CODE_CHANGES,
@@ -50,6 +51,14 @@ data class LivingSyncFeatureProgressRequest(
     val summary: String,
     val evidence: List<String> = emptyList(),
     val taskId: String? = null,
+    val agentName: String? = null,
+)
+
+@Serializable
+data class LivingSyncFeatureDoneImportRequest(
+    val featureId: String,
+    val fileName: String,
+    val markdown: String,
     val agentName: String? = null,
 )
 
@@ -126,6 +135,7 @@ data class LivingSyncTokenSummary(
 data class LivingSyncSummary(
     val projectId: String,
     val features: List<LivingSyncFeatureSummary>,
+    val featureCompletions: List<FeatureCompletionSnapshot>,
     val tests: LivingSyncTestSummary,
     val tokens: LivingSyncTokenSummary,
     val changedFiles: List<String>,

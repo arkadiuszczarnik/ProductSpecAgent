@@ -2,6 +2,7 @@ package com.agentwork.productspecagent.api
 
 import com.agentwork.productspecagent.domain.CheckSeverity
 import com.agentwork.productspecagent.domain.LivingSyncCodeChangesRequest
+import com.agentwork.productspecagent.domain.LivingSyncFeatureDoneImportRequest
 import com.agentwork.productspecagent.domain.LivingSyncFeatureProgressRequest
 import com.agentwork.productspecagent.domain.LivingSyncFeatureStatus
 import com.agentwork.productspecagent.domain.LivingSyncNoteRequest
@@ -43,6 +44,15 @@ class LivingSyncMcpController(
                     summary = arguments.string("summary") ?: return toolText("Missing summary."),
                     evidence = arguments.stringList("evidence"),
                     taskId = arguments.string("taskId"),
+                    agentName = arguments.string("agentName"),
+                ),
+            ).summary
+            "import_feature_done_markdown" -> livingSyncService.importFeatureDoneMarkdown(
+                projectId,
+                LivingSyncFeatureDoneImportRequest(
+                    featureId = arguments.string("featureId") ?: return toolText("Missing featureId."),
+                    fileName = arguments.string("fileName") ?: return toolText("Missing fileName."),
+                    markdown = arguments.string("markdown") ?: return toolText("Missing markdown."),
                     agentName = arguments.string("agentName"),
                 ),
             ).summary
@@ -116,6 +126,7 @@ class LivingSyncMcpController(
             tool("report_token_usage", "Report token usage for an agent/model/task."),
             tool("report_code_changes", "Report changed files and optional commits."),
             tool("report_sync_note", "Report blockers, deviations, open questions, or technical debt."),
+            tool("import_feature_done_markdown", "Import a feature done markdown report into Living Sync."),
         )
 
     private fun tool(name: String, description: String): Map<String, Any?> =

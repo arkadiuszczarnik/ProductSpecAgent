@@ -2,6 +2,7 @@ package com.agentwork.productspecagent.api
 
 import com.agentwork.productspecagent.domain.LivingSyncCodeChangesRequest
 import com.agentwork.productspecagent.domain.LivingSyncEvent
+import com.agentwork.productspecagent.domain.LivingSyncFeatureDoneImportRequest
 import com.agentwork.productspecagent.domain.LivingSyncFeatureProgressRequest
 import com.agentwork.productspecagent.domain.LivingSyncFeatureStatus
 import com.agentwork.productspecagent.domain.LivingSyncNoteRequest
@@ -33,6 +34,12 @@ class LivingSyncController(
         @PathVariable projectId: String,
         @RequestBody request: Map<String, Any?>,
     ): LivingSyncEvent = livingSyncService.reportFeatureProgress(projectId, featureProgressRequest(request))
+
+    @PostMapping("/mcp/import-feature-done-markdown")
+    fun importFeatureDoneMarkdown(
+        @PathVariable projectId: String,
+        @RequestBody request: LivingSyncFeatureDoneImportRequest,
+    ): LivingSyncEvent = livingSyncService.importFeatureDoneMarkdown(projectId, request)
 
     @PostMapping("/mcp/report-test-run")
     fun reportTestRun(

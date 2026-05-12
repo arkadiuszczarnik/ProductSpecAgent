@@ -1,8 +1,11 @@
 package com.agentwork.productspecagent.service
 
+import com.agentwork.productspecagent.agent.FeatureDoneImportAgent
+import com.agentwork.productspecagent.domain.FeatureCompletionSnapshot
 import com.agentwork.productspecagent.domain.LivingSyncCodeChangesRequest
 import com.agentwork.productspecagent.domain.LivingSyncEvent
 import com.agentwork.productspecagent.domain.LivingSyncEventType
+import com.agentwork.productspecagent.domain.LivingSyncFeatureDoneImportRequest
 import com.agentwork.productspecagent.domain.LivingSyncFeatureProgressRequest
 import com.agentwork.productspecagent.domain.LivingSyncFeatureStatus
 import com.agentwork.productspecagent.domain.LivingSyncFeatureSummary
@@ -13,6 +16,7 @@ import com.agentwork.productspecagent.domain.LivingSyncTestSummary
 import com.agentwork.productspecagent.domain.LivingSyncTokenSummary
 import com.agentwork.productspecagent.domain.LivingSyncTokenUsageRequest
 import com.agentwork.productspecagent.storage.LivingSyncStorage
+import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
@@ -21,6 +25,7 @@ import java.util.UUID
 class LivingSyncService(
     private val projectService: ProjectService,
     private val storage: LivingSyncStorage,
+    private val featureDoneImportAgent: FeatureDoneImportAgent,
 ) {
 
     fun reportFeatureProgress(projectId: String, request: LivingSyncFeatureProgressRequest): LivingSyncEvent =
@@ -111,22 +116,91 @@ class LivingSyncService(
             ),
         )
 
+    fun importFeatureDoneMarkdown(projectId: String, request: LivingSyncFeatureDoneImportRequest): LivingSyncEvent {
+        projectService.getProject(projectId)
+        val importResult = runBlocking {
+            featureDoneImportAgent.importDoneReport(
+                projectId = projectId,
+                featureId = request.featureId,
+                fileName = request.fileName,
+                markdown = request.markdown,
+            )
+        }
+        val timestamp = now()
+        val event = LivingSyncEvent(
+            id = newId(),
+            projectId = projectId,
+            type = LivingSyncEventType.FEATURE_DONE_IMPORT,
+            featureId = request.featureId,
+            agentName = request.agentName ?: FeatureDoneImportAgent.AGENT_ID,
+            status = importResult.derivedStatus.name,
+            summary = "Imported ${request.fileName}: ${importResult.summary}",
+            evidence = buildList {
+                addAll(importResult.implementedItems)
+                addAll(importResult.deviations)
+                addAll(importResult.openPoints)
+                addAll(importResult.technicalDebt)
+                addAll(importResult.warnings)
+                addAll(importResult.tests.map { "${it.name}: ${it.status}" })
+            },
+            createdAt = timestamp,
+        )
+        storage.saveImportedDoneMarkdown(projectId, request.featureId, event.id, request.markdown)
+        storage.saveFeatureCompletionSnapshot(
+            FeatureCompletionSnapshot(
+                projectId = projectId,
+                featureId = request.featureId,
+                derivedStatus = importResult.derivedStatus,
+                summary = importResult.summary,
+                implementedItems = importResult.implementedItems,
+                deviations = importResult.deviations,
+                openPoints = importResult.openPoints,
+                technicalDebt = importResult.technicalDebt,
+                tests = importResult.tests,
+                warnings = importResult.warnings,
+                sourceEventId = event.id,
+                sourceFileName = request.fileName,
+                updatedAt = timestamp,
+            ),
+        )
+        storage.saveEvent(event)
+        return event
+    }
+
     fun getSummary(projectId: String): LivingSyncSummary {
         projectService.getProject(projectId)
         val events = storage.listEvents(projectId)
-        val featureSummaries = events
+        val progressEventsByFeature = events
             .filter { it.type == LivingSyncEventType.FEATURE_PROGRESS && it.featureId != null }
             .groupBy { it.featureId!! }
-            .mapNotNull { (featureId, featureEvents) ->
-                val latest = featureEvents.maxByOrNull { it.createdAt } ?: return@mapNotNull null
-                LivingSyncFeatureSummary(
+        val featureCompletions = events
+            .filter { it.type == LivingSyncEventType.FEATURE_DONE_IMPORT && it.featureId != null }
+            .mapNotNull { it.featureId }
+            .distinct()
+            .mapNotNull { featureId -> storage.loadFeatureCompletionSnapshot(projectId, featureId) }
+            .sortedBy { it.featureId }
+        val featureIds = (progressEventsByFeature.keys + featureCompletions.map { it.featureId }).toSortedSet()
+        val featureSummaries = featureIds.map { featureId ->
+            val latestProgress = progressEventsByFeature[featureId]?.maxByOrNull { it.createdAt }
+            val snapshot = featureCompletions.firstOrNull { it.featureId == featureId }
+            when {
+                latestProgress == null && snapshot != null -> snapshot.toFeatureSummary()
+                latestProgress != null && snapshot == null -> latestProgress.toFeatureSummary(featureId)
+                latestProgress != null && snapshot != null -> {
+                    if (latestProgress.createdAt >= snapshot.updatedAt) {
+                        latestProgress.toFeatureSummary(featureId)
+                    } else {
+                        snapshot.toFeatureSummary()
+                    }
+                }
+                else -> LivingSyncFeatureSummary(
                     featureId = featureId,
-                    status = latest.status?.let { LivingSyncFeatureStatus.valueOf(it) } ?: LivingSyncFeatureStatus.PLANNED,
-                    summary = latest.summary,
-                    updatedAt = latest.createdAt,
+                    status = LivingSyncFeatureStatus.PLANNED,
+                    summary = "",
+                    updatedAt = "",
                 )
             }
-            .sortedBy { it.featureId }
+        }
 
         val testEvents = events.filter { it.type == LivingSyncEventType.TEST_RUN }
         val latestTest = testEvents.maxByOrNull { it.createdAt }
@@ -135,6 +209,7 @@ class LivingSyncService(
         return LivingSyncSummary(
             projectId = projectId,
             features = featureSummaries,
+            featureCompletions = featureCompletions,
             tests = LivingSyncTestSummary(
                 totalRuns = testEvents.size,
                 passed = testEvents.sumOf { it.testsPassed ?: 0 },
@@ -165,4 +240,20 @@ class LivingSyncService(
     private fun newId(): String = UUID.randomUUID().toString()
 
     private fun now(): String = Instant.now().toString()
+
+    private fun LivingSyncEvent.toFeatureSummary(featureId: String): LivingSyncFeatureSummary =
+        LivingSyncFeatureSummary(
+            featureId = featureId,
+            status = status?.let { LivingSyncFeatureStatus.valueOf(it) } ?: LivingSyncFeatureStatus.PLANNED,
+            summary = summary,
+            updatedAt = createdAt,
+        )
+
+    private fun FeatureCompletionSnapshot.toFeatureSummary(): LivingSyncFeatureSummary =
+        LivingSyncFeatureSummary(
+            featureId = featureId,
+            status = derivedStatus,
+            summary = summary,
+            updatedAt = updatedAt,
+        )
 }
