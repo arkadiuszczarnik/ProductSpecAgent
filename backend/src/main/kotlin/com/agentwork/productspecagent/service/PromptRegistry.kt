@@ -95,6 +95,14 @@ class PromptRegistry {
             validators = listOf(PromptValidator.NotBlank, PromptValidator.MaxLength(50_000)),
         ),
         PromptDefinition(
+            id = "feature-done-import-system",
+            title = "Feature-Done-Import — System-Prompt",
+            description = "Rolle des Feature-Done-Import-Agents (Markdown-zu-JSON-Analyse fuer Feature-Done-Reports).",
+            agent = "FeatureDoneImport",
+            resourcePath = "/prompts/feature-done-import-system.md",
+            validators = listOf(PromptValidator.NotBlank, PromptValidator.MaxLength(50_000)),
+        ),
+        PromptDefinition(
             id = "design-variant-system",
             title = "Design-Variant — System-Prompt",
             description = "Rolle des Design-Agents (ein sicheres HTML-Layout aus Beschreibung und Bild-Metadaten).",
