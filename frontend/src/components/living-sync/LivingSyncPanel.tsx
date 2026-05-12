@@ -198,9 +198,9 @@ function toFeatureCards(summary: LivingSyncSummary): FeatureCard[] {
     const snapshot = snapshotsByFeature.get(feature.featureId);
     return {
       featureId: feature.featureId,
-      status: snapshot?.derivedStatus ?? feature.status,
-      summary: snapshot?.summary || feature.summary,
-      updatedAt: snapshot?.updatedAt ?? feature.updatedAt,
+      status: feature.status,
+      summary: feature.summary,
+      updatedAt: feature.updatedAt,
       snapshot,
     };
   });
