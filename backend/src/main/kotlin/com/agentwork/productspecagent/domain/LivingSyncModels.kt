@@ -12,6 +12,7 @@ enum class LivingSyncEventType {
 }
 
 @Serializable
+// Shared by append-only sync events and imported completion snapshots.
 enum class LivingSyncFeatureStatus {
     PLANNED,
     IN_PROGRESS,
