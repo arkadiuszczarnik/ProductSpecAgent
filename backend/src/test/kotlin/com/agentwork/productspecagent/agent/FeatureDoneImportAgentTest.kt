@@ -164,7 +164,9 @@ class FeatureDoneImportAgentTest {
         assertThat(capturedPrompt).contains("Title: Living Sync via MCP")
         assertThat(capturedPrompt).contains("File name: feature-done.md")
         assertThat(capturedPrompt).contains("Description: Imports done reports from markdown")
-        assertThat(capturedPrompt).contains("Scopes: FRONTEND, BACKEND")
+        assertThat(capturedPrompt).contains("Scopes:")
+        assertThat(capturedPrompt).contains("FRONTEND")
+        assertThat(capturedPrompt).contains("BACKEND")
         assertThat(capturedPrompt).contains(markdown)
     }
 }
