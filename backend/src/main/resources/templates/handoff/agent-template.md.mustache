@@ -67,13 +67,6 @@ Beim Coden:
 
 Führe zuerst den kleinsten relevanten Check aus. Erweitere die Verifikation, wenn gemeinsames Verhalten, Exportlogik, Build-Konfiguration oder zentrale APIs betroffen sind.
 
-Typische Checks:
-
-- Backend: `cd backend && ./gradlew test`
-- Frontend: `cd frontend && npx tsc --noEmit`
-- Frontend Lint für geänderte Dateien: `cd frontend && npx eslint <dateien>`
-- Frontend Build: `cd frontend && npm run build`
-
 Wenn ein voller Check wegen unrelated bestehenden Fehlern scheitert, nenne die betroffenen Dateien und verifiziere trotzdem alle geänderten Dateien.
 
 ## Living Sync
@@ -87,6 +80,15 @@ Wenn Living Sync eingerichtet ist, melde relevante Ereignisse:
 - Abschluss der Arbeit.
 
 Nutze dafür den `global.living-sync-reporter`, falls vorhanden.
+Fuer automatische Done-Imports liest der Reporter die projektkonkrete ID aus dem Frontmatter des zugehoerigen Feature-Markdowns in `docs/features/*.md`:
+
+```md
+---
+feature_id: 7f3d8d5d-...
+---
+```
+
+Verwende fuer `*-done.md` immer das zugehoerige Feature-Dokument mit derselben Basisdatei, damit der Reporter die ID eindeutig aufloesen kann.
 
 ## Fertig bedeutet
 
@@ -97,6 +99,7 @@ Eine Aufgabe gilt erst als fertig, wenn:
 - keine bekannten Blocker verschwiegen werden,
 - unrelated Worktree-Änderungen nicht mitvermischt wurden,
 - die Abschlussantwort kurz zusammenfasst, was geändert wurde und welche Verifikation gelaufen ist.
+- die features aus docs/features/ eine passende `*-done.md` erzeugt wurden.
 
 ## Antwortformat
 

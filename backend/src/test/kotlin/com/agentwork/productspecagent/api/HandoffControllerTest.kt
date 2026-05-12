@@ -346,6 +346,10 @@ class HandoffControllerTest {
             ?: error("Living Sync config not found in handoff ZIP")
         val settings = readZipEntry(zipBytes) { it == ".asset-bundles/settings.json" }
             ?: error("Claude settings not found in handoff ZIP")
+        val agents = readZipEntry(zipBytes) { it == "AGENTS.md" }
+            ?: error("AGENTS.md not found in handoff ZIP")
+        val claude = readZipEntry(zipBytes) { it == "CLAUDE.md" }
+            ?: error("CLAUDE.md not found in handoff ZIP")
 
         assertTrue(skill.contains("living-sync-reporter"), "Skill should define the Living Sync reporter")
         assertFalse(skill.contains("/api/v1/projects/$pid/living-sync/mcp"), "Skill should stay static and not embed project-specific endpoint")
@@ -357,6 +361,9 @@ class HandoffControllerTest {
         assertTrue(settings.contains("\"PostToolUse\""), "Settings should configure PostToolUse hooks")
         assertTrue(settings.contains("\"Stop\""), "Settings should configure Stop hooks")
         assertTrue(settings.contains(".asset-bundles/skills/global.living-sync-reporter"), "Hooks should call the neutral asset-bundle reporter")
+        assertFalse(settings.contains("living-sync.env"), "Hooks should no longer depend on a sidecar env file")
+        assertTrue(agents.contains("feature_id:"), "AGENTS should point workers at feature markdown metadata")
+        assertTrue(claude.contains("feature_id:"), "CLAUDE should describe the feature markdown metadata flow")
         assertFalse(hasZipEntry(zipBytes, ".claude/settings.json"), "settings.json should live under .asset-bundles")
         assertFalse(hasZipEntry(zipBytes, ".claude/living-sync.json"), "living-sync.json should live under .asset-bundles")
         assertZipSymlink(zipBytes, ".claude", ".asset-bundles")

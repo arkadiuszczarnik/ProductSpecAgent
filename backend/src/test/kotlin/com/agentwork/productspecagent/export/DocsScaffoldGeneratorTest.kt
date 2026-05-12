@@ -12,6 +12,7 @@ class DocsScaffoldGeneratorTest {
         features = listOf(
             FeatureContext(
                 number = 1, title = "Auth", slug = "auth", filename = "01-auth.md",
+                featureId = "feature-auth-1",
                 description = "Authentication system", estimate = "L", dependencies = "—",
                 stories = listOf(StoryContext(1, "Login Page", "Build login form")),
                 acceptanceCriteria = listOf(TaskContext("Form works", "Submits credentials")),
@@ -36,6 +37,7 @@ class DocsScaffoldGeneratorTest {
         val result = generator.generate(sampleContext())
         val feature = result["docs/features/01-auth.md"]
         assertNotNull(feature)
+        assertContains(feature, "---\nfeature_id: feature-auth-1\n---")
         assertContains(feature, "Feature 1: Auth")
         assertContains(feature, "Login Page")
     }

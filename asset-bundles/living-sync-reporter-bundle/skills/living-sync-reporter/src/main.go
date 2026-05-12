@@ -3,11 +3,13 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/url"
 	"os"
@@ -42,6 +44,23 @@ var testCommandMarkers = []string{
 
 type stringList []string
 
+type livingSyncConfig struct {
+	LivingSyncBaseURL string `json:"livingSyncBaseUrl"`
+	MCPURL            string `json:"mcpUrl"`
+}
+
+type reporterState struct {
+	ImportedDoneFiles map[string]string `json:"importedDoneFiles"`
+}
+
+type doneImportRequest struct {
+	FeatureID string
+	FilePath  string
+	FileName  string
+	Markdown  string
+	Digest    string
+}
+
 func (s *stringList) String() string {
 	return strings.Join(*s, ",")
 }
@@ -61,13 +80,15 @@ func main() {
 	case "session-start":
 		err = safePost("sync-note", map[string]any{"severity": "INFO", "message": "Agent session started."})
 	case "stop":
-		err = safePost("sync-note", map[string]any{"severity": "INFO", "message": "Agent turn completed."})
+		err = handleStop()
 	case "post-tool-use":
 		err = handlePostToolUse(os.Stdin)
 	case "code-change":
 		err = handleCodeChange(os.Stdin)
 	case "feature-progress":
 		err = handleFeatureProgress(os.Args[2:])
+	case "feature-done-import":
+		err = handleFeatureDoneImport(os.Args[2:])
 	case "test-run":
 		err = handleTestRun(os.Args[2:])
 	case "code-changes":
@@ -89,43 +110,59 @@ func main() {
 }
 
 func usageAndExit() {
-	fmt.Fprintln(os.Stderr, "usage: living-sync-reporter <session-start|stop|post-tool-use|code-change|feature-progress|test-run|code-changes|token-usage|sync-note> [flags]")
+	fmt.Fprintln(os.Stderr, "usage: living-sync-reporter <session-start|stop|post-tool-use|code-change|feature-progress|feature-done-import|test-run|code-changes|token-usage|sync-note> [flags]")
 	os.Exit(2)
 }
 
-func baseURL() (string, error) {
-	if value := strings.TrimSpace(os.Getenv("LIVING_SYNC_BASE_URL")); value != "" {
-		return strings.TrimRight(value, "/"), nil
+func syncConfig() (livingSyncConfig, error) {
+	config := livingSyncConfig{
+		LivingSyncBaseURL: strings.TrimRight(strings.TrimSpace(os.Getenv("LIVING_SYNC_BASE_URL")), "/"),
+		MCPURL:            strings.TrimRight(strings.TrimSpace(os.Getenv("LIVING_SYNC_MCP_URL")), "/"),
 	}
-
-	projectDir := os.Getenv("CLAUDE_PROJECT_DIR")
-	if projectDir == "" {
-		var err error
-		projectDir, err = os.Getwd()
-		if err != nil {
-			return "", err
-		}
+	projectDir, err := projectDir()
+	if err != nil {
+		return livingSyncConfig{}, err
 	}
-
 	configPath := os.Getenv("LIVING_SYNC_CONFIG")
 	if configPath == "" {
 		configPath = filepath.Join(projectDir, ".claude", "living-sync.json")
 	}
 
 	content, err := os.ReadFile(configPath)
+	if err == nil {
+		var fileConfig livingSyncConfig
+		if err := json.Unmarshal(content, &fileConfig); err != nil {
+			return livingSyncConfig{}, err
+		}
+		if config.LivingSyncBaseURL == "" {
+			config.LivingSyncBaseURL = strings.TrimRight(strings.TrimSpace(fileConfig.LivingSyncBaseURL), "/")
+		}
+		if config.MCPURL == "" {
+			config.MCPURL = strings.TrimRight(strings.TrimSpace(fileConfig.MCPURL), "/")
+		}
+	} else if config.LivingSyncBaseURL == "" || config.MCPURL == "" {
+		return livingSyncConfig{}, err
+	}
+
+	if config.LivingSyncBaseURL == "" {
+		return livingSyncConfig{}, errors.New("livingSyncBaseUrl missing in config")
+	}
+	if config.MCPURL == "" {
+		derivedMCPURL, err := deriveMCPURL(config.LivingSyncBaseURL)
+		if err != nil {
+			return livingSyncConfig{}, err
+		}
+		config.MCPURL = derivedMCPURL
+	}
+	return config, nil
+}
+
+func baseURL() (string, error) {
+	config, err := syncConfig()
 	if err != nil {
 		return "", err
 	}
-	var config struct {
-		LivingSyncBaseURL string `json:"livingSyncBaseUrl"`
-	}
-	if err := json.Unmarshal(content, &config); err != nil {
-		return "", err
-	}
-	if strings.TrimSpace(config.LivingSyncBaseURL) == "" {
-		return "", errors.New("livingSyncBaseUrl missing in config")
-	}
-	return strings.TrimRight(config.LivingSyncBaseURL, "/"), nil
+	return config.LivingSyncBaseURL, nil
 }
 
 func post(kind string, payload map[string]any) error {
@@ -149,16 +186,17 @@ func post(kind string, payload map[string]any) error {
 		}
 	}
 
-	return postHTTP(base+suffix, body, timeout)
+	_, err = postJSON(base+suffix, body, timeout)
+	return err
 }
 
-func postHTTP(rawURL string, body []byte, timeout time.Duration) error {
+func postJSON(rawURL string, body []byte, timeout time.Duration) ([]byte, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if parsed.Scheme != "http" {
-		return fmt.Errorf("unsupported scheme: %s", parsed.Scheme)
+		return nil, fmt.Errorf("unsupported scheme: %s", parsed.Scheme)
 	}
 	host := parsed.Host
 	if !strings.Contains(host, ":") {
@@ -166,7 +204,7 @@ func postHTTP(rawURL string, body []byte, timeout time.Duration) error {
 	}
 	conn, err := net.DialTimeout("tcp", host, timeout)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(timeout))
@@ -183,27 +221,43 @@ func postHTTP(rawURL string, body []byte, timeout time.Duration) error {
 	fmt.Fprint(&request, "Connection: close\r\n\r\n")
 	request.Write(body)
 	if _, err := conn.Write(request.Bytes()); err != nil {
-		return err
+		return nil, err
 	}
 
 	reader := bufio.NewReader(conn)
 	statusLine, err := reader.ReadString('\n')
 	if err != nil {
-		return err
+		return nil, err
 	}
 	parts := strings.Fields(statusLine)
 	if len(parts) < 2 {
-		return fmt.Errorf("invalid HTTP response: %s", strings.TrimSpace(statusLine))
+		return nil, fmt.Errorf("invalid HTTP response: %s", strings.TrimSpace(statusLine))
 	}
 	statusCode, err := strconv.Atoi(parts[1])
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, _ = io.Copy(io.Discard, reader)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+		if line == "\r\n" {
+			break
+		}
+	}
+	responseBody, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
 	if statusCode < 200 || statusCode >= 300 {
-		return fmt.Errorf("HTTP %d", statusCode)
+		message := strings.TrimSpace(string(responseBody))
+		if message == "" {
+			return nil, fmt.Errorf("HTTP %d", statusCode)
+		}
+		return nil, fmt.Errorf("HTTP %d: %s", statusCode, truncate(message, 240))
 	}
-	return nil
+	return responseBody, nil
 }
 
 func safePost(kind string, payload map[string]any) error {
@@ -337,12 +391,21 @@ func handleCodeChange(reader io.Reader) error {
 	if len(files) == 0 {
 		return nil
 	}
-	return safePost("code-changes", map[string]any{
+	if err := safePost("code-changes", map[string]any{
 		"summary":   "Files changed by coding agent.",
 		"files":     files,
-		"featureId": os.Getenv("LIVING_SYNC_FEATURE_ID"),
 		"agentName": "claude-code",
-	})
+	}); err != nil {
+		return err
+	}
+	return safeAutoImportDoneMarkdown(files)
+}
+
+func handleStop() error {
+	if err := safePost("sync-note", map[string]any{"severity": "INFO", "message": "Agent turn completed."}); err != nil {
+		return err
+	}
+	return safeAutoImportDoneMarkdown(nil)
 }
 
 func handleFeatureProgress(args []string) error {
@@ -367,6 +430,32 @@ func handleFeatureProgress(args []string) error {
 		"taskId":    *task,
 		"agentName": *agent,
 	})
+}
+
+func handleFeatureDoneImport(args []string) error {
+	fs := flag.NewFlagSet("feature-done-import", flag.ContinueOnError)
+	featureID := fs.String("feature", "", "")
+	filePath := fs.String("file", "", "")
+	agentName := fs.String("agent", "claude-code", "")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *filePath == "" {
+		return errors.New("feature-done-import requires --file")
+	}
+
+	projectDir, err := projectDir()
+	if err != nil {
+		return err
+	}
+	requests, err := collectDoneImports(projectDir, *featureID, []string{*filePath}, reporterState{})
+	if err != nil {
+		return err
+	}
+	if len(requests) != 1 {
+		return fmt.Errorf("feature-done-import found %d importable files, want exactly 1", len(requests))
+	}
+	return importDoneMarkdown(requests[0], *agentName)
 }
 
 func handleTestRun(args []string) error {
@@ -473,6 +562,309 @@ func handleSyncNote(args []string) error {
 		"taskId":          *task,
 		"agentName":       *agent,
 	})
+}
+
+func safeAutoImportDoneMarkdown(candidates []string) error {
+	projectDir, err := projectDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "living-sync reporter skipped done import: %v\n", err)
+		return nil
+	}
+	if len(candidates) == 0 {
+		candidates, err = scanDoneMarkdownFiles(projectDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "living-sync reporter skipped done import scan: %v\n", err)
+			return nil
+		}
+	}
+
+	doneCandidates := doneMarkdownCandidates(projectDir, candidates)
+	if len(doneCandidates) == 0 {
+		return nil
+	}
+
+	state, err := loadReporterState(projectDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "living-sync reporter skipped done import state load: %v\n", err)
+		return nil
+	}
+	requests, err := collectDoneImports(projectDir, "", doneCandidates, state)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "living-sync reporter skipped done import: %v\n", err)
+		return nil
+	}
+	if len(requests) == 0 {
+		return nil
+	}
+
+	if state.ImportedDoneFiles == nil {
+		state.ImportedDoneFiles = map[string]string{}
+	}
+	didImport := false
+	for _, request := range requests {
+		if err := importDoneMarkdown(request, "claude-code"); err != nil {
+			fmt.Fprintf(os.Stderr, "living-sync reporter skipped done import for %s: %v\n", request.FilePath, err)
+			continue
+		}
+		state.ImportedDoneFiles[request.FilePath] = request.Digest
+		didImport = true
+	}
+	if didImport {
+		if err := saveReporterState(projectDir, state); err != nil {
+			fmt.Fprintf(os.Stderr, "living-sync reporter skipped done import state save: %v\n", err)
+		}
+	}
+	return nil
+}
+
+func importDoneMarkdown(request doneImportRequest, agentName string) error {
+	config, err := syncConfig()
+	if err != nil {
+		return err
+	}
+	projectID, err := projectIDFromLivingSyncBaseURL(config.LivingSyncBaseURL)
+	if err != nil {
+		return err
+	}
+	payload, err := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      "living-sync-reporter",
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "import_feature_done_markdown",
+			"arguments": map[string]any{
+				"projectId": projectID,
+				"featureId": request.FeatureID,
+				"fileName":  request.FileName,
+				"markdown":  request.Markdown,
+				"agentName": agentName,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	responseBody, err := postJSON(config.MCPURL, payload, 5*time.Second)
+	if err != nil {
+		return err
+	}
+	var response map[string]any
+	if err := json.Unmarshal(responseBody, &response); err != nil {
+		return err
+	}
+	if errorPayload, ok := response["error"].(map[string]any); ok {
+		if message, ok := errorPayload["message"].(string); ok && message != "" {
+			return errors.New(message)
+		}
+		return errors.New("MCP tool call failed")
+	}
+	return nil
+}
+
+func collectDoneImports(projectDir string, featureID string, candidates []string, state reporterState) ([]doneImportRequest, error) {
+	imported := state.ImportedDoneFiles
+	if imported == nil {
+		imported = map[string]string{}
+	}
+	paths := doneMarkdownCandidates(projectDir, candidates)
+	requests := make([]doneImportRequest, 0, len(paths))
+	for _, path := range paths {
+		resolvedFeatureID := strings.TrimSpace(featureID)
+		if resolvedFeatureID == "" {
+			var err error
+			resolvedFeatureID, err = featureIDForDoneMarkdown(path)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "living-sync reporter skipped done import for %s: %v\n", path, err)
+				continue
+			}
+		}
+		content, err := os.ReadFile(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		digest := doneImportDigest(resolvedFeatureID, content)
+		normalizedPath := filepath.ToSlash(path)
+		if imported[normalizedPath] == digest {
+			continue
+		}
+		requests = append(requests, doneImportRequest{
+			FeatureID: resolvedFeatureID,
+			FilePath:  normalizedPath,
+			FileName:  filepath.Base(path),
+			Markdown:  string(content),
+			Digest:    digest,
+		})
+	}
+	return requests, nil
+}
+
+func doneMarkdownCandidates(projectDir string, candidates []string) []string {
+	seen := map[string]bool{}
+	files := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" {
+			continue
+		}
+		resolved := candidate
+		if !filepath.IsAbs(resolved) {
+			resolved = filepath.Join(projectDir, resolved)
+		}
+		resolved = filepath.Clean(resolved)
+		if !strings.HasSuffix(strings.ToLower(filepath.Base(resolved)), "-done.md") {
+			continue
+		}
+		normalized := filepath.ToSlash(resolved)
+		if seen[normalized] {
+			continue
+		}
+		seen[normalized] = true
+		files = append(files, resolved)
+	}
+	sort.Strings(files)
+	return files
+}
+
+func scanDoneMarkdownFiles(projectDir string) ([]string, error) {
+	files := make([]string, 0)
+	err := filepath.WalkDir(projectDir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if entry.IsDir() {
+			switch entry.Name() {
+			case ".git", "node_modules", ".next":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(strings.ToLower(entry.Name()), "-done.md") {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
+func loadReporterState(projectDir string) (reporterState, error) {
+	path := reporterStatePath(projectDir)
+	content, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return reporterState{ImportedDoneFiles: map[string]string{}}, nil
+	}
+	if err != nil {
+		return reporterState{}, err
+	}
+	var state reporterState
+	if err := json.Unmarshal(content, &state); err != nil {
+		return reporterState{}, err
+	}
+	if state.ImportedDoneFiles == nil {
+		state.ImportedDoneFiles = map[string]string{}
+	}
+	return state, nil
+}
+
+func saveReporterState(projectDir string, state reporterState) error {
+	if state.ImportedDoneFiles == nil {
+		state.ImportedDoneFiles = map[string]string{}
+	}
+	path := reporterStatePath(projectDir)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	content, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, content, 0o644)
+}
+
+func reporterStatePath(projectDir string) string {
+	return filepath.Join(projectDir, ".asset-bundles", "living-sync-reporter-state.json")
+}
+
+func featureIDForDoneMarkdown(donePath string) (string, error) {
+	featurePath := strings.TrimSuffix(donePath, "-done.md") + ".md"
+	return featureIDFromFeatureMarkdown(featurePath)
+}
+
+func featureIDFromFeatureMarkdown(featurePath string) (string, error) {
+	content, err := os.ReadFile(featurePath)
+	if err != nil {
+		return "", err
+	}
+	lines := strings.Split(string(content), "\n")
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
+		return "", fmt.Errorf("feature markdown missing frontmatter: %s", featurePath)
+	}
+	for _, line := range lines[1:] {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "---" {
+			break
+		}
+		if strings.HasPrefix(trimmed, "feature_id:") {
+			value := strings.TrimSpace(strings.TrimPrefix(trimmed, "feature_id:"))
+			if value == "" {
+				return "", fmt.Errorf("feature_id is empty in %s", featurePath)
+			}
+			return value, nil
+		}
+	}
+	return "", fmt.Errorf("feature_id missing in %s", featurePath)
+}
+
+func deriveMCPURL(livingSyncBaseURL string) (string, error) {
+	parsed, err := url.Parse(livingSyncBaseURL)
+	if err != nil {
+		return "", err
+	}
+	prefix := "/api/v1/projects/"
+	index := strings.Index(parsed.Path, prefix)
+	if index < 0 {
+		return "", fmt.Errorf("cannot derive mcpUrl from livingSyncBaseUrl: %s", livingSyncBaseURL)
+	}
+	parsed.Path = "/mcp"
+	parsed.RawPath = ""
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	return strings.TrimRight(parsed.String(), "/"), nil
+}
+
+func projectIDFromLivingSyncBaseURL(livingSyncBaseURL string) (string, error) {
+	parsed, err := url.Parse(livingSyncBaseURL)
+	if err != nil {
+		return "", err
+	}
+	segments := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	for index := 0; index < len(segments)-1; index++ {
+		if segments[index] == "projects" && index+1 < len(segments) {
+			if segments[index+1] != "" {
+				return segments[index+1], nil
+			}
+			break
+		}
+	}
+	return "", fmt.Errorf("projectId missing in livingSyncBaseUrl: %s", livingSyncBaseURL)
+}
+
+func projectDir() (string, error) {
+	if value := os.Getenv("CLAUDE_PROJECT_DIR"); value != "" {
+		return value, nil
+	}
+	return os.Getwd()
+}
+
+func doneImportDigest(featureID string, content []byte) string {
+	sum := sha256.Sum256(append([]byte(featureID+"\n"), content...))
+	return fmt.Sprintf("%x", sum)
 }
 
 func commonFlags(fs *flag.FlagSet) (*string, *string) {

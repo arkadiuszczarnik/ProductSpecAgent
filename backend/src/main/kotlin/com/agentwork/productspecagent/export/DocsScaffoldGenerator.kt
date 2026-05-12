@@ -16,6 +16,7 @@ data class FeatureContext(
     val title: String,
     val slug: String,
     val filename: String,
+    val featureId: String? = null,
     val description: String,
     val estimate: String,
     val dependencies: String,

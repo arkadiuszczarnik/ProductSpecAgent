@@ -51,6 +51,7 @@ class ScaffoldContextBuilder(
                 title = epic.title,
                 slug = slug,
                 filename = "${String.format("%02d", number)}-$slug.md",
+                featureId = wizardFeature?.id,
                 description = epic.description,
                 estimate = epic.estimate,
                 dependencies = dependencies,

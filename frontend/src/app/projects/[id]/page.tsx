@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { Activity, ArrowLeft, ChevronLeft, ChevronRight, Loader2, Scale, MessageSquare, HelpCircle, Layers, Download, ShieldCheck, Bot, FolderTree, FileText, Save } from "lucide-react";
+import { Activity, ArrowLeft, ChevronLeft, ChevronRight, Gauge, Loader2, Scale, MessageSquare, HelpCircle, Layers, Download, ShieldCheck, Bot, FolderTree, FileText, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExportDialog } from "@/components/export/ExportDialog";
 import { HandoffDialog } from "@/components/handoff/HandoffDialog";
@@ -121,6 +121,11 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <Link href={`/projects/${id}/cockpit`}>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Gauge size={14} /> Cockpit
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" onClick={() => setShowHandoff(true)} className="gap-1.5">
             <Save size={14} /> Handoff
           </Button>

@@ -36,3 +36,13 @@ and clarifications into an interactive MVP selection with the user.
 Before any substantial change, refresh the handoff package and inspect what
 changed. Compare the refreshed files with your local work before editing, so
 you do not overwrite newer product context.
+
+When you start work on one concrete project feature, keep the project-specific
+feature ID in the corresponding `docs/features/*.md` file so Living Sync can
+import the matching `*-done.md` file automatically:
+
+```md
+---
+feature_id: 7f3d8d5d-...
+---
+```

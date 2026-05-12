@@ -30,14 +30,18 @@ interface Props {
 export function FeatureNodeComponent({ data, emit }: Props) {
   const hasFrontend = data.scopes.includes("FRONTEND");
   const hasBackend = data.scopes.includes("BACKEND");
-  const isCore = data.scopes.length === 0;
+  const isActive = data.scopes.includes("ACTIVE" as FeatureScope);
+  const visibleScopes = data.scopes.filter((scope) => scope !== ("ACTIVE" as FeatureScope));
+  const isCore = visibleScopes.length === 0;
 
   const inputs = Object.entries(data.inputs);
   const outputs = Object.entries(data.outputs);
 
   return (
     <div
-      className="relative rounded-lg border bg-card shadow-sm"
+      className={`relative rounded-lg border bg-card shadow-sm ${
+        isActive ? "border-primary/70 bg-primary/10 ring-2 ring-primary/35" : ""
+      }`}
       style={{ width: data.width, minHeight: data.height }}
       data-testid="node"
     >
@@ -46,6 +50,7 @@ export function FeatureNodeComponent({ data, emit }: Props) {
           {data.label}
         </span>
         <div className="flex items-center gap-1">
+          {isActive && <Badge label="Aktiv" color="primary" />}
           {isCore && <Badge label="Core" color="neutral" />}
           {hasFrontend && <Badge label="FE" color="cyan" />}
           {hasBackend && <Badge label="BE" color="violet" />}
@@ -103,11 +108,13 @@ export function FeatureNodeComponent({ data, emit }: Props) {
   );
 }
 
-function Badge({ label, color }: { label: string; color: "cyan" | "violet" | "neutral" }) {
+function Badge({ label, color }: { label: string; color: "cyan" | "violet" | "neutral" | "primary" }) {
   const classes = color === "cyan"
     ? "bg-cyan-500/15 text-cyan-300"
     : color === "violet"
     ? "bg-violet-500/15 text-violet-300"
+    : color === "primary"
+    ? "bg-primary text-primary-foreground"
     : "bg-muted text-muted-foreground";
   return <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${classes}`}>{label}</span>;
 }
