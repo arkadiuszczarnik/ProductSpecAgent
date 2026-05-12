@@ -196,12 +196,13 @@ function toFeatureCards(summary: LivingSyncSummary): FeatureCard[] {
 
   const cards = summary.features.map((feature) => {
     const snapshot = snapshotsByFeature.get(feature.featureId);
+    const attachedSnapshot = snapshot && snapshot.updatedAt >= feature.updatedAt ? snapshot : undefined;
     return {
       featureId: feature.featureId,
       status: feature.status,
       summary: feature.summary,
       updatedAt: feature.updatedAt,
-      snapshot,
+      snapshot: attachedSnapshot,
     };
   });
 
