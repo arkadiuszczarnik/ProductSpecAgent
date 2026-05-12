@@ -54,9 +54,23 @@ class LivingSyncStorageTest : S3TestSupport() {
     }
 
     @Test
-    fun `stores raw done markdown and latest feature completion snapshot`() {
-        val objectStore = InMemoryObjectStore()
-        val storage = LivingSyncStorage(objectStore)
+    fun `stores raw done markdown under imports prefix`() {
+        val storage = storage()
+        val projectId = "project-1"
+        val featureId = "feature-1"
+        val eventId = "event-1"
+        val expectedKey = "projects/$projectId/sync/imports/$featureId/$eventId.md"
+
+        storage.saveImportedDoneMarkdown(projectId, featureId, eventId, "# Feature 45")
+
+        assertTrue(objectStore().exists(expectedKey))
+        assertEquals("# Feature 45", storage.loadImportedDoneMarkdown(projectId, featureId, eventId))
+    }
+
+    @Test
+    fun `stores feature completion snapshot under feature snapshots prefix`() {
+        val storage = storage()
+        val expectedKey = "projects/project-1/sync/feature-snapshots/feature-1.json"
 
         val snapshot = FeatureCompletionSnapshot(
             projectId = "project-1",
@@ -69,13 +83,9 @@ class LivingSyncStorageTest : S3TestSupport() {
             updatedAt = "2026-05-12T10:00:00Z",
         )
 
-        storage.saveImportedDoneMarkdown("project-1", "feature-1", "event-1", "# Feature 45")
         storage.saveFeatureCompletionSnapshot(snapshot)
 
-        assertEquals(
-            "# Feature 45",
-            storage.loadImportedDoneMarkdown("project-1", "feature-1", "event-1"),
-        )
+        assertTrue(objectStore().exists(expectedKey))
         assertEquals(snapshot, storage.loadFeatureCompletionSnapshot("project-1", "feature-1"))
     }
 }
