@@ -28,6 +28,8 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LivingSyncServiceTest {
@@ -306,6 +308,51 @@ class LivingSyncServiceTest {
         )
         assertTrue(event.evidence.contains("Header mismatch warning"))
         assertTrue(event.evidence.contains("Top-level warning"))
+    }
+
+    @Test
+    fun `import feature done markdown rejects header mismatch before persisting`() = runBlocking {
+        val fixture = fixture(
+            features = listOf(
+                WizardFeature(id = "feature-1", title = "Living Sync via MCP", scopes = setOf(FeatureScope.BACKEND)),
+            ),
+            importAgent = object : FeatureDoneImportAgent(
+                contextBuilder = SpecContextBuilder(ProjectService(ProjectStorage(InMemoryObjectStore())), null),
+                wizardService = WizardService(ProjectStorage(InMemoryObjectStore())),
+                promptService = PromptService(PromptRegistry(), InMemoryObjectStore()),
+            ) {
+                override suspend fun importDoneReport(
+                    projectId: String,
+                    featureId: String,
+                    fileName: String,
+                    markdown: String,
+                ) = FeatureDoneImportResult(
+                    featureId = featureId,
+                    headerCheck = FeatureDoneImportHeaderCheck(
+                        matchesExpectedFeature = false,
+                        reportedFeatureLabel = "Feature 99: Other Feature",
+                        warnings = listOf("Header references another feature"),
+                    ),
+                    derivedStatus = LivingSyncFeatureStatus.DONE,
+                    summary = "Should not import",
+                )
+            },
+        )
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            fixture.service.importFeatureDoneMarkdown(
+                fixture.projectId,
+                LivingSyncFeatureDoneImportRequest(
+                    featureId = "feature-1",
+                    fileName = "feature-1-done.md",
+                    markdown = "# Feature 99\nWrong report",
+                ),
+            )
+        }
+
+        assertTrue(error.message!!.contains("Header mismatch"))
+        assertTrue(fixture.storage.listEvents(fixture.projectId).isEmpty())
+        assertNull(fixture.storage.loadFeatureCompletionSnapshot(fixture.projectId, "feature-1"))
     }
 
     @Test

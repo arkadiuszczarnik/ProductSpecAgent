@@ -40,6 +40,7 @@ open class FeatureDoneImportAgent(
         require(parsedFeature.id == feature.id) {
             "Imported featureId ${parsed.featureId} does not match requested featureId ${feature.id}"
         }
+        parsed.requireExpectedFeature(feature.id)
         return parsed
     }
 
@@ -107,7 +108,13 @@ data class FeatureDoneImportResult(
     val openPoints: List<String> = emptyList(),
     val technicalDebt: List<String> = emptyList(),
     val warnings: List<String> = emptyList(),
-)
+) {
+    fun requireExpectedFeature(requestedFeatureId: String) {
+        require(headerCheck.matchesExpectedFeature) {
+            "Header mismatch for requested featureId $requestedFeatureId: reported '${headerCheck.reportedFeatureLabel}'."
+        }
+    }
+}
 
 @Serializable
 data class FeatureDoneImportHeaderCheck(

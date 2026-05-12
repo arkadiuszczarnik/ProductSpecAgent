@@ -131,6 +131,7 @@ class LivingSyncService(
                 markdown = request.markdown,
             )
         }
+        importResult.requireExpectedFeature(request.featureId)
         val timestamp = now()
         val combinedWarnings = (importResult.headerCheck.warnings + importResult.warnings).distinct()
         val event = LivingSyncEvent(

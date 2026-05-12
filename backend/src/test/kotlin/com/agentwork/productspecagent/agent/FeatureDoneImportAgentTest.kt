@@ -131,6 +131,30 @@ class FeatureDoneImportAgentTest {
     }
 
     @Test
+    fun `header mismatch in response throws IllegalArgumentException`(): Unit = runBlocking {
+        val feature = WizardFeature(id = "feature-1", title = "Living Sync via MCP")
+        val (projectId, wizardService) = setup(listOf(feature))
+
+        val agent = object : FeatureDoneImportAgent(
+            specCtxStub(),
+            wizardService,
+            promptService,
+        ) {
+            override suspend fun runAgent(prompt: String): String = """
+                {"featureId":"feature-1","headerCheck":{"matchesExpectedFeature":false,"reportedFeatureLabel":"Feature 99: Other","warnings":["Header references another feature"]},"derivedStatus":"DONE","summary":"Implemented","implementedItems":[],"deviations":[],"tests":[],"openPoints":[],"technicalDebt":[],"warnings":[]}
+            """.trimIndent()
+        }
+
+        val ex = runCatching {
+            agent.importDoneReport(projectId, "feature-1", "feature-1.md", "# Feature 99")
+        }.exceptionOrNull()
+
+        assertThat(ex).isInstanceOf(IllegalArgumentException::class.java)
+        assertThat(ex).hasMessageContaining("Header mismatch")
+        assertThat(ex).hasMessageContaining("Feature 99: Other")
+    }
+
+    @Test
     fun `prompt includes feature title file name and markdown context`(): Unit = runBlocking {
         var capturedPrompt = ""
         val feature = WizardFeature(

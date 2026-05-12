@@ -126,17 +126,33 @@ class LivingSyncMcpController(
             tool("report_token_usage", "Report token usage for an agent/model/task."),
             tool("report_code_changes", "Report changed files and optional commits."),
             tool("report_sync_note", "Report blockers, deviations, open questions, or technical debt."),
-            tool("import_feature_done_markdown", "Import a feature done markdown report into Living Sync."),
+            tool(
+                name = "import_feature_done_markdown",
+                description = "Import a feature done markdown report into Living Sync.",
+                properties = mapOf(
+                    "projectId" to mapOf("type" to "string"),
+                    "featureId" to mapOf("type" to "string"),
+                    "fileName" to mapOf("type" to "string"),
+                    "markdown" to mapOf("type" to "string"),
+                    "agentName" to mapOf("type" to "string"),
+                ),
+                required = listOf("projectId", "featureId", "fileName", "markdown"),
+            ),
         )
 
-    private fun tool(name: String, description: String): Map<String, Any?> =
+    private fun tool(
+        name: String,
+        description: String,
+        properties: Map<String, Any?> = mapOf("projectId" to mapOf("type" to "string")),
+        required: List<String> = listOf("projectId"),
+    ): Map<String, Any?> =
         mapOf(
             "name" to name,
             "description" to description,
             "inputSchema" to mapOf(
                 "type" to "object",
-                "properties" to mapOf("projectId" to mapOf("type" to "string")),
-                "required" to listOf("projectId"),
+                "properties" to properties,
+                "required" to required,
             ),
         )
 

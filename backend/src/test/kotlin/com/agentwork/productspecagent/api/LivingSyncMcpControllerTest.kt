@@ -6,6 +6,7 @@ import com.agentwork.productspecagent.agent.FeatureDoneImportResult
 import com.agentwork.productspecagent.domain.FeatureCompletionTestEvidence
 import kotlinx.coroutines.runBlocking
 import org.hamcrest.Matchers.hasItem
+import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
@@ -20,8 +21,10 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.hamcrest.Matchers.containsInAnyOrder
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -53,6 +56,10 @@ class LivingSyncMcpControllerTest {
             .andExpect(jsonPath("$.result.tools[*].name", hasItem("get_project_sync_context")))
             .andExpect(jsonPath("$.result.tools[*].name", hasItem("report_feature_progress")))
             .andExpect(jsonPath("$.result.tools[*].name", hasItem("import_feature_done_markdown")))
+            .andExpect(jsonPath("$.result.tools[?(@.name=='import_feature_done_markdown')].inputSchema.required[*]", containsInAnyOrder("projectId", "featureId", "fileName", "markdown")))
+            .andExpect(content().string(containsString(""""featureId":{"type":"string"}""")))
+            .andExpect(content().string(containsString(""""fileName":{"type":"string"}""")))
+            .andExpect(content().string(containsString(""""markdown":{"type":"string"}""")))
     }
 
     @Test
