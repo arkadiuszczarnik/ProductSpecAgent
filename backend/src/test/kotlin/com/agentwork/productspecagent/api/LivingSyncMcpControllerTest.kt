@@ -5,6 +5,7 @@ import com.agentwork.productspecagent.agent.FeatureDoneImportHeaderCheck
 import com.agentwork.productspecagent.agent.FeatureDoneImportResult
 import com.agentwork.productspecagent.domain.FeatureCompletionTestEvidence
 import kotlinx.coroutines.runBlocking
+import org.hamcrest.Matchers.hasItem
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
@@ -49,9 +50,9 @@ class LivingSyncMcpControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.jsonrpc").value("2.0"))
             .andExpect(jsonPath("$.id").value(1))
-            .andExpect(jsonPath("$.result.tools[0].name").value("get_project_sync_context"))
-            .andExpect(jsonPath("$.result.tools[1].name").value("report_feature_progress"))
-            .andExpect(jsonPath("$.result.tools[6].name").value("import_feature_done_markdown"))
+            .andExpect(jsonPath("$.result.tools[*].name", hasItem("get_project_sync_context")))
+            .andExpect(jsonPath("$.result.tools[*].name", hasItem("report_feature_progress")))
+            .andExpect(jsonPath("$.result.tools[*].name", hasItem("import_feature_done_markdown")))
     }
 
     @Test

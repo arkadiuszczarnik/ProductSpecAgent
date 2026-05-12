@@ -15,8 +15,11 @@ import com.agentwork.productspecagent.domain.LivingSyncTestRunRequest
 import com.agentwork.productspecagent.domain.LivingSyncTestSummary
 import com.agentwork.productspecagent.domain.LivingSyncTokenSummary
 import com.agentwork.productspecagent.domain.LivingSyncTokenUsageRequest
+import com.agentwork.productspecagent.domain.WizardFeature
 import com.agentwork.productspecagent.storage.LivingSyncStorage
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
@@ -26,7 +29,9 @@ class LivingSyncService(
     private val projectService: ProjectService,
     private val storage: LivingSyncStorage,
     private val featureDoneImportAgent: FeatureDoneImportAgent,
+    private val wizardService: WizardService,
 ) {
+    private val json = Json { ignoreUnknownKeys = true }
 
     fun reportFeatureProgress(projectId: String, request: LivingSyncFeatureProgressRequest): LivingSyncEvent =
         save(
@@ -127,6 +132,7 @@ class LivingSyncService(
             )
         }
         val timestamp = now()
+        val combinedWarnings = (importResult.headerCheck.warnings + importResult.warnings).distinct()
         val event = LivingSyncEvent(
             id = newId(),
             projectId = projectId,
@@ -140,7 +146,7 @@ class LivingSyncService(
                 addAll(importResult.deviations)
                 addAll(importResult.openPoints)
                 addAll(importResult.technicalDebt)
-                addAll(importResult.warnings)
+                addAll(combinedWarnings)
                 addAll(importResult.tests.map { "${it.name}: ${it.status}" })
             },
             createdAt = timestamp,
@@ -157,7 +163,7 @@ class LivingSyncService(
                 openPoints = importResult.openPoints,
                 technicalDebt = importResult.technicalDebt,
                 tests = importResult.tests,
-                warnings = importResult.warnings,
+                warnings = combinedWarnings,
                 sourceEventId = event.id,
                 sourceFileName = request.fileName,
                 updatedAt = timestamp,
@@ -174,7 +180,8 @@ class LivingSyncService(
             .filter { it.type == LivingSyncEventType.FEATURE_PROGRESS && it.featureId != null }
             .groupBy { it.featureId!! }
         val featureCompletions = storage.listFeatureCompletionSnapshots(projectId)
-        val featureIds = (progressEventsByFeature.keys + featureCompletions.map { it.featureId }).toSortedSet()
+        val wizardFeatureIds = loadWizardFeatureIds(projectId)
+        val featureIds = (wizardFeatureIds + progressEventsByFeature.keys + featureCompletions.map { it.featureId }).toSortedSet()
         val featureSummaries = featureIds.map { featureId ->
             val latestProgress = progressEventsByFeature[featureId]?.maxByOrNull { it.createdAt }
             val snapshot = featureCompletions.firstOrNull { it.featureId == featureId }
@@ -235,6 +242,14 @@ class LivingSyncService(
     private fun newId(): String = UUID.randomUUID().toString()
 
     private fun now(): String = Instant.now().toString()
+
+    private fun loadWizardFeatureIds(projectId: String): List<String> {
+        val wizardData = runCatching { wizardService.getWizardData(projectId) }.getOrNull() ?: return emptyList()
+        val featuresElement = wizardData.steps["FEATURES"]?.fields?.get("features") ?: return emptyList()
+        return runCatching {
+            json.decodeFromJsonElement<List<WizardFeature>>(featuresElement).map { it.id }
+        }.getOrDefault(emptyList())
+    }
 
     private fun LivingSyncEvent.toFeatureSummary(featureId: String): LivingSyncFeatureSummary =
         LivingSyncFeatureSummary(

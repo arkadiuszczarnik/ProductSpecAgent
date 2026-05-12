@@ -186,4 +186,5 @@ class LivingSyncControllerTest {
             .andExpect(jsonPath("$.features[0].status").value("DONE"))
             .andExpect(jsonPath("$.features[0].summary").isNotEmpty)
     }
+
 }

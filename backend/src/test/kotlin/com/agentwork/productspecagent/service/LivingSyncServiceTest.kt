@@ -1,6 +1,8 @@
 package com.agentwork.productspecagent.service
 
 import com.agentwork.productspecagent.agent.FeatureDoneImportAgent
+import com.agentwork.productspecagent.agent.FeatureDoneImportHeaderCheck
+import com.agentwork.productspecagent.agent.FeatureDoneImportResult
 import com.agentwork.productspecagent.agent.SpecContextBuilder
 import com.agentwork.productspecagent.domain.CheckSeverity
 import com.agentwork.productspecagent.domain.FeatureCompletionSnapshot
@@ -52,13 +54,15 @@ class LivingSyncServiceTest {
             wizardService.saveWizardData(projectId, WizardData(projectId = projectId, steps = mapOf("FEATURES" to stepData)))
         }
         val storage = LivingSyncStorage(objectStore)
-        val service = LivingSyncService(projectService, storage, importAgent)
+        val service = LivingSyncService(projectService, storage, importAgent, wizardService)
         return Fixture(projectId, service, storage)
     }
 
     private fun fakeImportAgent(
         resultSummary: String = "Imported from done report",
         status: LivingSyncFeatureStatus = LivingSyncFeatureStatus.DONE,
+        headerWarnings: List<String> = emptyList(),
+        resultWarnings: List<String> = emptyList(),
     ): FeatureDoneImportAgent = object : FeatureDoneImportAgent(
         contextBuilder = SpecContextBuilder(ProjectService(ProjectStorage(InMemoryObjectStore())), null),
         wizardService = WizardService(ProjectStorage(InMemoryObjectStore())),
@@ -69,17 +73,19 @@ class LivingSyncServiceTest {
             featureId: String,
             fileName: String,
             markdown: String,
-        ) = com.agentwork.productspecagent.agent.FeatureDoneImportResult(
+        ) = FeatureDoneImportResult(
             featureId = featureId,
-            headerCheck = com.agentwork.productspecagent.agent.FeatureDoneImportHeaderCheck(
+            headerCheck = FeatureDoneImportHeaderCheck(
                 matchesExpectedFeature = true,
                 reportedFeatureLabel = fileName,
+                warnings = headerWarnings,
             ),
             derivedStatus = status,
             summary = resultSummary,
             implementedItems = listOf("Imported item"),
             tests = listOf(FeatureCompletionTestEvidence(name = "LivingSyncServiceTest", status = "PRESENT")),
             openPoints = listOf("Follow-up"),
+            warnings = resultWarnings,
         )
     }
 
@@ -241,6 +247,65 @@ class LivingSyncServiceTest {
         assertEquals("Snapshot only", summary.featureCompletions.single().summary)
         assertEquals(LivingSyncFeatureStatus.DONE, summary.features.single().status)
         assertEquals("Snapshot only", summary.features.single().summary)
+    }
+
+    @Test
+    fun `summary keeps untouched wizard features visible as planned`() {
+        val fixture = fixture(
+            features = listOf(
+                WizardFeature(id = "feature-1", title = "Imported", scopes = setOf(FeatureScope.BACKEND)),
+                WizardFeature(id = "feature-2", title = "Untouched", scopes = setOf(FeatureScope.BACKEND)),
+            ),
+        )
+        fixture.storage.saveFeatureCompletionSnapshot(
+            FeatureCompletionSnapshot(
+                projectId = fixture.projectId,
+                featureId = "feature-1",
+                derivedStatus = LivingSyncFeatureStatus.DONE,
+                summary = "Imported snapshot",
+                sourceEventId = "event-1",
+                sourceFileName = "done.md",
+                updatedAt = "2026-05-12T10:00:00Z",
+            ),
+        )
+
+        val summary = fixture.service.getSummary(fixture.projectId)
+
+        assertEquals(listOf("feature-1", "feature-2"), summary.features.map { it.featureId })
+        assertEquals(LivingSyncFeatureStatus.DONE, summary.features[0].status)
+        assertEquals(LivingSyncFeatureStatus.PLANNED, summary.features[1].status)
+        assertEquals("", summary.features[1].summary)
+    }
+
+    @Test
+    fun `import feature done markdown preserves header check warnings in event evidence and snapshot warnings`() = runBlocking {
+        val fixture = fixture(
+            features = listOf(
+                WizardFeature(id = "feature-1", title = "Living Sync via MCP", scopes = setOf(FeatureScope.BACKEND)),
+            ),
+            importAgent = fakeImportAgent(
+                headerWarnings = listOf("Header mismatch warning"),
+                resultWarnings = listOf("Top-level warning"),
+            ),
+        )
+
+        val event = fixture.service.importFeatureDoneMarkdown(
+            fixture.projectId,
+            LivingSyncFeatureDoneImportRequest(
+                featureId = "feature-1",
+                fileName = "feature-1-done.md",
+                markdown = "# Done",
+            ),
+        )
+
+        val snapshot = fixture.storage.loadFeatureCompletionSnapshot(fixture.projectId, "feature-1")
+        assertNotNull(snapshot)
+        assertEquals(
+            listOf("Header mismatch warning", "Top-level warning"),
+            snapshot.warnings,
+        )
+        assertTrue(event.evidence.contains("Header mismatch warning"))
+        assertTrue(event.evidence.contains("Top-level warning"))
     }
 
     @Test
