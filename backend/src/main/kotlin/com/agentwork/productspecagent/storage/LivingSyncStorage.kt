@@ -20,6 +20,8 @@ class LivingSyncStorage(private val objectStore: ObjectStore) {
         "projects/$projectId/sync/imports/$featureId/$eventId.md"
     private fun snapshotKey(projectId: String, featureId: String) =
         "projects/$projectId/sync/feature-snapshots/$featureId.json"
+    private fun snapshotsPrefix(projectId: String) =
+        "projects/$projectId/sync/feature-snapshots/"
 
     fun saveEvent(event: LivingSyncEvent) {
         objectStore.put(
@@ -53,6 +55,15 @@ class LivingSyncStorage(private val objectStore: ObjectStore) {
         objectStore.get(snapshotKey(projectId, featureId))
             ?.toString(Charsets.UTF_8)
             ?.let { json.decodeFromString<FeatureCompletionSnapshot>(it) }
+
+    fun listFeatureCompletionSnapshots(projectId: String): List<FeatureCompletionSnapshot> =
+        objectStore.listKeys(snapshotsPrefix(projectId))
+            .mapNotNull { key ->
+                objectStore.get(key)
+                    ?.toString(Charsets.UTF_8)
+                    ?.let { json.decodeFromString<FeatureCompletionSnapshot>(it) }
+            }
+            .sortedBy { it.featureId }
 
     fun listEvents(projectId: String): List<LivingSyncEvent> =
         objectStore.listKeys(eventsPrefix(projectId))

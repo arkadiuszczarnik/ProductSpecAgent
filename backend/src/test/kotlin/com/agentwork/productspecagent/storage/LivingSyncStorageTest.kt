@@ -88,4 +88,46 @@ class LivingSyncStorageTest : S3TestSupport() {
         assertTrue(objectStore().exists(expectedKey))
         assertEquals(snapshot, storage.loadFeatureCompletionSnapshot("project-1", "feature-1"))
     }
+
+    @Test
+    fun `list feature completion snapshots returns all stored snapshots for project`() {
+        val storage = storage()
+        storage.saveFeatureCompletionSnapshot(
+            FeatureCompletionSnapshot(
+                projectId = "project-1",
+                featureId = "feature-2",
+                derivedStatus = LivingSyncFeatureStatus.IN_PROGRESS,
+                summary = "In progress.",
+                sourceEventId = "event-2",
+                sourceFileName = "feature-2.md",
+                updatedAt = "2026-05-12T10:01:00Z",
+            ),
+        )
+        storage.saveFeatureCompletionSnapshot(
+            FeatureCompletionSnapshot(
+                projectId = "project-1",
+                featureId = "feature-1",
+                derivedStatus = LivingSyncFeatureStatus.DONE,
+                summary = "Done.",
+                sourceEventId = "event-1",
+                sourceFileName = "feature-1.md",
+                updatedAt = "2026-05-12T10:00:00Z",
+            ),
+        )
+        storage.saveFeatureCompletionSnapshot(
+            FeatureCompletionSnapshot(
+                projectId = "project-2",
+                featureId = "feature-x",
+                derivedStatus = LivingSyncFeatureStatus.BLOCKED,
+                summary = "Other project.",
+                sourceEventId = "event-x",
+                sourceFileName = "feature-x.md",
+                updatedAt = "2026-05-12T10:02:00Z",
+            ),
+        )
+
+        val snapshots = storage.listFeatureCompletionSnapshots("project-1")
+
+        assertEquals(listOf("feature-1", "feature-2"), snapshots.map { it.featureId })
+    }
 }

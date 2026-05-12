@@ -173,12 +173,7 @@ class LivingSyncService(
         val progressEventsByFeature = events
             .filter { it.type == LivingSyncEventType.FEATURE_PROGRESS && it.featureId != null }
             .groupBy { it.featureId!! }
-        val featureCompletions = events
-            .filter { it.type == LivingSyncEventType.FEATURE_DONE_IMPORT && it.featureId != null }
-            .mapNotNull { it.featureId }
-            .distinct()
-            .mapNotNull { featureId -> storage.loadFeatureCompletionSnapshot(projectId, featureId) }
-            .sortedBy { it.featureId }
+        val featureCompletions = storage.listFeatureCompletionSnapshots(projectId)
         val featureIds = (progressEventsByFeature.keys + featureCompletions.map { it.featureId }).toSortedSet()
         val featureSummaries = featureIds.map { featureId ->
             val latestProgress = progressEventsByFeature[featureId]?.maxByOrNull { it.createdAt }

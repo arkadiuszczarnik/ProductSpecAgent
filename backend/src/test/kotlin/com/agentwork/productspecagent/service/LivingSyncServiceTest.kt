@@ -215,6 +215,35 @@ class LivingSyncServiceTest {
     }
 
     @Test
+    fun `summary includes snapshot only state without requiring import event lookup`() {
+        val feature = WizardFeature(
+            id = "feature-1",
+            title = "Living Sync via MCP",
+            scopes = setOf(FeatureScope.BACKEND),
+        )
+        val fixture = fixture(features = listOf(feature))
+        fixture.storage.saveFeatureCompletionSnapshot(
+            FeatureCompletionSnapshot(
+                projectId = fixture.projectId,
+                featureId = "feature-1",
+                derivedStatus = LivingSyncFeatureStatus.DONE,
+                summary = "Snapshot only",
+                sourceEventId = "event-snapshot",
+                sourceFileName = "done.md",
+                updatedAt = "2026-05-12T10:00:00Z",
+            ),
+        )
+
+        val summary = fixture.service.getSummary(fixture.projectId)
+
+        assertEquals(1, summary.featureCompletions.size)
+        assertEquals("feature-1", summary.featureCompletions.single().featureId)
+        assertEquals("Snapshot only", summary.featureCompletions.single().summary)
+        assertEquals(LivingSyncFeatureStatus.DONE, summary.features.single().status)
+        assertEquals("Snapshot only", summary.features.single().summary)
+    }
+
+    @Test
     fun `summary prefers latest feature progress event over older imported snapshot`() {
         val feature = WizardFeature(
             id = "feature-1",
