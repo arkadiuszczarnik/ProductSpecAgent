@@ -20,6 +20,7 @@ data class SpecTask(
     val priority: Int = 0,
     val status: TaskStatus = TaskStatus.TODO,
     val specSection: FlowStepType? = null,
+    val featureId: String? = null,
     val dependencies: List<String> = emptyList(),
     val createdAt: String,
     val updatedAt: String

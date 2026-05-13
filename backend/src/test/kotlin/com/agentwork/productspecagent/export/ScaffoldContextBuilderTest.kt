@@ -299,4 +299,29 @@ class ScaffoldContextBuilderTest {
         assertThat(ctx.features[0].acceptanceCriteria).hasSize(1)
         assertThat(ctx.features[0].acceptanceCriteria[0].title).isEqualTo("Legacy Subtask AC")
     }
+
+    @Test
+    fun `feature id is resolved from epic metadata when title no longer matches wizard feature`() {
+        val wizardFeature = WizardFeature(
+            id = "feature-51",
+            title = "Neuer Wizard-Titel",
+            scopes = setOf(FeatureScope.BACKEND),
+        )
+        seedWizardFeatures(listOf(wizardFeature))
+
+        val now = Instant.now().toString()
+        val epic = SpecTask(
+            id = "e1", projectId = projectId, type = TaskType.EPIC, title = "Alter Epic-Titel",
+            estimate = "M", priority = 0, specSection = FlowStepType.FEATURES,
+            featureId = "feature-51",
+            createdAt = now, updatedAt = now,
+        )
+        mockTasks(listOf(epic))
+
+        val ctx = builder.build(projectId)
+
+        assertThat(ctx.features).hasSize(1)
+        assertThat(ctx.features[0].featureId).isEqualTo("feature-51")
+        assertThat(ctx.features[0].scope).isEqualTo("Backend")
+    }
 }

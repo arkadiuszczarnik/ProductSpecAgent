@@ -25,7 +25,9 @@ class ScaffoldContextBuilder(
         val idToTitle = epics.associate { it.id to it.title }
 
         // Load wizard features for scope enrichment (best-effort, null if unavailable)
-        val wizardFeaturesByTitle: Map<String, WizardFeature> = loadWizardFeaturesByTitle(projectId)
+        val wizardFeatures = loadWizardFeatures(projectId)
+        val wizardFeaturesById = wizardFeatures.associateBy { it.id }
+        val wizardFeaturesByTitle = wizardFeatures.associateBy { it.title }
 
         val features = epics.mapIndexed { i, epic ->
             val number = i + 1
@@ -44,7 +46,7 @@ class ScaffoldContextBuilder(
                     .ifBlank { "—" }
             }
 
-            val wizardFeature = wizardFeaturesByTitle[epic.title]
+            val wizardFeature = epic.featureId?.let(wizardFeaturesById::get) ?: wizardFeaturesByTitle[epic.title]
 
             FeatureContext(
                 number = number,
@@ -79,21 +81,20 @@ class ScaffoldContextBuilder(
     }
 
     /**
-     * Reads wizard features from the FEATURES step and returns them indexed by title.
-     * Returns an empty map if wizard service is unavailable or no features are stored.
+     * Reads wizard features from the FEATURES step.
+     * Returns an empty list if wizard service is unavailable or no features are stored.
      */
-    private fun loadWizardFeaturesByTitle(projectId: String): Map<String, WizardFeature> {
-        val svc = wizardService ?: return emptyMap()
+    private fun loadWizardFeatures(projectId: String): List<WizardFeature> {
+        val svc = wizardService ?: return emptyList()
         return try {
             val wizardData = svc.getWizardData(projectId)
             val featuresElement = wizardData.steps["FEATURES"]?.fields?.get("features")
-                ?: return emptyMap()
+                ?: return emptyList()
             // The frontend store writes features as a flat JsonArray<WizardFeature>, NOT
             // as a WizardFeatureGraph object. Edges are stored as a separate sibling field.
-            val features = json.decodeFromJsonElement<List<WizardFeature>>(featuresElement)
-            features.associateBy { it.title }
+            json.decodeFromJsonElement<List<WizardFeature>>(featuresElement)
         } catch (_: Exception) {
-            emptyMap()
+            emptyList()
         }
     }
 

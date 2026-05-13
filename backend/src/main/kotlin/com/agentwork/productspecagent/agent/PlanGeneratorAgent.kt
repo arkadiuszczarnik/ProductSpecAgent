@@ -167,6 +167,7 @@ open class PlanGeneratorAgent(
             title = input.title, description = input.description,
             estimate = epicEstimate, priority = priority++,
             specSection = FlowStepType.FEATURES,
+            featureId = input.id,
             createdAt = now, updatedAt = now
         ))
 
