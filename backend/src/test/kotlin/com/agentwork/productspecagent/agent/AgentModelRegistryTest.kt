@@ -17,6 +17,7 @@ class AgentModelRegistryTest {
             "idea-to-spec" to AgentModelTier.LARGE,
             "decision" to AgentModelTier.MEDIUM,
             "wizard-blocker-apply" to AgentModelTier.MEDIUM,
+            "acceptance-criteria-proposal" to AgentModelTier.MEDIUM,
             "feature-proposal" to AgentModelTier.MEDIUM,
             "plan-generator" to AgentModelTier.LARGE,
             "design-summary" to AgentModelTier.MEDIUM,
@@ -32,6 +33,7 @@ class AgentModelRegistryTest {
             "idea-to-spec",
             "decision",
             "wizard-blocker-apply",
+            "acceptance-criteria-proposal",
             "feature-proposal",
             "plan-generator",
             "design-summary",
@@ -90,5 +92,10 @@ class AgentModelRegistryTest {
     @Test
     fun `known agents include wizard blocker apply`() {
         assertThat(AgentModelRegistry.KNOWN_AGENT_IDS).contains("wizard-blocker-apply")
+    }
+
+    @Test
+    fun `known agents include acceptance criteria proposal`() {
+        assertThat(AgentModelRegistry.KNOWN_AGENT_IDS).contains("acceptance-criteria-proposal")
     }
 }

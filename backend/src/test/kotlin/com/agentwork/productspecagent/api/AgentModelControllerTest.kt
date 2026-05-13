@@ -32,11 +32,12 @@ class AgentModelControllerTest {
     fun `GET lists all agents with default tiers`() {
         mvc.perform(get("/api/v1/agent-models"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(8))
+            .andExpect(jsonPath("$.length()").value(9))
             .andExpect(jsonPath("$[?(@.agentId == 'decision')].defaultTier").value("MEDIUM"))
             .andExpect(jsonPath("$[?(@.agentId == 'decision')].currentTier").value("MEDIUM"))
             .andExpect(jsonPath("$[?(@.agentId == 'decision')].isOverridden").value(false))
             .andExpect(jsonPath("$[?(@.agentId == 'wizard-blocker-apply')].defaultTier").value("MEDIUM"))
+            .andExpect(jsonPath("$[?(@.agentId == 'acceptance-criteria-proposal')].defaultTier").value("MEDIUM"))
             .andExpect(jsonPath("$[?(@.agentId == 'design-variant')].defaultTier").value("MEDIUM"))
             .andExpect(jsonPath("$[?(@.agentId == 'design-image-analysis')].defaultTier").value("MEDIUM"))
             .andExpect(jsonPath("$[?(@.agentId == 'decision')].tierMapping.MEDIUM").exists())

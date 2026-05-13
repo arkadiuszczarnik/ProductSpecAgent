@@ -11,6 +11,7 @@ class AgentModelRegistry(private val properties: AgentModelsProperties) {
             "idea-to-spec",
             "decision",
             "wizard-blocker-apply",
+            "acceptance-criteria-proposal",
             "feature-proposal",
             "plan-generator",
             "design-summary",

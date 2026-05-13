@@ -31,6 +31,7 @@ class KoogAgentRunnerTest {
             "idea-to-spec" to AgentModelTier.LARGE,
             "decision" to AgentModelTier.MEDIUM,
             "wizard-blocker-apply" to AgentModelTier.MEDIUM,
+            "acceptance-criteria-proposal" to AgentModelTier.MEDIUM,
             "feature-proposal" to AgentModelTier.MEDIUM,
             "plan-generator" to AgentModelTier.LARGE,
             "design-summary" to AgentModelTier.MEDIUM,
