@@ -38,6 +38,7 @@ export function FeaturesGraphEditor({ projectId }: Props) {
   const moveFeature = useWizardStore((s) => s.moveFeature);
   const updateFeature = useWizardStore((s) => s.updateFeature);
   const applyProposal = useWizardStore((s) => s.applyProposal);
+  const saveStep = useWizardStore((s) => s.saveStep);
   const catalog = useWizardOptionsStore((s) => s.catalog);
 
   const allowedScopes = useMemo(
@@ -47,6 +48,7 @@ export function FeaturesGraphEditor({ projectId }: Props) {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewportWide, setViewportWide] = useState(true);
+  const [isSavingLayout, setIsSavingLayout] = useState(false);
   const ctxRef = useRef<FeaturesEditorContext | null>(null);
 
   // Atomic selector for the active feature — returns the live WizardFeature
@@ -175,9 +177,21 @@ export function FeaturesGraphEditor({ projectId }: Props) {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => ctxRef.current?.autoLayout()}
+              disabled={isSavingLayout}
+              onClick={async () => {
+                const ctx = ctxRef.current;
+                if (!ctx) return;
+                setIsSavingLayout(true);
+                try {
+                  await ctx.autoLayout();
+                  const saved = await saveStep(projectId, "FEATURES");
+                  if (!saved) alert("Auto-Layout konnte nicht gespeichert werden.");
+                } finally {
+                  setIsSavingLayout(false);
+                }
+              }}
             >
-              <LayoutGrid size={14} /> Auto-Layout
+              <LayoutGrid size={14} /> {isSavingLayout ? "Speichere..." : "Auto-Layout"}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">

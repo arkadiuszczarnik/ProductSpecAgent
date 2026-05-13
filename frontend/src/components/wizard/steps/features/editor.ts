@@ -311,6 +311,21 @@ export async function createFeaturesEditor(
     }
   }
 
+  function syncRenderedNodePositions() {
+    if (!moveCb) return;
+    for (const node of editor.getNodes()) {
+      if (!(node instanceof FeatureRNode)) continue;
+      const view = area.nodeViews.get(node.id);
+      if (!view) continue;
+      const { x, y } = view.position;
+      moveCb(node.featureId, x, y);
+      const rendered = renderedFeatures.get(node.featureId);
+      if (rendered) {
+        renderedFeatures.set(node.featureId, { ...rendered, x, y });
+      }
+    }
+  }
+
   return {
     destroy: () => {
       destroyed = true;
@@ -330,6 +345,7 @@ export async function createFeaturesEditor(
     autoLayout: async () => {
       await arrange.layout();
       await AreaExtensions.zoomAt(area, editor.getNodes());
+      syncRenderedNodePositions();
     },
     onNodeDoubleClick: (cb) => {
       doubleClickCb = cb;

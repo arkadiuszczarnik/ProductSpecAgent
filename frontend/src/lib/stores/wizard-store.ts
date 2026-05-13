@@ -37,7 +37,7 @@ interface WizardState {
   loadWizard: (projectId: string) => Promise<void>;
   setActiveStep: (step: string) => void;
   updateField: (step: string, field: string, value: unknown) => void;
-  saveStep: (projectId: string, step: string) => Promise<void>;
+  saveStep: (projectId: string, step: string) => Promise<boolean>;
   completeStep: (projectId: string, step: string) => Promise<{ exportTriggered: boolean } | null>;
   goNext: () => void;
   goPrev: () => void;
@@ -156,15 +156,21 @@ export const useWizardStore = create<WizardState>((set, get) => ({
 
   saveStep: async (projectId, step) => {
     const { data } = get();
-    if (!data) return;
+    if (!data) return false;
     const stepData = data.steps[step];
-    if (!stepData) return;
+    if (!stepData) return false;
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+      saveTimeout = null;
+    }
     set({ saving: true });
     try {
       const result = await saveWizardStep(projectId, step, stepData);
       set({ data: result, saving: false });
+      return true;
     } catch {
       set({ saving: false });
+      return false;
     }
   },
 

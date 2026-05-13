@@ -4,6 +4,8 @@ const API = process.env.TEST_API_URL ?? "http://localhost:8080";
 
 export interface SeededProject {
   projectId: string;
+  email: string;
+  password: string;
 }
 
 /**
@@ -20,6 +22,18 @@ export interface SeededProject {
 export async function seedSaaSProjectToFeatures(
   request: APIRequestContext,
 ): Promise<SeededProject> {
+  const email = `e2e-${Date.now()}@example.com`;
+  const password = "password123";
+  const registerRes = await request.post(`${API}/api/v1/auth/register`, {
+    data: {
+      email,
+      password,
+    },
+  });
+  if (!registerRes.ok()) {
+    throw new Error(`register failed: HTTP ${registerRes.status()} — ${await registerRes.text()}`);
+  }
+
   // Create project — requires both name AND idea (CreateProjectRequest)
   const createRes = await request.post(`${API}/api/v1/projects`, {
     data: {
@@ -52,5 +66,5 @@ export async function seedSaaSProjectToFeatures(
     }
   }
 
-  return { projectId };
+  return { projectId, email, password };
 }
