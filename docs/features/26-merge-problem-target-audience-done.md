@@ -24,7 +24,6 @@ Umgesetzt am 2026-04-21 auf Branch `feat/feature-26-merge-problem-target-audienc
 - **`TargetAudienceForm.tsx`**: per `git rm` gelöscht
 - **`spec-flow/editor.ts`**: `TARGET_AUDIENCE`-Eintrag aus der Step-Liste entfernt
 - **`e2e/fixtures/seed-project.ts`**: E2E-Seed-Fixture aktualisiert — `TARGET_AUDIENCE`-PUT entfernt, PROBLEM-Fields auf `coreProblem` + `primaryAudience` umgestellt (Fix nach Code-Quality-Review; ohne diesen Fix hätte der Playwright-Smoke-Test nach dem Merge 400er geliefert)
-
 ## Geänderte Dateien
 
 ### Backend
