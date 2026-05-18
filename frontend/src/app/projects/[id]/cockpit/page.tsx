@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { CockpitLockedNotice } from "@/components/cockpit/CockpitLockedNotice";
 import { ProjectCockpitPrototype } from "@/components/cockpit/ProjectCockpitPrototype";
+import { getProject, type FlowState } from "@/lib/api";
 import { isCockpitReady } from "@/lib/project-cockpit";
-import { useProjectStore } from "@/lib/stores/project-store";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -23,23 +23,31 @@ interface ProjectCockpitPageContentProps {
 }
 
 function ProjectCockpitPageContent({ id }: ProjectCockpitPageContentProps) {
-  const { projectLoading, projectError, flowState, loadProject, reset } = useProjectStore();
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [projectLoading, setProjectLoading] = useState(true);
+  const [projectError, setProjectError] = useState<string | null>(null);
+  const [flowState, setFlowState] = useState<FlowState | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    reset();
-    void loadProject(id).finally(() => {
-      if (!cancelled) {
-        setInitialLoadDone(true);
-      }
-    });
+    void getProject(id)
+      .then((response) => {
+        if (cancelled) return;
+        setFlowState(response.flowState);
+        setProjectLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setProjectError(error instanceof Error ? error.message : "Failed to load");
+        if (!cancelled) {
+          setProjectLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
-  }, [id, loadProject, reset]);
+  }, [id]);
 
-  if (!initialLoadDone || projectLoading) {
+  if (projectLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-background">
         <Loader2 size={24} className="animate-spin text-muted-foreground" />
