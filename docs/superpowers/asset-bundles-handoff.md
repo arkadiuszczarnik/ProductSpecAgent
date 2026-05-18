@@ -20,7 +20,7 @@ Asset-Bundles ist ein Feature in drei Sub-Features. Alle drei sind jetzt auf `ma
 - `feat/asset-bundle-admin-ui` — B
 - `feat/asset-bundle-export` — C
 
-**Working-Tree (durchlaufend, unabhängig):** `M infra/workloads/Pulumi.dev.yaml` und `asset-bundles/` (untracked, manuelle Test-ZIPs).
+**Working-Tree (durchlaufend, unabhängig):** `asset-bundles/` (untracked, manuelle Test-ZIPs).
 
 ## Verifikation des Ist-Zustands
 

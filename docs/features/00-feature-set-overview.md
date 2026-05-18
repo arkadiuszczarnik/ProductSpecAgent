@@ -38,7 +38,6 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 | 29 | Projekt aus Übersicht löschen | [29-project-delete.md](29-project-delete.md) | Feature 0 | S |
 | 30 | Statische CLAUDE.md mit Sync-URL im Handoff | [30-handoff-url-sync.md](30-handoff-url-sync.md) | Feature 0, 5, 8 | S–M |
 | 31 | Project Storage auf S3 | [31-project-storage-s3.md](31-project-storage-s3.md) | Feature 0 | L |
-| 32 | Pulumi AWS EKS + S3 Deployment | [32-pulumi-aws-eks-deployment.md](32-pulumi-aws-eks-deployment.md) | Feature 0, 31 | L |
 | 33 | Asset-Bundle-Storage-Foundation (Sub A) | [33-asset-bundle-storage-foundation.md](33-asset-bundle-storage-foundation.md) | Feature 31 | M |
 | 34 | Asset-Bundle-Admin-UI (Sub B) | [34-asset-bundle-admin-ui.md](34-asset-bundle-admin-ui.md) | Feature 33 | L |
 | 35 | Feature-Proposal nutzt Upload-Dokumente | [35-feature-proposal-with-uploads.md](35-feature-proposal-with-uploads.md) | Feature 22, 28 | S |

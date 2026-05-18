@@ -63,8 +63,6 @@ Plan: `docs/superpowers/plans/2026-05-02-editable-agent-prompts.md`
 ## Nicht-feature-37-bezogener Working-Tree-Stand (unangetastet)
 
 - `M backend/src/main/resources/application.yml` (User-Änderung `model: gpt-4o → gpt-5.5`, nicht zu committen)
-- `M infra/base/.../LoadBalancerController.kt` (pre-existing)
-- `?? scripts/destroy.sh`, `?? scripts/destroy-unreachable-cluster.sh` (untracked, pre-existing)
 
 ## Spec/Design/Plan zum Querlesen
 

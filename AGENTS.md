@@ -65,9 +65,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Project Structure & Module Organization
 
-Product-Spec-Agent is split into backend, frontend, infrastructure, and documentation areas. Backend Kotlin/Spring Boot code lives in `backend/src/main/kotlin/com/agentwork/productspecagent`, organized by layer: `api/`, `service/`, `storage/`, `agent/`, `domain/`, `export/`, and `config/`. Tests mirror this under `backend/src/test/kotlin`.
+Product-Spec-Agent is split into backend, frontend, documentation, and reusable asset areas. Backend Kotlin/Spring Boot code lives in `backend/src/main/kotlin/com/agentwork/productspecagent`, organized by layer: `api/`, `service/`, `storage/`, `agent/`, `domain/`, `export/`, and `config/`. Tests mirror this under `backend/src/test/kotlin`.
 
-The Next.js frontend lives in `frontend/src`, with routes in `app/`, shared UI in `components/`, stores and helpers in `lib/`, and Playwright tests in `frontend/e2e`. Product docs are in `docs/`; Pulumi stacks are in `infra/base` and `infra/workloads`; reusable agent assets are in `asset-bundles/`.
+The Next.js frontend lives in `frontend/src`, with routes in `app/`, shared UI in `components/`, stores and helpers in `lib/`, and Playwright tests in `frontend/e2e`. Product docs are in `docs/`; reusable agent assets are in `asset-bundles/`.
 
 ## Build, Test, and Development Commands
 
