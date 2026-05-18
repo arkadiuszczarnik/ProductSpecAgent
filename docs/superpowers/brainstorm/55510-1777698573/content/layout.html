@@ -1,0 +1,85 @@
+<h2>Wie soll das Modal strukturiert sein?</h2>
+<p class="subtitle">Das Form hat 3 Allgemein-Felder (Titel, Scope, Beschreibung) und je nach Scope 2-5 Detailfelder pro FRONTEND/BACKEND. Bisher alles in einer schmalen Spalte.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="single" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A — Single Column (mittig, scrollbar)</div>
+        <div class="mockup-body" style="max-width:520px;margin:0 auto">
+          <div class="placeholder" style="height:32px;margin-bottom:8px">Titel</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <div class="placeholder" style="height:24px;width:80px;border-radius:9999px"></div>
+            <div class="placeholder" style="height:24px;width:80px;border-radius:9999px"></div>
+          </div>
+          <div class="placeholder" style="height:64px;margin-bottom:8px">Beschreibung</div>
+          <div class="placeholder" style="height:48px;margin-bottom:6px">Frontend-Feld 1</div>
+          <div class="placeholder" style="height:48px;margin-bottom:6px">Frontend-Feld 2</div>
+          <div class="placeholder" style="height:48px;margin-bottom:6px">Backend-Feld 1</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Single Column</h3>
+      <p>Wie heute, nur in einem Modal. Scrollbar wenn viele Felder. Einfachste Migration, keine UI-Überraschungen.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="two-column" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B — Zwei Spalten (Allgemein | Scope-Felder)</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:12px">
+            <div>
+              <div class="label">Allgemein</div>
+              <div class="placeholder" style="height:32px;margin-bottom:6px">Titel</div>
+              <div style="display:flex;gap:6px;margin-bottom:6px">
+                <div class="placeholder" style="height:22px;width:60px;border-radius:9999px"></div>
+                <div class="placeholder" style="height:22px;width:60px;border-radius:9999px"></div>
+              </div>
+              <div class="placeholder" style="height:90px">Beschreibung</div>
+            </div>
+            <div>
+              <div class="label">Frontend &amp; Backend</div>
+              <div class="placeholder" style="height:48px;margin-bottom:6px">Feld 1</div>
+              <div class="placeholder" style="height:48px;margin-bottom:6px">Feld 2</div>
+              <div class="placeholder" style="height:48px;margin-bottom:6px">Feld 3</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Zwei Spalten</h3>
+      <p>Stammdaten links, Scope-Detail rechts. Nutzt die Modal-Breite, weniger Scrollen. Etwas mehr Layout-Logik.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="tabs" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C — Tabs (Allgemein / Frontend / Backend)</div>
+        <div class="mockup-body">
+          <div style="display:flex;gap:4px;margin-bottom:10px;border-bottom:1px solid var(--border)">
+            <div class="placeholder" style="height:28px;width:90px;border-radius:6px 6px 0 0;background:var(--accent)">Allgemein</div>
+            <div class="placeholder" style="height:28px;width:90px;border-radius:6px 6px 0 0">Frontend</div>
+            <div class="placeholder" style="height:28px;width:90px;border-radius:6px 6px 0 0">Backend</div>
+          </div>
+          <div class="placeholder" style="height:32px;margin-bottom:6px">Titel</div>
+          <div class="placeholder" style="height:64px;margin-bottom:6px">Beschreibung</div>
+          <div style="display:flex;gap:6px">
+            <div class="placeholder" style="height:22px;width:60px;border-radius:9999px"></div>
+            <div class="placeholder" style="height:22px;width:60px;border-radius:9999px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Tabs nach Scope</h3>
+      <p>Trennt Allgemein, Frontend, Backend. Sehr aufgeräumt, aber Tab-Wechsel-Klicks und Validation-Hinweise pro Tab muss man explizit handhaben.</p>
+    </div>
+  </div>
+
+</div>

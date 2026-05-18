@@ -1,0 +1,53 @@
+<h2>V1: Einfacher Design-Generator</h2>
+<p class="subtitle">Ziel: ein klarer Flow statt Workbench-Komplexität.</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Input</div>
+    <div class="mockup-body">
+      <div style="display:grid;gap:14px">
+        <div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:6px">Beschreibung</div>
+          <textarea class="mock-input" style="height:112px;resize:none" placeholder="Beschreibe Ziel, Stil, Inhalte, Zielgruppe..."></textarea>
+        </div>
+        <div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:6px">Optionales Referenzbild</div>
+          <div class="placeholder" style="height:92px">Bild hochladen</div>
+        </div>
+        <button class="mock-button">Analyse starten</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Canvas</div>
+    <div class="mockup-body">
+      <div style="display:grid;gap:12px">
+        <div class="placeholder" style="height:220px;background:#f8fafc">
+          Generiertes HTML-Layout
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="mock-button">Neu generieren</button>
+          <button class="mock-button">Design übernehmen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="simple-single-result" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Ein Ergebnis pro Generierung</h3>
+      <p>Beschreibung oder Bild wird analysiert und erzeugt direkt ein Canvas-Layout.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="simple-with-regenerate" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Ein Ergebnis plus Regenerate</h3>
+      <p>Gleicher Kernfluss, aber der User kann eine neue Version erzeugen lassen.</p>
+    </div>
+  </div>
+</div>

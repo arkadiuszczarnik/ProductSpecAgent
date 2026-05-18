@@ -42,7 +42,7 @@ The goal is simple: move from "we have an idea" to a clean, versionable reposito
 | Agents | JetBrains Koog, OpenAI or Anthropic-compatible model routing |
 | Storage | S3-compatible object storage, MinIO for local development |
 | Testing | JUnit 5, Mockito Kotlin, Testcontainers, Playwright, ESLint |
-| Deployment | Docker Compose, Pulumi infrastructure modules |
+| Deployment | Docker Compose |
 
 ## Quickstart
 
@@ -106,7 +106,6 @@ ProductSpecAgent/
 ├── backend/              # Kotlin/Spring Boot API, agents, auth, storage, exports
 ├── frontend/             # Next.js app, shared UI, stores, Playwright tests
 ├── docs/                 # Architecture docs, feature specs, product documentation
-├── infra/                # Pulumi infrastructure modules
 ├── asset-bundles/        # Reusable design and agent assets
 ├── docker-compose.yml    # Backend + MinIO local runtime
 └── start.sh              # One-command local development stack

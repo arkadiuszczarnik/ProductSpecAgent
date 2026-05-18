@@ -1,0 +1,197 @@
+<style>
+  .layout-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .choice-card {
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 14px;
+    background: #101827;
+    transition: transform 160ms ease, border-color 160ms ease;
+  }
+  .choice-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(129, 140, 248, 0.68);
+  }
+  .choice-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+    color: #cbd5e1;
+    font-size: 11px;
+  }
+  .choice-copy {
+    padding: 14px 14px 10px;
+  }
+  .choice-copy h3 {
+    margin: 0 0 6px;
+    color: #f8fafc;
+    font-size: 15px;
+  }
+  .choice-copy p {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .mock-app {
+    height: 330px;
+    margin: 0 12px 12px;
+    display: grid;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 10px;
+    background: #090f1c;
+  }
+  .rail {
+    background: #0f172a;
+    border-right: 1px solid rgba(148, 163, 184, 0.16);
+  }
+  .pill {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.30);
+  }
+  .primary { background: rgb(99, 102, 241); }
+  .success { background: rgb(52, 211, 153); }
+  .warning { background: rgb(251, 191, 36); }
+  .panel {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.92);
+  }
+  .panel-soft { background: rgba(30, 41, 59, 0.50); }
+  .a {
+    grid-template-columns: 34px 1fr;
+  }
+  .a-main {
+    padding: 10px;
+    display: grid;
+    gap: 10px;
+    grid-template-rows: 42px 62px 1fr;
+  }
+  .a-body {
+    display: grid;
+    grid-template-columns: 1fr 0.75fr;
+    gap: 10px;
+  }
+  .b {
+    grid-template-columns: 34px 150px 1fr;
+  }
+  .b-nav,
+  .b-main {
+    padding: 10px;
+    display: grid;
+    gap: 10px;
+  }
+  .b-nav { grid-template-rows: 56px 1fr 68px; }
+  .b-main { grid-template-rows: 44px 1fr; }
+  .c {
+    grid-template-columns: 34px 1fr;
+  }
+  .c-main {
+    padding: 10px;
+    display: grid;
+    gap: 10px;
+    grid-template-rows: 42px 1fr 78px;
+  }
+  .c-board {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1.05fr 0.95fr;
+  }
+  .dots {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 9px;
+  }
+  .dots span {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(148, 163, 184, 0.30);
+  }
+  .dots span:first-child { background: rgb(99, 102, 241); }
+  @media (max-width: 980px) {
+    .layout-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<h2>Projekt-Cockpit nach dem Wizard</h2>
+<p class="subtitle">Welche Informationsarchitektur fuehlt sich richtig an, ohne zum ueberladenen Dashboard zu werden?</p>
+
+<div class="layout-grid">
+  <div class="choice-card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="choice-head"><span>A</span><span>Status zuerst</span></div>
+    <div class="choice-copy">
+      <h3>Delivery Cockpit</h3>
+      <p>Oben Fortschritt und Tests, darunter Done Features, offene Punkte und Feature-Erfassung.</p>
+    </div>
+    <div class="mock-app a">
+      <div class="rail"><div class="dots"><span></span><span></span><span></span><span></span></div></div>
+      <div class="a-main">
+        <div class="panel panel-soft" style="padding:10px;display:grid;grid-template-columns:1fr 80px;gap:8px"><div class="pill primary"></div><div class="pill"></div></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div class="panel" style="padding:9px"><div class="pill success"></div></div>
+          <div class="panel" style="padding:9px"><div class="pill primary"></div></div>
+          <div class="panel" style="padding:9px"><div class="pill warning"></div></div>
+          <div class="panel" style="padding:9px"><div class="pill"></div></div>
+        </div>
+        <div class="a-body">
+          <div class="panel" style="padding:10px;display:grid;gap:8px;grid-template-rows:24px repeat(5,1fr)"><div class="pill primary" style="width:48%"></div><div class="panel panel-soft"></div><div class="panel panel-soft"></div><div class="panel panel-soft"></div><div class="panel panel-soft"></div><div class="panel panel-soft"></div></div>
+          <div style="display:grid;gap:10px;grid-template-rows:1fr 1fr"><div class="panel"></div><div class="panel panel-soft"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="choice-card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="choice-head"><span>B</span><span>Feature zuerst</span></div>
+    <div class="choice-copy">
+      <h3>Feature Workbench</h3>
+      <p>Links Feature-Liste, rechts der aktive Feature-Kontext mit Tests, offenen Punkten und Design-Aktionen.</p>
+    </div>
+    <div class="mock-app b">
+      <div class="rail"><div class="dots"><span></span><span></span><span></span><span></span></div></div>
+      <div class="b-nav">
+        <div class="panel panel-soft" style="padding:10px"><div class="pill primary"></div></div>
+        <div class="panel" style="padding:10px;display:grid;gap:8px;grid-template-rows:repeat(6,1fr)"><div class="pill success"></div><div class="pill success"></div><div class="pill primary"></div><div class="pill warning"></div><div class="pill"></div><div class="pill"></div></div>
+        <div class="panel panel-soft" style="padding:10px"><div class="pill primary"></div></div>
+      </div>
+      <div class="b-main">
+        <div class="panel panel-soft" style="padding:10px;display:grid;grid-template-columns:1fr 80px;gap:8px"><div class="pill primary"></div><div class="pill"></div></div>
+        <div style="display:grid;gap:10px;grid-template-rows:0.75fr 1fr">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div class="panel"></div><div class="panel"></div><div class="panel"></div></div>
+          <div class="panel" style="padding:10px;display:grid;grid-template-columns:1fr 0.8fr;gap:10px"><div class="panel panel-soft"></div><div class="panel panel-soft"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="choice-card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="choice-head"><span>C</span><span>Naechste Aktion zuerst</span></div>
+    <div class="choice-copy">
+      <h3>Decision Cockpit</h3>
+      <p>Eine priorisierte Arbeitsliste fuehrt durch Done-Review, neue Features und Design-Erzeugung.</p>
+    </div>
+    <div class="mock-app c">
+      <div class="rail"><div class="dots"><span></span><span></span><span></span><span></span></div></div>
+      <div class="c-main">
+        <div class="panel panel-soft" style="padding:10px;display:grid;grid-template-columns:1fr 86px;gap:8px"><div class="pill primary"></div><div class="pill"></div></div>
+        <div class="c-board">
+          <div class="panel" style="padding:10px;display:grid;gap:8px;grid-template-rows:28px repeat(4,1fr)"><div class="pill primary" style="width:54%"></div><div class="panel panel-soft"></div><div class="panel panel-soft"></div><div class="panel panel-soft"></div><div class="panel panel-soft"></div></div>
+          <div style="display:grid;gap:10px;grid-template-rows:1fr 0.8fr"><div class="panel"></div><div class="panel panel-soft"></div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div class="panel"></div><div class="panel"></div><div class="panel"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px">Meine Empfehlung: B, weil Product Owner meist an einzelnen Features arbeiten, aber Tests und offene Punkte direkt im Kontext sehen muessen.</p>
