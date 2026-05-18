@@ -133,4 +133,3 @@ ProductSpecAgent/
 - [Koog agents](docs/architecture/koog-agents.md)
 - [Feature set overview](docs/features/00-feature-set-overview.md)
 - [Frontend design system](docs/frontend/design-system.md)
-

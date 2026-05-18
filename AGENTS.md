@@ -83,7 +83,7 @@ The Next.js frontend lives in `frontend/src`, with routes in `app/`, shared UI i
 
 ## Framework Source Checks
 
-When evaluating framework or package behavior, inspect upstream sources with the `opensrc` CLI. 
+When evaluating framework or package behavior, inspect upstream sources with the `opensrc` CLI.
 
 ## Coding Style & Naming Conventions
 
