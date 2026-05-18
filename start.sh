@@ -55,11 +55,54 @@ export S3_SECRET_KEY="minioadmin"
 export S3_PATH_STYLE="true"
 export S3_REGION="us-east-1"
 
+# Claude / proxy example values:
+# export https_proxy="http://meta-proxy.netrtl.com:8080"
+# export http_proxy="http://meta-proxy.netrtl.com:8080"
+# export NO_PROXY="*.netrtl.com,10.96.0.0/14"
+# export no_proxy="*.netrtl.com,10.96.0.0/14"
+#
+# export ANTHROPIC_BASE_URL="https://llm.ai.netrtl.com"
+# export ANTHROPIC_AUTH_TOKEN="${ANTHROPIC_AUTH_TOKEN:-set-me}"
+# # Quelle: https://llm-keys.ai.netrtl.com/
+# export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+# export CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1
+# export ANTHROPIC_DEFAULT_HAIKU_MODEL="claude-haiku-4.5"
+# export ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-4.6"
+# export ANTHROPIC_DEFAULT_OPUS_MODEL="claude-opus-4.6"
+
+export LLM_PROVIDER="${LLM_PROVIDER:-openai}"
+case "$LLM_PROVIDER" in
+  openai)
+    export AGENT_MODEL_RESOLVER="${AGENT_MODEL_RESOLVER:-openai}"
+    export KOOG_OPENAI_ENABLED="${KOOG_OPENAI_ENABLED:-true}"
+    export KOOG_ANTHROPIC_ENABLED="${KOOG_ANTHROPIC_ENABLED:-false}"
+    export AGENT_MODEL_SMALL="${AGENT_MODEL_SMALL:-gpt-5.4-nano}"
+    export AGENT_MODEL_MEDIUM="${AGENT_MODEL_MEDIUM:-gpt-5.4-mini}"
+    export AGENT_MODEL_LARGE="${AGENT_MODEL_LARGE:-gpt-5-2}"
+    ;;
+  claude)
+    export AGENT_MODEL_RESOLVER="${AGENT_MODEL_RESOLVER:-claude}"
+    export KOOG_OPENAI_ENABLED="${KOOG_OPENAI_ENABLED:-false}"
+    export KOOG_ANTHROPIC_ENABLED="${KOOG_ANTHROPIC_ENABLED:-true}"
+    export ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-https://llm.ai.netrtl.com}"
+    export AGENT_MODEL_SMALL="${AGENT_MODEL_SMALL:-claude-haiku-4-5}"
+    export AGENT_MODEL_MEDIUM="${AGENT_MODEL_MEDIUM:-claude-sonnet-4-6}"
+    export AGENT_MODEL_LARGE="${AGENT_MODEL_LARGE:-claude-sonnet-4-6}"
+    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+    export CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1
+    ;;
+  *)
+    echo "Unsupported LLM_PROVIDER: $LLM_PROVIDER (expected: openai or claude)" >&2
+    exit 1
+    ;;
+esac
+
 export AUTH_JWT_SECRET="${AUTH_JWT_SECRET:-dev-secret-change-me-dev-secret-change-me-dev-secret}"
 export AUTH_COOKIE_SECURE="${AUTH_COOKIE_SECURE:-false}"
 export AUTH_ADMIN_EMAILS="${AUTH_ADMIN_EMAILS:-*}"
 export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-dev}"
 
+echo "=== LLM Provider: $LLM_PROVIDER ==="
 echo "=== Starting Backend (Spring Boot) ==="
 cd "$ROOT_DIR/backend"
 ./gradlew bootRun --quiet &

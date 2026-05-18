@@ -1,6 +1,7 @@
 package com.agentwork.productspecagent.agent
 
 import ai.koog.agents.core.tools.ToolDescriptor
+import ai.koog.prompt.executor.clients.anthropic.AnthropicModels
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
@@ -21,23 +22,25 @@ import org.junit.jupiter.api.Test
 
 class KoogAgentRunnerTest {
 
+    private val validDefaults = mapOf(
+        "idea-to-spec" to AgentModelTier.LARGE,
+        "decision" to AgentModelTier.MEDIUM,
+        "wizard-blocker-apply" to AgentModelTier.MEDIUM,
+        "acceptance-criteria-proposal" to AgentModelTier.MEDIUM,
+        "feature-proposal" to AgentModelTier.MEDIUM,
+        "plan-generator" to AgentModelTier.LARGE,
+        "design-summary" to AgentModelTier.MEDIUM,
+        "design-variant" to AgentModelTier.MEDIUM,
+        "design-image-analysis" to AgentModelTier.MEDIUM,
+    )
+
     private val validProps = AgentModelsProperties(
         tiers = mapOf(
             AgentModelTier.SMALL to "gpt-5-nano",
             AgentModelTier.MEDIUM to "gpt-5-mini",
             AgentModelTier.LARGE to "gpt-5-2",
         ),
-        defaults = mapOf(
-            "idea-to-spec" to AgentModelTier.LARGE,
-            "decision" to AgentModelTier.MEDIUM,
-            "wizard-blocker-apply" to AgentModelTier.MEDIUM,
-            "acceptance-criteria-proposal" to AgentModelTier.MEDIUM,
-            "feature-proposal" to AgentModelTier.MEDIUM,
-            "plan-generator" to AgentModelTier.LARGE,
-            "design-summary" to AgentModelTier.MEDIUM,
-            "design-variant" to AgentModelTier.MEDIUM,
-            "design-image-analysis" to AgentModelTier.MEDIUM,
-        ),
+        defaults = validDefaults,
     )
 
     @Test
@@ -89,6 +92,30 @@ class KoogAgentRunnerTest {
         assertThat(image?.mimeType).isEqualTo("image/png")
         assertThat(image?.fileName).isEqualTo("dashboard.png")
         assertThat((image?.content as AttachmentContent.Binary.Bytes).asBytes()).containsExactly(1, 2, 3)
+    }
+
+    @Test
+    fun `run uses anthropic executor when resolver is claude`(): Unit = runBlocking {
+        val registry = AgentModelRegistry(
+            AgentModelsProperties(
+                resolver = AgentModelResolverType.CLAUDE,
+                tiers = mapOf(
+                    AgentModelTier.SMALL to "claude-haiku-4-5",
+                    AgentModelTier.MEDIUM to "claude-sonnet-4-6",
+                    AgentModelTier.LARGE to "claude-sonnet-4-6",
+                ),
+                defaults = validDefaults,
+            )
+        )
+        val service = AgentModelService(registry, InMemoryObjectStore())
+        val openAiExecutor = CapturingExecutor()
+        val anthropicExecutor = CapturingExecutor()
+        val runner = KoogAgentRunner(openAiExecutor, anthropicExecutor, service, registry)
+
+        runner.run("decision", "you are a test", "hello")
+
+        assertThat(openAiExecutor.lastModel).isNull()
+        assertThat(anthropicExecutor.lastModel).isEqualTo(AnthropicModels.Sonnet_4_6)
     }
 
     private class CapturingExecutor : PromptExecutor() {

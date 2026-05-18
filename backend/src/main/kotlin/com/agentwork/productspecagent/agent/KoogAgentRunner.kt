@@ -6,17 +6,25 @@ import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.message.AttachmentContent
 import ai.koog.prompt.message.ContentPart
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Component
 import com.agentwork.productspecagent.service.AgentModelService
 
 @Component
-class KoogAgentRunner(
-    @Qualifier("openAIExecutor") private val promptExecutor: PromptExecutor,
+class KoogAgentRunner @Autowired constructor(
+    @Qualifier("openAIExecutor") private val openAiExecutor: PromptExecutor?,
+    @Qualifier("anthropicExecutor") private val anthropicExecutor: PromptExecutor?,
     private val modelService: AgentModelService,
     private val modelRegistry: AgentModelRegistry,
 ) {
     private val logger = LoggerFactory.getLogger(KoogAgentRunner::class.java)
+
+    constructor(
+        promptExecutor: PromptExecutor,
+        modelService: AgentModelService,
+        modelRegistry: AgentModelRegistry,
+    ) : this(promptExecutor, promptExecutor, modelService, modelRegistry)
 
     suspend fun run(agentId: String, systemPrompt: String, userMessage: String): String {
         val tier = modelService.getTier(agentId)
@@ -24,7 +32,7 @@ class KoogAgentRunner(
         logger.debug("Running Koog agent={} tier={} model={} promptLen={}", agentId, tier, modelRegistry.modelIdFor(tier), systemPrompt.length)
 
         val agent = AIAgent(
-            promptExecutor = promptExecutor,
+            promptExecutor = promptExecutor(),
             systemPrompt = systemPrompt,
             llmModel = model,
         )
@@ -65,6 +73,14 @@ class KoogAgentRunner(
                 )
             }
         }
-        return promptExecutor.execute(prompt = prompt, model = model, tools = emptyList()).last().content
+        return promptExecutor().execute(prompt = prompt, model = model, tools = emptyList()).last().content
     }
+
+    private fun promptExecutor(): PromptExecutor =
+        when (modelRegistry.resolverType()) {
+            AgentModelResolverType.OPENAI ->
+                openAiExecutor ?: error("OpenAI prompt executor not configured for resolver=openai")
+            AgentModelResolverType.CLAUDE ->
+                anthropicExecutor ?: error("Anthropic prompt executor not configured for resolver=claude")
+        }
 }

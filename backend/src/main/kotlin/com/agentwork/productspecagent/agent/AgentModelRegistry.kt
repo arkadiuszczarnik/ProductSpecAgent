@@ -31,7 +31,12 @@ class AgentModelRegistry(private val properties: AgentModelsProperties) {
             }
         }
         tierIdMapping = properties.tiers.toMap()
-        tierMapping = properties.tiers.mapValues { (_, name) -> resolveOpenAiModel(name) }
+        tierMapping = properties.tiers.mapValues { (_, name) ->
+            when (properties.resolver) {
+                AgentModelResolverType.OPENAI -> resolveOpenAiModel(name)
+                AgentModelResolverType.CLAUDE -> resolveClaudeModel(name)
+            }
+        }
 
         KNOWN_AGENT_IDS.forEach { id ->
             check(properties.defaults.containsKey(id)) {
@@ -56,6 +61,8 @@ class AgentModelRegistry(private val properties: AgentModelsProperties) {
 
     fun modelIdFor(tier: AgentModelTier): String =
         tierIdMapping.getValue(tier)
+
+    fun resolverType(): AgentModelResolverType = properties.resolver
 
     fun tierMappingView(): Map<AgentModelTier, String> = tierIdMapping
 }

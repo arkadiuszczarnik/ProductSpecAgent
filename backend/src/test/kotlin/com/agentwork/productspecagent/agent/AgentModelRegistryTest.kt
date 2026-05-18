@@ -1,5 +1,6 @@
 package com.agentwork.productspecagent.agent
 
+import ai.koog.prompt.executor.clients.anthropic.AnthropicModels
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -7,23 +8,25 @@ import org.junit.jupiter.api.Test
 
 class AgentModelRegistryTest {
 
+    private val validDefaults = mapOf(
+        "idea-to-spec" to AgentModelTier.LARGE,
+        "decision" to AgentModelTier.MEDIUM,
+        "wizard-blocker-apply" to AgentModelTier.MEDIUM,
+        "acceptance-criteria-proposal" to AgentModelTier.MEDIUM,
+        "feature-proposal" to AgentModelTier.MEDIUM,
+        "plan-generator" to AgentModelTier.LARGE,
+        "design-summary" to AgentModelTier.MEDIUM,
+        "design-variant" to AgentModelTier.MEDIUM,
+        "design-image-analysis" to AgentModelTier.MEDIUM,
+    )
+
     private val validProps = AgentModelsProperties(
         tiers = mapOf(
             AgentModelTier.SMALL to "gpt-5-nano",
             AgentModelTier.MEDIUM to "gpt-5-mini",
             AgentModelTier.LARGE to "gpt-5-2",
         ),
-        defaults = mapOf(
-            "idea-to-spec" to AgentModelTier.LARGE,
-            "decision" to AgentModelTier.MEDIUM,
-            "wizard-blocker-apply" to AgentModelTier.MEDIUM,
-            "acceptance-criteria-proposal" to AgentModelTier.MEDIUM,
-            "feature-proposal" to AgentModelTier.MEDIUM,
-            "plan-generator" to AgentModelTier.LARGE,
-            "design-summary" to AgentModelTier.MEDIUM,
-            "design-variant" to AgentModelTier.MEDIUM,
-            "design-image-analysis" to AgentModelTier.MEDIUM,
-        ),
+        defaults = validDefaults,
     )
 
     @Test
@@ -61,6 +64,43 @@ class AgentModelRegistryTest {
         assertThatThrownBy { AgentModelRegistry(props) }
             .isInstanceOf(IllegalStateException::class.java)
             .hasMessageContaining("Unknown OpenAI model id: gpt-99-turbo")
+    }
+
+    @Test
+    fun `claude resolver maps configured tiers`() {
+        val props = AgentModelsProperties(
+            resolver = AgentModelResolverType.CLAUDE,
+            tiers = mapOf(
+                AgentModelTier.SMALL to "claude-haiku-4-5",
+                AgentModelTier.MEDIUM to "claude-sonnet-4-5",
+                AgentModelTier.LARGE to "claude-sonnet-4-6",
+            ),
+            defaults = validDefaults,
+        )
+
+        val reg = AgentModelRegistry(props)
+
+        assertThat(reg.modelFor(AgentModelTier.SMALL)).isEqualTo(AnthropicModels.Haiku_4_5)
+        assertThat(reg.modelFor(AgentModelTier.MEDIUM)).isEqualTo(AnthropicModels.Sonnet_4_5)
+        assertThat(reg.modelFor(AgentModelTier.LARGE)).isEqualTo(AnthropicModels.Sonnet_4_6)
+        assertThat(reg.modelIdFor(AgentModelTier.LARGE)).isEqualTo("claude-sonnet-4-6")
+    }
+
+    @Test
+    fun `claude resolver fails fast on unknown model id`() {
+        val props = AgentModelsProperties(
+            resolver = AgentModelResolverType.CLAUDE,
+            tiers = mapOf(
+                AgentModelTier.SMALL to "claude-haiku-4-5",
+                AgentModelTier.MEDIUM to "claude-sonnet-4-5",
+                AgentModelTier.LARGE to "claude-unknown",
+            ),
+            defaults = validDefaults,
+        )
+
+        assertThatThrownBy { AgentModelRegistry(props) }
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContaining("Unknown Claude model id: claude-unknown")
     }
 
     @Test
