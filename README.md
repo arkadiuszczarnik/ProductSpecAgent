@@ -7,7 +7,6 @@ Ziel ist eine Arbeitsweise auf dem Niveau moderner spec-driven Tools wie Superpo
 Priorisierung und Lösungsbild bis hin zu einer umsetzbaren Produktspezifikation. Am Ende entsteht ein sauber strukturiertes, Git-fähiges Repository, das direkt als Grundlage für die weitere Entwicklung mit Claude Code, 
 Codex oder anderen AI-Coding-Agents genutzt werden kann. Ergänzt wird das Ganze durch eine attraktive, moderne UI, die komplexe Produktarbeit einfach, schnell und motivierend erlebbar macht.
 
-
 ### Frontend
 - **Next.js**
 - **React**
