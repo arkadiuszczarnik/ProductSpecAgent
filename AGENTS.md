@@ -81,6 +81,10 @@ The Next.js frontend lives in `frontend/src`, with routes in `app/`, shared UI i
 - `cd frontend && npm run test:e2e` runs Playwright end-to-end tests.
 - `docker-compose up` runs backend plus MinIO; provide required secrets via `.env`.
 
+## Framework Source Checks
+
+When evaluating framework or package behavior, inspect upstream sources with the `opensrc` CLI.
+
 ## Coding Style & Naming Conventions
 
 Use Kotlin 2.3, Java 21, Spring Boot 4, TypeScript, React 19, and Tailwind CSS 4. Keep backend classes in their current layers and prefer Kotlin data classes for domain models. Name Kotlin tests `SubjectTest.kt`; name React components in `PascalCase.tsx`; keep stores under `frontend/src/lib/stores/*-store.ts`. Match existing formatting: 4-space Kotlin indentation and 2-space TypeScript/TSX indentation.
