@@ -60,6 +60,7 @@ Jedes Feature ist eine eigenständige, implementierbare Einheit. Die Reihenfolge
 | 49 | Wizard Blocker Apply Agent | [49-wizard-blocker-apply-agent-done.md](49-wizard-blocker-apply-agent-done.md) | Feature 2, 3, 11, 18 | M |
 | 50 | Project Cockpit Feature Workbench | [50-project-cockpit-feature-workbench.md](50-project-cockpit-feature-workbench.md) | Feature 22, 45, 47, 48 | M |
 | 51 | Feature-Done-Markdown Import via MCP | [51-feature-done-markdown-import-via-mcp.md](51-feature-done-markdown-import-via-mcp.md) | Feature 22, 45, 50 | M |
+| 52 | Cockpit Launch Gate nach Wizard-Abschluss | [52-cockpit-launch-gate-after-wizard.md](52-cockpit-launch-gate-after-wizard.md) | Feature 11, 12, 13, 48, 50 | S–M |
 
 ## Architecture Docs
 
