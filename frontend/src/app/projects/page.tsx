@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { listProjects, getProject, type Project, type FlowState } from "@/lib/api";
+import { cockpitHref } from "@/lib/project-cockpit";
 import { cn } from "@/lib/utils";
 import { DeleteProjectDialog } from "@/components/projects/DeleteProjectDialog";
 
@@ -122,10 +123,11 @@ export default function ProjectsPage() {
           projects.map((p, idx) => {
             const progress = p.totalSteps > 0 ? Math.round((p.completedSteps / p.totalSteps) * 100) : 0;
             const nextStep = p.flowState?.currentStep?.replace("_", " ") ?? "—";
+            const href = cockpitHref(p.id, p.flowState);
 
             return (
               <div key={p.id} className="relative group">
-                <Link href={`/projects/${p.id}`} className="block">
+                <Link href={href} className="block">
                   <Card
                     className="flex h-full flex-col bg-card/45 backdrop-blur-md hover:-translate-y-0.5 hover:border-white/20 hover:shadow-md dashboard-card-in"
                     style={{ animationDelay: `${140 + idx * 55}ms` }}
