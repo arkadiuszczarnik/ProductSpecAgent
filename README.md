@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/arkadblack/ProductSpecAgent"><img alt="Repository" src="https://img.shields.io/badge/github-ProductSpecAgent-181717?logo=github"></a>
+  <a href="https://github.com/arkadiuszczarnik/ProductSpecAgent"><img alt="Repository" src="https://img.shields.io/badge/github-ProductSpecAgent-181717?logo=github"></a>
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs">
   <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=061018">
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin&logoColor=white">
