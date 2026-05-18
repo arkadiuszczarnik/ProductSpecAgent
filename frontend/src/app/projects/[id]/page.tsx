@@ -23,6 +23,7 @@ import { ExplorerPanel } from "@/components/explorer/ExplorerPanel";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { WizardForm } from "@/components/wizard/WizardForm";
 import { useWizardStore } from "@/lib/stores/wizard-store";
+import { isCockpitReady } from "@/lib/project-cockpit";
 import { cn } from "@/lib/utils";
 import { useResizable } from "@/lib/hooks/use-resizable";
 import { ResizeHandle } from "@/components/layout/ResizeHandle";
@@ -87,6 +88,7 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
     minWidth: 280,
     maxWidth: 900,
   });
+  const cockpitReady = isCockpitReady(flowState);
 
   if (projectLoading) {
     return (
@@ -121,11 +123,13 @@ export default function ProjectWorkspacePage({ params }: PageProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Link href={`/projects/${id}/cockpit`}>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Gauge size={14} /> Cockpit
-            </Button>
-          </Link>
+          {cockpitReady && (
+            <Link href={`/projects/${id}/cockpit`}>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Gauge size={14} /> Cockpit
+              </Button>
+            </Link>
+          )}
           <Button variant="outline" size="sm" onClick={() => setShowHandoff(true)} className="gap-1.5">
             <Save size={14} /> Handoff
           </Button>
