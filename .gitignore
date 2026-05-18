@@ -40,5 +40,5 @@ asset-bundles/*.zip
 deploy-vars.env
 
 # pyton virtual env
-.venv
+.venv/
 /push-both.sh
