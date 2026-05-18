@@ -14,7 +14,7 @@ data/
 # IDE
 .idea/
 *.iml
-.agents
+.agents/
 
 # OS
 .DS_Store
@@ -41,3 +41,4 @@ deploy-vars.env
 
 # pyton virtual env
 .venv
+/push-both.sh
