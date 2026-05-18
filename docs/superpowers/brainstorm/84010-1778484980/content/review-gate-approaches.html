@@ -1,0 +1,74 @@
+<h2>Finaler Review-Step: Welche UX-Struktur passt?</h2>
+<p class="subtitle">Alle Varianten machen den finalen Schritt explizit und erlauben Export erst nach Review. Der Unterschied ist, wie stark der Step Feature-Erweiterung und Zusammenfassung in den Vordergrund stellt.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Wizard: Review</div>
+        <div class="mockup-body">
+          <div class="mock-nav">Idee | Problem | Features | MVP | ... | Review</div>
+          <div style="display:grid;grid-template-columns:1.35fr .9fr;gap:14px;margin-top:12px;">
+            <div class="mock-content">
+              <div class="label">Zusammenfassung</div>
+              <div class="placeholder" style="height:42px;">Produkt, Zielgruppe, MVP</div>
+              <div class="placeholder" style="height:74px;">Feature-Liste mit Status, Scope, Akzeptanzkriterien</div>
+              <div class="placeholder" style="height:48px;">Technische Entscheidungen</div>
+            </div>
+            <div class="mock-sidebar">
+              <div class="label">Review Actions</div>
+              <button class="mock-button">Feature hinzufuegen</button>
+              <button class="mock-button">Zurueck zu Features</button>
+              <button class="mock-button">Final bestaetigen</button>
+              <button class="mock-button">Exportieren</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A: Eigener REVIEW-Step mit Action-Spalte</h3>
+      <p>Empfohlen. Der Step ist fuer alle Kategorien sichtbar, zeigt eine kompakte Gesamtzusammenfassung und bietet klare Aktionen: Feature hinzufuegen, zurueckspringen, final bestaetigen, exportieren.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Wizard: letzter Fach-Step</div>
+        <div class="mockup-body">
+          <div class="mock-nav">Idee | Problem | Features | MVP | Backend</div>
+          <div class="mock-content">
+            <div class="placeholder" style="height:72px;">Normales Step-Formular</div>
+            <div class="placeholder" style="height:88px;">Review-Dialog ueberlagert den Abschluss</div>
+            <button class="mock-button">Review oeffnen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B: Review-Dialog vor Export</h3>
+      <p>Kleinerer Eingriff, aber weniger explizit. Der letzte sichtbare Fach-Step bleibt terminal und zeigt beim Abschluss einen Dialog mit Zusammenfassung und Export-Freigabe.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Wizard: Review</div>
+        <div class="mockup-body">
+          <div class="mock-nav">Idee | Problem | Features | MVP | ... | Review</div>
+          <div class="mock-content">
+            <div class="placeholder" style="height:44px;">Read-only Summary</div>
+            <div class="placeholder" style="height:92px;">Export Preview</div>
+            <button class="mock-button">Exportieren</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C: Read-only Summary-Step</h3>
+      <p>Sehr einfach und stabil, aber erfuellt den Feature-Wunsch nur teilweise: Features hinzufuegen waere nur ueber Navigation zurueck zum FEATURES-Step moeglich.</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,82 @@
+<h2>V1 Architektur-Schnitt: Design Workbench</h2>
+<p class="subtitle">Neue Begriffe statt DesignBundle: Workbench, Inputs, Screens, Varianten. Der alte ZIP-Pfad verschwindet aus der UX.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Datenfluss</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <div style="border:1px solid #d6dbe3;border-radius:8px;padding:12px;background:#f8fafc">
+        <div class="label">1 · Inputs</div>
+        <h3>DesignInput</h3>
+        <ul>
+          <li>Textbeschreibung</li>
+          <li>Bilder/Screenshots</li>
+          <li>HTML/CSS-Referenzen</li>
+          <li>Agent-Klassifikation sichtbar editierbar</li>
+        </ul>
+      </div>
+      <div style="border:1px solid #d6dbe3;border-radius:8px;padding:12px;background:#f8fafc">
+        <div class="label">2 · Screens</div>
+        <h3>DesignScreen</h3>
+        <ul>
+          <li>Agent schlägt Screen-Typen vor</li>
+          <li>Nutzer kuratiert Liste</li>
+          <li>Mindestens ein aktiver Screen Pflicht</li>
+          <li>Screen hat Varianten</li>
+        </ul>
+      </div>
+      <div style="border:1px solid #d6dbe3;border-radius:8px;padding:12px;background:#f8fafc">
+        <div class="label">3 · Varianten</div>
+        <h3>DesignVariant</h3>
+        <ul>
+          <li>Self-contained HTML/CSS</li>
+          <li>Kleines Inline-JS erlaubt</li>
+          <li>Keine externen URLs/API Calls</li>
+          <li>Eine aktive Variante pro Screen</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="margin:22px 0;display:flex;align-items:center;justify-content:center;gap:12px;color:#475569">
+      <span>Analyze references</span>
+      <span>→</span>
+      <span>Suggest screens</span>
+      <span>→</span>
+      <span>Generate variants</span>
+      <span>→</span>
+      <span>Complete DESIGN</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div style="border:1px solid #d6dbe3;border-radius:8px;padding:12px;background:white">
+        <div class="label">Persistenz</div>
+        <div class="placeholder" style="height:34px;margin-bottom:8px">data/projects/{id}/design/workbench.json</div>
+        <div class="placeholder" style="height:34px;margin-bottom:8px">data/projects/{id}/design/inputs/assets/...</div>
+        <div class="placeholder" style="height:34px">data/projects/{id}/design/variants/{screen}/{variant}.html</div>
+      </div>
+      <div style="border:1px solid #d6dbe3;border-radius:8px;padding:12px;background:white">
+        <div class="label">Abschluss-Output</div>
+        <div class="placeholder" style="height:34px;margin-bottom:8px">spec/design.md</div>
+        <div class="placeholder" style="height:34px;margin-bottom:8px">design/screens/{screen}/index.html</div>
+        <div class="placeholder" style="height:34px">design/assets/... nur freigegebene Assets</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="architecture-ok" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Architektur-Schnitt passt</h3>
+      <p>Neue Workbench-Domain, aktive Varianten als Abschluss-Output, Pflicht-Minimum ein Screen.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="architecture-revise" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Architektur nochmal ändern</h3>
+      <p>Begriffe, Persistenz oder Abschluss-Output sind noch nicht richtig.</p>
+    </div>
+  </div>
+</div>

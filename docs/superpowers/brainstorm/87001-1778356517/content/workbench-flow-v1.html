@@ -1,0 +1,95 @@
+<h2>Geplanter DESIGN-Step: Agentic Design Workbench</h2>
+<p class="subtitle">Preview-first Hybrid: keine ZIP-Dropzone, kein Figma-Klon. Der Nutzer kuratiert Screens und Varianten, Agenten generieren und schlagen Änderungen vor.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Workspace Layout · DESIGN-Step</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:280px minmax(420px,1fr) 300px;gap:12px;min-height:520px">
+      <aside style="border:1px solid #d6dbe3;border-radius:8px;background:#f8fafc;padding:12px;display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div class="label">Inputs</div>
+          <div class="placeholder" style="height:70px;margin-bottom:8px">Beschreibung / Prompt</div>
+          <div class="placeholder" style="height:38px;margin-bottom:8px">+ Bild / Screenshot</div>
+          <div class="placeholder" style="height:38px">+ HTML / CSS Referenz</div>
+        </div>
+        <div>
+          <div class="label">Agent klassifiziert Bilder</div>
+          <div class="placeholder" style="height:30px;margin-bottom:6px">Screenshot · Referenz</div>
+          <div class="placeholder" style="height:30px">Logo.png · Asset</div>
+        </div>
+        <div>
+          <div class="label">Screen Vorschläge</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div class="placeholder" style="height:28px">Landing</div>
+            <div class="placeholder" style="height:28px">Dashboard</div>
+            <div class="placeholder" style="height:28px">Detail View</div>
+          </div>
+        </div>
+      </aside>
+
+      <main style="border:1px solid #d6dbe3;border-radius:8px;background:white;display:flex;flex-direction:column;overflow:hidden">
+        <div style="border-bottom:1px solid #d6dbe3;padding:10px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <strong>Landing</strong>
+            <span style="color:#64748b;margin-left:8px">v2 active</span>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="mock-button">Desktop</button>
+            <button class="mock-button">Mobile</button>
+          </div>
+        </div>
+        <div style="background:#eef2f7;padding:18px;flex:1">
+          <div style="height:430px;background:white;border:1px solid #d6dbe3;border-radius:10px;box-shadow:0 10px 24px rgba(15,23,42,.08);padding:18px">
+            <div class="mock-nav">Logo · Navigation · CTA</div>
+            <div class="placeholder" style="height:92px;margin:18px 0">Generated hero / product story</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+              <div class="placeholder" style="height:72px">Benefit</div>
+              <div class="placeholder" style="height:72px">Workflow</div>
+              <div class="placeholder" style="height:72px">Proof</div>
+            </div>
+            <div class="placeholder" style="height:88px">Generated section</div>
+          </div>
+        </div>
+      </main>
+
+      <aside style="border:1px solid #d6dbe3;border-radius:8px;background:#f8fafc;padding:12px;display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div class="label">Controls</div>
+          <div class="placeholder" style="height:30px;margin-bottom:6px">Style: Operational SaaS</div>
+          <div class="placeholder" style="height:30px;margin-bottom:6px">Density: Compact</div>
+          <div class="placeholder" style="height:30px;margin-bottom:6px">Palette: Professional</div>
+          <button class="mock-button">Variante erzeugen</button>
+        </div>
+        <div>
+          <div class="label">Vorschläge</div>
+          <div class="placeholder" style="height:42px;margin-bottom:8px">Improve CTA hierarchy</div>
+          <div class="placeholder" style="height:42px;margin-bottom:8px">Add empty state</div>
+          <div class="placeholder" style="height:42px">Generate mobile variant</div>
+        </div>
+        <div>
+          <div class="label">Varianten</div>
+          <div class="placeholder" style="height:30px;margin-bottom:6px">v1 · initial</div>
+          <div class="placeholder" style="height:30px;margin-bottom:6px">v2 · active</div>
+          <div class="placeholder" style="height:30px">v3 · compact</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="layout-ok" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Layout passt als V1</h3>
+      <p>Links Inputs/Screens, Mitte Canvas, rechts Controls/Vorschläge/Varianten.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="layout-too-much" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Zu viel auf einmal</h3>
+      <p>Wir sollten erst mit weniger Paneelen oder einem Schritt-für-Schritt-Flow planen.</p>
+    </div>
+  </div>
+</div>
