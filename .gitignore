@@ -14,6 +14,7 @@ data/
 # IDE
 .idea/
 *.iml
+.agents
 
 # OS
 .DS_Store
